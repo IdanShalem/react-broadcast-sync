@@ -1,0 +1,49 @@
+{
+  "name": "react-broadcast-sync",
+  "version": "1.0.0",
+  "description": "A lightweight React hook and provider for syncing state across browser tabs using BroadcastChannel API.",
+  "main": "dist/index.js",
+  "module": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "scripts": {
+    "build": "rollup -c rollup.config.mjs",
+    "prepare": "npm run build",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [
+    "react",
+    "hooks",
+    "broadcastchannel",
+    "sync",
+    "cross-tab",
+    "state-management"
+  ],
+  "author": "Your Name <you@example.com>",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/<your-username>/react-broadcast-sync.git"
+  },
+  "bugs": {
+    "url": "https://github.com/<your-username>/react-broadcast-sync/issues"
+  },
+  "homepage": "https://github.com/<your-username>/react-broadcast-sync#readme",
+  "peerDependencies": {
+    "react": "^16.8.0 || ^17.0.0 || ^18.0.0 || ^19.0.0",
+    "react-dom": "^16.8.0 || ^17.0.0 || ^18.0.0 || ^19.0.0"
+  },
+  "devDependencies": {
+    "@babel/preset-react": "^7.26.3",
+    "@rollup/plugin-babel": "^6.0.4",
+    "@rollup/plugin-commonjs": "^28.0.3",
+    "@rollup/plugin-node-resolve": "^16.0.1",
+    "@rollup/plugin-terser": "^0.4.4",
+    "@rollup/plugin-typescript": "^12.1.2",
+    "@types/react": "^16.9.0",
+    "@vitejs/plugin-react": "^4.3.4",
+    "rollup": "^4.38.0",
+    "rollup-plugin-peer-deps-external": "^2.2.4",
+    "tslib": "^2.8.1",
+    "typescript": "^5.8.2"
+  }
+}
