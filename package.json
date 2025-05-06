@@ -18,16 +18,16 @@
     "cross-tab",
     "state-management"
   ],
-  "author": "Your Name <you@example.com>",
+  "author": "Idan Shalem <idanshalem25@gmail.com>",
   "license": "MIT",
   "repository": {
     "type": "git",
-    "url": "https://github.com/<your-username>/react-broadcast-sync.git"
+    "url": "https://github.com/IdanShalem/react-broadcast-sync.git"
   },
   "bugs": {
-    "url": "https://github.com/<your-username>/react-broadcast-sync/issues"
+    "url": "https://github.com/IdanShalem/react-broadcast-sync/issues"
   },
-  "homepage": "https://github.com/<your-username>/react-broadcast-sync#readme",
+  "homepage": "https://github.com/IdanShalem/react-broadcast-sync#readme",
   "peerDependencies": {
     "react": "^16.8.0 || ^17.0.0 || ^18.0.0 || ^19.0.0",
     "react-dom": "^16.8.0 || ^17.0.0 || ^18.0.0 || ^19.0.0"
