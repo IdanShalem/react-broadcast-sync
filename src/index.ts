@@ -1,2 +1,2 @@
 export { useBroadcastChannel } from './useBroadcastChannel';
-export { BroadcastProvider, useBroadcast } from './BroadcastProvider';
+export { BroadcastProvider, useBroadcastProvider } from './BroadcastProvider';
