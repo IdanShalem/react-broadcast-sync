@@ -16,6 +16,9 @@ export interface BroadcastOptions {
   
   /** Channel namespace for isolation */
   namespace?: string;
+
+  /** TTL for deduplication in milliseconds (default: 5 minutes) */
+  deduplicationTTL?: number;
 }
 
 /**

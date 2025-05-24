@@ -23,7 +23,8 @@ export const useBroadcastChannel = (
     cleaningInterval = 1000,
     keepLatestMessage = false,
     registeredTypes = [], 
-    namespace = '', 
+    namespace = '',
+    deduplicationTTL = 5 * 60 * 1000
   } = options;
 
   // State
@@ -33,7 +34,7 @@ export const useBroadcastChannel = (
 
   // Refs
   const channel = useRef<BroadcastChannel | null>(null);
-  const receivedMessageIds = useRef(new Set<string>());
+  const receivedMessageIds = useRef(new Map<string, number>());
   const source = useRef(sourceName || generateSourceName()).current;
   const internalTypes = useRef({
     CLEAR_MESSAGE: getInternalMessageType(INTERNAL_MESSAGE_TYPES.CLEAR_MESSAGE, channelName, namespace),
@@ -113,14 +114,16 @@ export const useBroadcastChannel = (
         return;
       }
 
-      if (receivedMessageIds.current.has(message.id)) return;
+      const now = Date.now();
+      const receivedAt = receivedMessageIds.current.get(message.id);
+      if (receivedAt && now - receivedAt < deduplicationTTL) return;
 
       if (message.type === internalTypes.CLEAR_ALL_MESSAGES) {
         setMessages(prev => prev.filter(msg => msg.source !== message.source));
         return;
       }
 
-      receivedMessageIds.current.add(message.id);
+      receivedMessageIds.current.set(message.id, now);
       setMessages(prev => keepLatestMessage ? [message] : [...prev, message]);
     } catch (e) {
       setErrorMessage('Error processing broadcast message');
@@ -156,6 +159,19 @@ export const useBroadcastChannel = (
 
     return () => clearInterval(interval);
   }, [cleaningInterval, clearMessage]);
+
+  useEffect(() => {
+    const interval = setInterval(() => {
+      const now = Date.now();
+      for (const [id, timestamp] of receivedMessageIds.current.entries()) {
+        if (now - timestamp >= deduplicationTTL) {
+          receivedMessageIds.current.delete(id);
+        }
+      }
+    }, 60 * 1000);
+  
+    return () => clearInterval(interval);
+  }, [deduplicationTTL]);
 
   return {
     messages,
