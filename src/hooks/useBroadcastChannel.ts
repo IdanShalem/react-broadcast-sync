@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useCallback } from 'react';
+import { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { BroadcastActions, BroadcastMessage, BroadcastOptions, SendMessageOptions } from '../types/types';
 import { 
   generateSourceName, 
@@ -41,6 +41,10 @@ export const useBroadcastChannel = (
     CLEAR_MESSAGE: getInternalMessageType(INTERNAL_MESSAGE_TYPES.CLEAR_MESSAGE, channelName, namespace),
     CLEAR_ALL_MESSAGES: getInternalMessageType(INTERNAL_MESSAGE_TYPES.CLEAR_ALL_MESSAGES, channelName, namespace),
   }).current;
+
+  const resolvedChannelName = useMemo(() => {
+    return `${channelName}-${namespace}`;
+  }, [channelName, namespace]);
 
   // Error handling
   const setErrorMessage = useCallback((error: string) => {
@@ -135,8 +139,12 @@ export const useBroadcastChannel = (
 
   // Channel setup
   useEffect(() => {
-    const namespacedChannel = `${channelName}-${namespace}`;
-    const bc = new BroadcastChannel(namespacedChannel);
+    if (typeof BroadcastChannel === 'undefined') {
+      setErrorMessage('BroadcastChannel is not supported in this environment.');
+      return;
+    }
+
+    const bc = new BroadcastChannel(resolvedChannelName);
     channel.current = bc;
 
     bc.addEventListener('message', handleMessage);
@@ -144,7 +152,7 @@ export const useBroadcastChannel = (
       bc.removeEventListener('message', handleMessage);
       bc.close();
     };
-  }, [channelName, namespace, handleMessage]);
+  }, [resolvedChannelName, handleMessage]);
 
   // Message cleanup for sent messages
   useEffect(() => {
@@ -177,6 +185,7 @@ export const useBroadcastChannel = (
   }, [deduplicationTTL]);
 
   return {
+    channelName: resolvedChannelName,
     messages,
     sentMessages,
     postMessage,

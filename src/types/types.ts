@@ -59,6 +59,9 @@ export interface BroadcastMessage {
  * Actions and state provided by the broadcast channel hook
  */
 export interface BroadcastActions {
+  /** The resolved channel name including namespace */
+  channelName: string;
+  
   /** Array of received messages */
   messages: BroadcastMessage[];
   
