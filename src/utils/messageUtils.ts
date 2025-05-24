@@ -1,0 +1,59 @@
+const INTERNAL_PREFIX = '__INTERNAL__';
+const SECRET = 'react-broadcast-sync';
+
+// Generate a random 9-character alphanumeric string
+export const generateRandomPart = () => Math.random().toString(36).substr(2, 9);
+
+// Generate a unique source name for a tab
+export const generateSourceName = () => `tab-${generateRandomPart()}`;
+
+// Generate a unique message ID
+export const generateMessageId = (source: string, timestamp: number) => {
+  const raw = `${generateRandomPart()}-${source}-${timestamp}`;
+  return btoa(raw).replace(/=+$/, '');
+};
+
+// Check if a message is valid
+export const isValidMessage = (message: any): boolean => {
+  return message && typeof message === 'object' && 'id' in message;
+};
+
+// Check if a message has expired
+export const isMessageExpired = (message: { expirationDate?: number }): boolean => {
+  return message.expirationDate ? message.expirationDate < Date.now() : false;
+};
+
+// Create a new message object
+export const createMessage = (
+  type: string,
+  content: any,
+  source: string,
+  options: { expirationDate?: number; expirationDuration?: number } = {}
+): any => {
+  const timestamp = Date.now();
+  return {
+    id: generateMessageId(source, timestamp),
+    type,
+    message: content,
+    timestamp,
+    source,
+    expirationDate: options.expirationDate ?? 
+      (options.expirationDuration ? timestamp + options.expirationDuration : undefined),
+  };
+};
+
+
+export const getInternalMessageType = (
+    baseType: 'CLEAR_MESSAGE' | 'CLEAR_ALL_MESSAGES',
+    channelName: string,
+    namespace = ''
+  ): string => {
+    const fullChannel = `${channelName}-${namespace}`;
+    const input = `${SECRET}:${baseType}:${fullChannel}`;
+    const hash = btoa(input); // optional: use sha256 if added
+    return `${INTERNAL_PREFIX}:${baseType}:${hash}`;
+  };
+
+export const isInternalType = (type: string): boolean => {
+    return type.startsWith(`${INTERNAL_PREFIX}:`);
+};
