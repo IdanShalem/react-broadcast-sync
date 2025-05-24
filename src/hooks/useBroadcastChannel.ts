@@ -7,6 +7,7 @@ import {
   createMessage,
   getInternalMessageType,
   isInternalType,
+  isValidInternalClearMessage,
 } from '../utils/messageUtils';
 
 const INTERNAL_MESSAGE_TYPES = {
@@ -107,21 +108,23 @@ export const useBroadcastChannel = (
       if (!isInternalType(message.type) && registeredTypes.length > 0 && !registeredTypes.includes(message.type)) return;
       if (isMessageExpired(message)) return;
       
-      if (message.type === internalTypes.CLEAR_MESSAGE) {
-        setMessages(prev => prev.filter(msg => 
-          !(msg.id === message.id && msg.source === message.source)
-        ));
-        return;
+      if (isValidInternalClearMessage(message)) {
+        if (message.type === INTERNAL_MESSAGE_TYPES.CLEAR_MESSAGE) {
+          setMessages(prev =>
+            prev.filter(msg => !(msg.id === message.id && msg.source === message.source))
+          );
+          return;
+        }
+      
+        if (message.type === INTERNAL_MESSAGE_TYPES.CLEAR_ALL_MESSAGES) {
+          setMessages(prev => prev.filter(msg => msg.source !== message.source));
+          return;
+        }
       }
 
       const now = Date.now();
       const receivedAt = receivedMessageIds.current.get(message.id);
       if (receivedAt && now - receivedAt < deduplicationTTL) return;
-
-      if (message.type === internalTypes.CLEAR_ALL_MESSAGES) {
-        setMessages(prev => prev.filter(msg => msg.source !== message.source));
-        return;
-      }
 
       receivedMessageIds.current.set(message.id, now);
       setMessages(prev => keepLatestMessage ? [message] : [...prev, message]);

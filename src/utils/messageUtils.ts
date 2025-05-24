@@ -57,3 +57,14 @@ export const getInternalMessageType = (
 export const isInternalType = (type: string): boolean => {
     return type.startsWith(`${INTERNAL_PREFIX}:`);
 };
+
+export function isValidInternalClearMessage(message: any): message is { id: string, type: string, source: string } {
+  return (
+    message &&
+    typeof message === 'object' &&
+    typeof message.id === 'string' &&
+    typeof message.source === 'string' &&
+    typeof message.type === 'string' &&
+    isInternalType(message.type)
+  );
+}
