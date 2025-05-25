@@ -8,6 +8,7 @@ import {
   getInternalMessageType,
   isInternalType,
   isValidInternalClearMessage,
+  debounce,
 } from '../utils/messageUtils';
 
 const INTERNAL_MESSAGE_TYPES = {
@@ -25,7 +26,8 @@ export const useBroadcastChannel = (
     keepLatestMessage = false,
     registeredTypes = [], 
     namespace = '',
-    deduplicationTTL = 5 * 60 * 1000
+    deduplicationTTL = 5 * 60 * 1000,
+    cleanupDebounceMs = 0
   } = options;
 
   // State
@@ -46,13 +48,21 @@ export const useBroadcastChannel = (
     return `${channelName}-${namespace}`;
   }, [channelName, namespace]);
 
-  // Error handling
+  const performCleanup = useCallback(() => {
+    setMessages(prev => prev.filter(msg => !isMessageExpired(msg)));
+  }, []);
+
+  const debouncedCleanup = useRef(
+    cleanupDebounceMs > 0
+      ? debounce(performCleanup, cleanupDebounceMs)
+      : performCleanup
+  ).current;
+
   const setErrorMessage = useCallback((error: string) => {
     setError(error);
     setTimeout(() => setError(null), 3000);
   }, []);
 
-  // Message actions
   const clearMessage = useCallback((id: string) => {
     setMessages(prev => prev.filter(msg => msg.id !== id));
     setSentMessages(prev => prev.filter(msg => msg.id !== id));
@@ -102,7 +112,6 @@ export const useBroadcastChannel = (
     }
   }, [source, setErrorMessage]);
 
-  // Message handling
   const handleMessage = useCallback((event: MessageEvent) => {
     try {
       const message: BroadcastMessage = event.data;
@@ -137,7 +146,6 @@ export const useBroadcastChannel = (
     }
   }, [source, registeredTypes, keepLatestMessage, setErrorMessage, internalTypes]);
 
-  // Channel setup
   useEffect(() => {
     if (typeof BroadcastChannel === 'undefined') {
       setErrorMessage('BroadcastChannel is not supported in this environment.');
@@ -154,22 +162,20 @@ export const useBroadcastChannel = (
     };
   }, [resolvedChannelName, handleMessage]);
 
-  // Message cleanup for sent messages
   useEffect(() => {
     if (cleaningInterval <= 0) return;
 
     const interval = setInterval(() => {
-      setSentMessages(prev => {
-        const expiredMessages = prev.filter(msg => isMessageExpired(msg));
-        expiredMessages.forEach(msg => {
-          clearSentMessage(msg.id);
-        });
-        return prev.filter(msg => !isMessageExpired(msg));
-      });
+      debouncedCleanup();
     }, cleaningInterval);
 
-    return () => clearInterval(interval);
-  }, [cleaningInterval, clearMessage]);
+    return () => { 
+      clearInterval(interval);
+      if (cleanupDebounceMs > 0) {
+        (debouncedCleanup as any).cancel?.();
+      }
+    };
+  }, [cleaningInterval, debouncedCleanup, cleanupDebounceMs]);
 
   useEffect(() => {
     const interval = setInterval(() => {

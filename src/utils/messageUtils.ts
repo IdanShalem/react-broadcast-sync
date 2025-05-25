@@ -58,7 +58,7 @@ export const isInternalType = (type: string): boolean => {
     return type.startsWith(`${INTERNAL_PREFIX}:`);
 };
 
-export function isValidInternalClearMessage(message: any): message is { id: string, type: string, source: string } {
+export const isValidInternalClearMessage = (message: any): message is { id: string, type: string, source: string } => {
   return (
     message &&
     typeof message === 'object' &&
@@ -67,4 +67,32 @@ export function isValidInternalClearMessage(message: any): message is { id: stri
     typeof message.type === 'string' &&
     isInternalType(message.type)
   );
+}
+
+export const debounce = <T extends (...args: any[]) => void>(
+  fn: T,
+  wait: number
+): {
+  (...args: Parameters<T>): void;
+  cancel: () => void;
+} => {
+  let timeoutId: ReturnType<typeof setTimeout> | null = null;
+
+  const debounced = (...args: Parameters<T>) => {
+    if (timeoutId !== null) {
+      clearTimeout(timeoutId);
+    }
+    timeoutId = setTimeout(() => {
+      fn(...args);
+    }, wait);
+  };
+
+  debounced.cancel = () => {
+    if (timeoutId !== null) {
+      clearTimeout(timeoutId);
+      timeoutId = null;
+    }
+  };
+
+  return debounced;
 }
