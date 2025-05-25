@@ -421,6 +421,30 @@ Relies on [BroadcastChannel API](https://developer.mozilla.org/en-US/docs/Web/AP
 
 ---
 
+## 🛠️ Coming Soon
+
+We're actively improving `react-broadcast-sync`! Here are some features and enhancements planned for upcoming versions:
+
+- ✅ **Unit and Integration Tests**  
+  Ensure robust behavior and edge-case coverage.
+
+- 🔄 **Automatic Channel Recovery**  
+  Reconnect automatically if the `BroadcastChannel` gets disconnected or closed by the browser.
+
+- 🧼 **`clearMessagesByType()`**  
+  Clear all messages of a specific type with a single call.
+
+- 🎯 **Per-Type Callbacks**  
+  Define message handlers for specific types with `onMessage({ type, callback })`.
+
+- 🧹 **`clearAllSentMessages()` / `clearAllReceivedMessages()`**  
+  Fine-grained control for clearing messages based on source.
+
+We're committed to keeping this package lightweight, flexible, and production-ready.  
+Your feedback and contributions are welcome — feel free to [open an issue](https://github.com/IdanShalem/react-broadcast-sync/issues)!
+
+---
+
 ## 🤝 Contributing
 
 PRs and feature suggestions welcome! Open an issue or submit a pull request.
