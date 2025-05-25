@@ -10,6 +10,7 @@ import {
   isValidInternalClearMessage,
   debounce,
 } from '../utils/messageUtils';
+import { debug } from '../utils/debug';
 
 const INTERNAL_MESSAGE_TYPES = {
     CLEAR_MESSAGE: 'CLEAR_MESSAGE',
@@ -52,10 +53,13 @@ export const useBroadcastChannel = (
     setMessages(prev => prev.filter(msg => !isMessageExpired(msg)));
   }, []);
 
-  const debouncedCleanup = useRef(
+  const debouncedCleanup = useRef<{
+    (...args: Parameters<typeof performCleanup>): void;
+    cancel: () => void;
+  }>(
     cleanupDebounceMs > 0
       ? debounce(performCleanup, cleanupDebounceMs)
-      : performCleanup
+      : Object.assign(performCleanup, { cancel: () => {} })
   ).current;
 
   const setErrorMessage = useCallback((error: string) => {
@@ -71,6 +75,7 @@ export const useBroadcastChannel = (
       type: internalTypes.CLEAR_MESSAGE, 
       source 
     });
+    debug.message.cleared(id);
   }, [source, internalTypes.CLEAR_MESSAGE]);
 
   const clearAllMessages = useCallback(() => {
@@ -99,28 +104,37 @@ export const useBroadcastChannel = (
   ) => {
     const channelCurrent = channel.current;
     if (!channelCurrent) {
-      setErrorMessage('Channel not available');
+      const error = 'Channel not available';
+      debug.error(error);
+      setErrorMessage(error);
       return;
     }
 
     try {
       const message = createMessage(messageType, messageContent, source, options);
       channelCurrent.postMessage(message);
+      debug.message.sent(message);
       setSentMessages(prev => [...prev, message]);
     } catch (e) {
-      setErrorMessage('Failed to send message');
+      const error = 'Failed to send message';
+      debug.error(error);
+      setErrorMessage(error);
     }
   }, [source, setErrorMessage]);
 
   const handleMessage = useCallback((event: MessageEvent) => {
     try {
       const message: BroadcastMessage = event.data;
+      debug.message.received(message);
 
       if (!isValidMessage(message)) return;
       if (message.source === source) return;
       if (!isInternalType(message.type) && registeredTypes.length > 0 && !registeredTypes.includes(message.type)) return;
-      if (isMessageExpired(message)) return;
-      
+      if (isMessageExpired(message)) {
+        debug.message.expired(message.id);
+        return;
+      }
+
       if (isValidInternalClearMessage(message)) {
         if (message.type === internalTypes.CLEAR_MESSAGE) {
           setMessages(prev =>
@@ -137,42 +151,54 @@ export const useBroadcastChannel = (
 
       const now = Date.now();
       const receivedAt = receivedMessageIds.current.get(message.id);
-      if (receivedAt && now - receivedAt < deduplicationTTL) return;
+      if (receivedAt && now - receivedAt < deduplicationTTL) {
+        debug.message.duplicate(message.id);
+        return;
+      }
 
       receivedMessageIds.current.set(message.id, now);
       setMessages(prev => keepLatestMessage ? [message] : [...prev, message]);
     } catch (e) {
-      setErrorMessage('Error processing broadcast message');
+      const error = 'Error processing broadcast message';
+      debug.error(error);
+      setErrorMessage(error);
     }
-  }, [source, registeredTypes, keepLatestMessage, setErrorMessage, internalTypes]);
+  }, [source, registeredTypes, keepLatestMessage, setErrorMessage, internalTypes, deduplicationTTL]);
 
   useEffect(() => {
     if (typeof BroadcastChannel === 'undefined') {
-      setErrorMessage('BroadcastChannel is not supported in this environment.');
+      const error = 'BroadcastChannel is not supported in this browser. Please check browser compatibility.';
+      debug.error(error);
+      setErrorMessage(error);
       return;
     }
 
     const bc = new BroadcastChannel(resolvedChannelName);
     channel.current = bc;
+    debug.channel.created(resolvedChannelName);
 
     bc.addEventListener('message', handleMessage);
     return () => {
       bc.removeEventListener('message', handleMessage);
       bc.close();
+      debug.channel.closed(resolvedChannelName);
     };
-  }, [resolvedChannelName, handleMessage]);
+  }, [resolvedChannelName, handleMessage, setErrorMessage]);
 
   useEffect(() => {
     if (cleaningInterval <= 0) return;
 
     const interval = setInterval(() => {
+      debug.cleanup.started();
       debouncedCleanup();
+      debug.cleanup.completed(0);
     }, cleaningInterval);
 
-    return () => { 
+    return () => {
       clearInterval(interval);
+      // Cancel any pending debounced cleanup on unmount
       if (cleanupDebounceMs > 0) {
-        (debouncedCleanup as any).cancel?.();
+        debouncedCleanup.cancel?.();
       }
     };
   }, [cleaningInterval, debouncedCleanup, cleanupDebounceMs]);
