@@ -122,14 +122,14 @@ export const useBroadcastChannel = (
       if (isMessageExpired(message)) return;
       
       if (isValidInternalClearMessage(message)) {
-        if (message.type === INTERNAL_MESSAGE_TYPES.CLEAR_MESSAGE) {
+        if (message.type === internalTypes.CLEAR_MESSAGE) {
           setMessages(prev =>
             prev.filter(msg => !(msg.id === message.id && msg.source === message.source))
           );
           return;
         }
       
-        if (message.type === INTERNAL_MESSAGE_TYPES.CLEAR_ALL_MESSAGES) {
+        if (message.type === internalTypes.CLEAR_ALL_MESSAGES) {
           setMessages(prev => prev.filter(msg => msg.source !== message.source));
           return;
         }

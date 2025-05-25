@@ -63,6 +63,7 @@ function MyComponent() {
 
 ```tsx
 const {
+  channelName,
   messages,
   sentMessages,
   postMessage,
@@ -76,6 +77,8 @@ const {
   keepLatestMessage: true,
   registeredTypes: ['greeting', 'notification'],
   namespace: 'my-app',
+  deduplicationTTL: 10 * 60 * 1000, // 10 minutes
+  cleanupDebounceMs: 500, // Debounce cleanup operations by 500ms
 });
 ```
 
@@ -119,12 +122,69 @@ function NotificationBar() {
 
 ## 📘 API Reference
 
+### `useBroadcastChannel` Hook
+
+```typescript
+const {
+  channelName,
+  messages,
+  sentMessages,
+  postMessage,
+  clearMessage,
+  clearAllMessages,
+  clearSentMessage,
+  error
+} = useBroadcastChannel(channelName, options);
+```
+
+#### Options
+
+```typescript
+interface BroadcastOptions {
+  sourceName?: string;           // Custom name for the message source
+  cleaningInterval?: number;     // Interval in ms for cleaning expired messages (default: 1000)
+  keepLatestMessage?: boolean;   // Keep only the latest message (default: false)
+  registeredTypes?: string[];    // List of allowed message types
+  namespace?: string;           // Channel namespace for isolation
+  deduplicationTTL?: number;    // Time in ms to keep message IDs for deduplication (default: 5 minutes)
+  cleanupDebounceMs?: number;   // Debounce time in ms for cleanup operations (default: 0)
+}
+```
+
+#### Default Values
+
+| Option              | Default Value | Description |
+|---------------------|---------------|-------------|
+| `sourceName`        | `undefined`   | Auto-generated if not provided |
+| `cleaningInterval`  | `1000`        | 1 second between cleanup runs |
+| `keepLatestMessage` | `false`       | Keep all messages by default |
+| `registeredTypes`   | `[]`          | Accept all message types by default |
+| `namespace`         | `''`          | No namespace by default |
+| `deduplicationTTL`  | `300000`      | 5 minutes (5 * 60 * 1000 ms) |
+| `cleanupDebounceMs` | `0`           | No debounce by default |
+
+#### Return Value
+
+```typescript
+interface BroadcastActions {
+  channelName: string;          // The resolved channel name (includes namespace)
+  messages: BroadcastMessage[]; // Received messages
+  sentMessages: BroadcastMessage[]; // Messages sent by this instance
+  postMessage: (type: string, content: any, options?: SendMessageOptions) => void;
+  clearMessage: (id: string) => void;
+  clearAllMessages: () => void;
+  clearSentMessage: (id: string) => void;
+  error: string | null;        // Current error state
+}
+```
+
 ### `useBroadcastChannel(channelName, options?)`
 
 Returns an object with:
 
 | Property              | Type                    | Description |
 |-----------------------|-------------------------|-------------|
+| `channelName`         | `string`                | The resolved channel name (includes namespace) |
 | `messages`            | `BroadcastMessage[]`    | All received messages from other tabs |
 | `sentMessages`        | `BroadcastMessage[]`    | Messages sent from this tab |
 | `postMessage()`       | `function`              | Send a message to all tabs |
@@ -132,18 +192,6 @@ Returns an object with:
 | `clearAllMessages()`  | `function`              | Remove all messages locally and notify others |
 | `clearSentMessage()`  | `function`              | Remove a sent message without affecting others |
 | `error`               | `string \| null`        | Any runtime error from the channel |
-
-#### 🔧 Options (second argument):
-
-```ts
-interface BroadcastOptions {
-  sourceName?: string;           // Optional custom ID for this tab
-  cleaningInterval?: number;     // Interval (ms) for cleaning expired messages (default: 1000)
-  keepLatestMessage?: boolean;   // If true, only latest message is kept
-  registeredTypes?: string[];    // If defined, only accepts listed types
-  namespace?: string;            // App-specific namespace for the channel
-}
-```
 
 #### 📨 Send Options:
 
@@ -175,60 +223,135 @@ interface BroadcastMessage {
 - **Register allowed message types** using `registeredTypes` to avoid processing unknown or irrelevant messages.
 - **Always handle `error`** state in UI or logs to detect channel failures.
 - **Use `keepLatestMessage: true`** if you only care about the most recent message (e.g. status updates).
+- **Set appropriate `deduplicationTTL`** based on your message frequency and importance.
+- **Use `cleanupDebounceMs`** when dealing with rapid message updates to prevent performance issues.
 
-## 🔄 Combining Hook and Provider
+## 🎯 Common Use Cases
 
-You can use both the hook and provider approaches in the same application. This is useful when you need both global state and component-specific channels:
-
+### Real-time Notifications
 ```tsx
-function App() {
+function NotificationSystem() {
+  const { messages, postMessage } = useBroadcastChannel('notifications', {
+    keepLatestMessage: true,
+    registeredTypes: ['alert', 'info', 'warning'],
+    deduplicationTTL: 60000, // 1 minute
+  });
+
   return (
-    <BroadcastProvider channelName="global-state">
-      <GlobalStateComponent />
-      <LocalStateComponent />
-    </BroadcastProvider>
+    <div>
+      {messages.map(msg => (
+        <Notification key={msg.id} type={msg.type} content={msg.message} />
+      ))}
+    </div>
   );
 }
+```
 
-// Uses the global channel from provider
-function GlobalStateComponent() {
-  const { messages } = useBroadcastProvider();
-  return <div>{/* Use global messages */}</div>;
-}
+### Multi-tab Form Synchronization
+```tsx
+function FormSync() {
+  const { messages, postMessage } = useBroadcastChannel('form-sync', {
+    namespace: 'my-form',
+    cleaningInterval: 5000,
+  });
 
-// Uses its own channel with the hook
-function LocalStateComponent() {
-  const { messages } = useBroadcastChannel('local-state');
-  return <div>{/* Use local messages */}</div>;
+  const handleChange = (field: string, value: string) => {
+    postMessage('field-update', { field, value }, { expirationDuration: 300000 }); // 5 minutes
+  };
+
+  return <Form onChange={handleChange} />;
 }
 ```
+
+### Tab Status Synchronization
+```tsx
+function TabStatus() {
+  const { postMessage } = useBroadcastChannel('tab-status', {
+    sourceName: 'main-tab',
+    keepLatestMessage: true,
+  });
+
+  useEffect(() => {
+    postMessage('tab-active', { timestamp: Date.now() });
+    return () => postMessage('tab-inactive', { timestamp: Date.now() });
+  }, []);
+
+  return null;
+}
+```
+
+## 🔧 Performance Considerations
+
+### Message Deduplication
+The `deduplicationTTL` option creates a time window (in milliseconds) during which messages with the same content and type from the same source are considered duplicates and will be ignored. This is particularly useful for:
+
+- **Preventing Message Loops**: Avoids infinite message echo between tabs when they broadcast the same message back and forth
+- **Reducing Redundancy**: Filters out identical messages sent in rapid succession, preventing unnecessary processing
+- **Natural Debouncing**: Provides built-in debouncing behavior for broadcast events without additional code
+
+Recommended TTL values based on use case:
+- **High-frequency updates** (e.g., real-time typing, cursor position): 1000-5000ms
+- **Medium-frequency updates** (e.g., form sync, status changes): 5000-15000ms
+- **Low-frequency updates** (e.g., notifications, alerts): 15000-30000ms
+
+Example:
+```tsx
+// Without deduplication, this could cause a message loop
+function ChatComponent() {
+  const { postMessage } = useBroadcastChannel('chat', {
+    deduplicationTTL: 5000, // Ignore duplicate messages for 5 seconds
+  });
+
+  const handleMessage = (text: string) => {
+    postMessage('chat-message', { text });
+  };
+}
+```
+
+### Cleanup Optimization
+- Use `cleanupDebounceMs` to prevent excessive cleanup operations
+- Recommended values:
+  - For frequent updates: 500-1000ms
+  - For infrequent updates: 0ms (no debounce)
+- Adjust `cleaningInterval` based on your message expiration needs
+
+### Memory Management
+- Clear messages when they're no longer needed using `clearMessage` or `clearAllMessages`
+- Use message expiration for temporary data
+- Consider using `keepLatestMessage: true` for status updates to prevent memory buildup
 
 ## 🚨 Troubleshooting
 
 ### Common Issues
 
-1. **Channel Not Working**
-   - Ensure you're using a supported browser
-   - Check if the channel name is consistent across tabs
-   - Verify that the namespace is the same if using one
-
-2. **Messages Not Received**
-   - Check if `registeredTypes` includes the message type you're sending
-   - Verify that the message source isn't the same as the receiver
+1. **Messages Not Received**
+   - Check if `registeredTypes` includes your message type
+   - Verify the channel name and namespace match
    - Ensure the message hasn't expired
+   - Check if `deduplicationTTL` isn't too short
 
-3. **TypeScript Errors**
-   - Make sure you're using TypeScript 4.0 or higher
-   - Check that your message types are properly defined
-   - Verify that the message content is serializable
+2. **Performance Issues**
+   - Increase `cleanupDebounceMs` if cleanup is too frequent
+   - Use `keepLatestMessage: true` for high-frequency updates
+   - Consider increasing `cleaningInterval` if cleanup is too aggressive
+
+3. **Memory Leaks**
+   - Ensure proper cleanup in component unmount
+   - Use message expiration for temporary data
+   - Clear messages when they're no longer needed
 
 ### Debug Mode
 
 Enable debug logging by setting the environment variable:
-
 ```bash
 REACT_APP_DEBUG_BROADCAST=true
 ```
+
+This will log:
+- Channel creation and closure
+- Message sending and receiving
+- Cleanup operations
+- Error states
 
 ## ⚡ Performance Considerations
 
