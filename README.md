@@ -1,3 +1,5 @@
+<img src="./assets/react-broadcast-sync-logo.png" alt="react-broadcast-sync logo" width="200" />
+
 # react-broadcast-sync
 
 A lightweight React hook for syncing state and communication across browser tabs using the BroadcastChannel API. This package provides a clean and type-safe abstraction over the native API, enabling efficient, scoped, and reliable cross-tab messaging.
