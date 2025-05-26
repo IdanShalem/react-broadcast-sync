@@ -1,4 +1,6 @@
-<img src="./assets/react-broadcast-sync-logo.png" alt="react-broadcast-sync logo" width="200" />
+<p align="center">
+  <img src="./assets/react-broadcast-sync-logo.png" alt="react-broadcast-sync logo" width="200" />
+</p>
 
 # react-broadcast-sync
 
