@@ -190,8 +190,9 @@ export const useBroadcastChannel = (
 
     const interval = setInterval(() => {
       debug.cleanup.started();
+      const before = messages.length;
       debouncedCleanup();
-      debug.cleanup.completed(0);
+      debug.cleanup.completed(before - messages.length);
     }, cleaningInterval);
 
     return () => {

@@ -12,7 +12,8 @@ type LogLevel = 'info' | 'warn' | 'error';
 const log = (level: LogLevel, message: string, data?: any) => {
   if (!isDebugMode()) return;
 
-  const prefix = '[react-broadcast-sync]';
+  const timestamp = new Date().toISOString();
+  const prefix = `[${timestamp}] [react-broadcast-sync]`;
   switch (level) {
     case 'info':
       console.log(prefix, message, data || '');
