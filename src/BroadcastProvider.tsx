@@ -39,11 +39,16 @@ interface BroadcastProviderProps {
 }
 
 export const BroadcastProvider: React.FC<BroadcastProviderProps> = ({ children, channelName }) => {
-  const { messages, error } = useBroadcastChannel(channelName); 
+  const { messages, error: hookError } = useBroadcastChannel(channelName); 
 
+  const [error, setError] = React.useState<string | null>(null);
   const channel = useRef<BroadcastChannel | null>(null);
 
   useEffect(() => {
+    if (typeof BroadcastChannel === 'undefined') {
+      setError('BroadcastChannel is not supported in this browser. Please check browser compatibility.');
+      return;
+    }
     const bc = new BroadcastChannel(channelName);
     channel.current = bc;
 
@@ -53,8 +58,8 @@ export const BroadcastProvider: React.FC<BroadcastProviderProps> = ({ children, 
   }, [channelName]);
 
   const value = useMemo(
-    () => ({ messages, error, channel: channel.current }),
-    [messages, error]
+    () => ({ messages, error: error || hookError, channel: channel.current }),
+    [messages, error, hookError]
   );
 
   return (

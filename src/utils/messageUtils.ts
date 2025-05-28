@@ -15,7 +15,7 @@ export const generateMessageId = (source: string, timestamp: number) => {
 
 // Check if a message is valid
 export const isValidMessage = (message: any): boolean => {
-  return message && typeof message === 'object' && 'id' in message;
+  return Boolean(message && typeof message === 'object' && 'id' in message);
 };
 
 // Check if a message has expired
@@ -69,21 +69,33 @@ export const isValidInternalClearMessage = (message: any): message is { id: stri
   );
 }
 
-export const debounce = <T extends (...args: any[]) => void>(
+export const debounce = <T extends (...args: any[]) => any>(
   fn: T,
   wait: number
-): {
-  (...args: Parameters<T>): void;
+): ((...args: Parameters<T>) => void) & {
   cancel: () => void;
+  flush: () => ReturnType<T> | undefined;
 } => {
   let timeoutId: ReturnType<typeof setTimeout> | null = null;
+  let lastArgs: Parameters<T> | null = null;
+  let lastThis: any = null;
+  let result: ReturnType<T> | undefined;
 
-  const debounced = (...args: Parameters<T>) => {
+  const debounced = function(this: any, ...args: Parameters<T>) {
+    lastArgs = args;
+    lastThis = this;
+
     if (timeoutId !== null) {
       clearTimeout(timeoutId);
     }
+
     timeoutId = setTimeout(() => {
-      fn(...args);
+      timeoutId = null;
+      if (lastArgs !== null) {
+        result = fn.apply(lastThis, lastArgs);
+        lastArgs = null;
+        lastThis = null;
+      }
     }, wait);
   };
 
@@ -91,8 +103,26 @@ export const debounce = <T extends (...args: any[]) => void>(
     if (timeoutId !== null) {
       clearTimeout(timeoutId);
       timeoutId = null;
+      lastArgs = null;
+      lastThis = null;
     }
   };
 
-  return debounced;
-}
+  debounced.flush = () => {
+    if (timeoutId !== null) {
+      clearTimeout(timeoutId);
+      timeoutId = null;
+      if (lastArgs !== null) {
+        result = fn.apply(lastThis, lastArgs);
+        lastArgs = null;
+        lastThis = null;
+      }
+    }
+    return result;
+  };
+
+  return debounced as typeof debounced & {
+    cancel: () => void;
+    flush: () => ReturnType<T> | undefined;
+  };
+};
