@@ -82,9 +82,9 @@ export const useTodoBroadcast = () => {
   const [showCheckmark, setShowCheckmark] = useState(false);
 
   const scrollContainerRef = useRef<HTMLDivElement>(null);
-  const scrollTimeoutRef = useRef<NodeJS.Timeout>();
-  const syncTimeoutRef = useRef<NodeJS.Timeout>();
-  const checkmarkTimeoutRef = useRef<NodeJS.Timeout>();
+  const scrollTimeoutRef = useRef<ReturnType<typeof setTimeout>>();
+  const syncTimeoutRef = useRef<ReturnType<typeof setTimeout>>();
+  const checkmarkTimeoutRef = useRef<ReturnType<typeof setTimeout>>();
 
   // Update local state when new messages arrive
   useEffect(() => {
