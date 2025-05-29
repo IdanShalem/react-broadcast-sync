@@ -8,8 +8,7 @@ export default [
   eslint.configs.recommended,
   ...tseslint.configs.recommended,
   {
-    files: ['src/**/*.{ts,tsx}'],
-    ignores: ['**/*', '!src/**/*.{ts,tsx}', '!demo/**/*.{ts,tsx}'],
+    files: ['src/**/*.{ts,tsx}', 'demo/**/*.{ts,tsx}'],
     plugins: {
       react: reactPlugin,
       'react-hooks': reactHooksPlugin,

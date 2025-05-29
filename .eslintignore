@@ -1,0 +1,5 @@
+node_modules/
+dist/
+coverage/
+demo/react-broadcast-sync/node_modules
+demo/react-broadcast-sync/dist
