@@ -2,17 +2,54 @@
   <img src="./assets/react-broadcast-sync-logo.png" alt="react-broadcast-sync logo" width="300" />
 </p>
 
-# react-broadcast-sync
+<p align="center">
+  <b>react-broadcast-sync</b>
+</p>
 
-![CI](https://github.com/IdanShalem/react-broadcast-sync/actions/workflows/ci.yml/badge.svg)
-[![codecov](https://codecov.io/gh/IdanShalem/react-broadcast-sync/branch/main/graph/badge.svg)](https://codecov.io/gh/IdanShalem/react-broadcast-sync)
-[![npm version](https://img.shields.io/npm/v/react-broadcast-sync.svg)](https://www.npmjs.com/package/react-broadcast-sync)
-[![npm downloads](https://img.shields.io/npm/dm/react-broadcast-sync.svg)](https://www.npmjs.com/package/react-broadcast-sync)
-[![bundlephobia](https://badgen.net/bundlephobia/minzip/react-broadcast-sync)](https://bundlephobia.com/result?p=react-broadcast-sync)
-[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](https://opensource.org/licenses/MIT)
-[![Issues](https://img.shields.io/github/issues/IdanShalem/react-broadcast-sync)](https://github.com/IdanShalem/react-broadcast-sync/issues)
+<p align="center">
+  <a href="https://github.com/IdanShalem/react-broadcast-sync/actions/workflows/ci.yml">
+    <img alt="CI" src="https://github.com/IdanShalem/react-broadcast-sync/actions/workflows/ci.yml/badge.svg" />
+  </a>
+  <a href="https://codecov.io/gh/IdanShalem/react-broadcast-sync">
+    <img alt="Coverage" src="https://codecov.io/gh/IdanShalem/react-broadcast-sync/branch/main/graph/badge.svg" />
+  </a>
+  <a href="https://www.npmjs.com/package/react-broadcast-sync">
+    <img alt="NPM Version" src="https://img.shields.io/npm/v/react-broadcast-sync.svg" />
+  </a>
+  <a href="https://www.npmjs.com/package/react-broadcast-sync">
+    <img alt="NPM Downloads" src="https://img.shields.io/npm/dm/react-broadcast-sync.svg" />
+  </a>
+  <a href="https://bundlephobia.com/result?p=react-broadcast-sync">
+    <img alt="Bundlephobia" src="https://badgen.net/bundlephobia/minzip/react-broadcast-sync" />
+  </a>
+  <a href="https://opensource.org/licenses/MIT">
+    <img alt="License: MIT" src="https://img.shields.io/badge/License-MIT-blue.svg" />
+  </a>
+  <a href="https://github.com/IdanShalem/react-broadcast-sync/issues">
+    <img alt="GitHub issues" src="https://img.shields.io/github/issues/IdanShalem/react-broadcast-sync" />
+  </a>
+</p>
 
-A lightweight React hook for syncing state and communication across browser tabs using the BroadcastChannel API. This package provides a clean and type-safe abstraction over the native API, enabling efficient, scoped, and reliable cross-tab messaging.
+Easily sync UI state or user events across browser tabs in React apps — notifications, presence, forms, and more. This package provides a clean and type-safe abstraction over the native API, enabling efficient, scoped, and reliable cross-tab messaging.
+
+## 📚 Table of Contents
+
+- [Features](#-features)
+- [Installation](#-installation)
+- [Quick Start](#-quick-start)
+- [Advanced Usage](#️-advanced-usage)
+- [BroadcastProvider](#-using-broadcastprovider)
+- [API Reference](#-api-reference)
+- [Best Practices](#-best-practices)
+- [Common Use Cases](#-common-use-cases)
+- [Performance Considerations](#-performance-considerations)
+- [Troubleshooting](#-troubleshooting)
+- [Testing](#-testing)
+- [Browser Support](#-browser-support)
+- [Coming Soon](#-coming-soon)
+- [📦 Versioning & Releases](#-versioning--releases)
+- [Contributing](#-contributing)
+- [License](#-license)
 
 ## ✨ Features
 
@@ -310,6 +347,24 @@ function TabStatus() {
 
 ## 🔧 Performance Considerations
 
+### Message Size
+
+- Keep messages small and serializable
+- Avoid sending large objects or circular references
+- Consider using message IDs to reference larger data
+
+### Message Frequency
+
+- Use `keepLatestMessage: true` for high-frequency updates
+- Implement debouncing for rapid state changes
+- Consider using `expirationDuration` for temporary messages
+
+### Memory Management\*\*
+
+- Clear messages when they're no longer needed
+- Use `cleaningInterval` to automatically remove expired messages
+- Implement proper cleanup in component unmount
+
 ### Message Deduplication
 
 The `deduplicationTTL` option creates a time window (in milliseconds) during which messages with the same content and type from the same source are considered duplicates and will be ignored. This is particularly useful for:
@@ -390,25 +445,6 @@ This will log:
 - Cleanup operations
 - Error states
 
-## ⚡ Performance Considerations
-
-1. **Message Size**
-
-   - Keep messages small and serializable
-   - Avoid sending large objects or circular references
-   - Consider using message IDs to reference larger data
-
-2. **Message Frequency**
-
-   - Use `keepLatestMessage: true` for high-frequency updates
-   - Implement debouncing for rapid state changes
-   - Consider using `expirationDuration` for temporary messages
-
-3. **Memory Management**
-   - Clear messages when they're no longer needed
-   - Use `cleaningInterval` to automatically remove expired messages
-   - Implement proper cleanup in component unmount
-
 ## 🧪 Testing
 
 ### Unit Testing
@@ -484,6 +520,25 @@ Your feedback and contributions are welcome — feel free to [open an issue](htt
 
 ---
 
+## 📦 Versioning & Releases
+
+This project uses [Semantic Release](https://semantic-release.gitbook.io/) for fully automated versioning and changelog generation.
+
+Every push to the `main` branch with a [Conventional Commit](https://www.conventionalcommits.org/en/v1.0.0/) message triggers a release that includes:
+
+- ✅ Automatic semantic version bump (`major`, `minor`, or `patch`)
+- ✅ Changelog generation and publishing to GitHub Releases
+- ✅ Publishing to [npm](https://www.npmjs.com/package/react-broadcast-sync)
+
+### 🔧 Example Commit Messages
+
+```bash
+feat: add support for per-type callbacks
+fix: debounce cleanup runs properly on tab reload
+chore: update dependencies
+
+---
+
 ## 🤝 Contributing
 
 PRs and feature suggestions welcome! Open an issue or submit a pull request.
@@ -493,3 +548,4 @@ PRs and feature suggestions welcome! Open an issue or submit a pull request.
 ## 🪪 License
 
 MIT © [Idan Shalem](https://github.com/IdanShalem)
+```
