@@ -35,6 +35,7 @@ Easily sync UI state or user events across browser tabs in React apps — notifi
 ## 📚 Table of Contents
 
 - [Features](#-features)
+- [Demo App](#-demo-app)
 - [Installation](#-installation)
 - [Quick Start](#-quick-start)
 - [Advanced Usage](#️-advanced-usage)
@@ -64,6 +65,31 @@ Easily sync UI state or user events across browser tabs in React apps — notifi
 - ✅ Only accept allowed message types (optional)
 - 🧠 `BroadcastProvider` for context-based usage
 
+## 🎮 Demo App
+
+Check out our [live demo](https://react-broadcast-sync.vercel.app) to see the library in action! The demo showcases three main features:
+
+1. **Counter Synchronization**
+
+   - Real-time counter updates across tabs
+   - Visual feedback for sync status
+   - Smooth animations
+
+2. **Text Synchronization**
+
+   - Real-time text input sync
+   - Multi-line support
+   - Instant updates
+
+3. **Todo List**
+   - Synchronized todo items
+   - Real-time hover effects
+   - Scroll position sync
+   - Completion status sync
+   - Delete functionality
+
+The demo is built with React 19, TypeScript, Material-UI, and Framer Motion. You can find the source code in the [demo directory](./demo/react-broadcast-sync-demo).
+
 ---
 
 ## 📦 Installation
@@ -86,8 +112,7 @@ pnpm add react-broadcast-sync
 import { useBroadcastChannel } from 'react-broadcast-sync';
 
 function MyComponent() {
-  const { messages, postMessage, clearMessage } =
-    useBroadcastChannel('my-channel');
+  const { messages, postMessage, clearMessage } = useBroadcastChannel('my-channel');
 
   const handleSend = () => {
     postMessage('greeting', { text: 'Hello from another tab!' });
@@ -96,7 +121,7 @@ function MyComponent() {
   return (
     <>
       <button onClick={handleSend}>Send</button>
-      {messages.map((msg) => (
+      {messages.map(msg => (
         <div key={msg.id}>
           {msg.message.text}
           <button onClick={() => clearMessage(msg.id)}>Clear</button>
@@ -135,11 +160,7 @@ const {
 #### 💬 Sending a message with expiration:
 
 ```tsx
-postMessage(
-  'notification',
-  { text: 'This disappears in 5s' },
-  { expirationDuration: 5000 }
-);
+postMessage('notification', { text: 'This disappears in 5s' }, { expirationDuration: 5000 });
 ```
 
 ---
@@ -164,7 +185,7 @@ function NotificationBar() {
 
   return (
     <div>
-      {messages.map((msg) => (
+      {messages.map(msg => (
         <p key={msg.id}>{msg.message.text}</p>
       ))}
     </div>
@@ -224,11 +245,7 @@ interface BroadcastActions {
   channelName: string; // The resolved channel name (includes namespace)
   messages: BroadcastMessage[]; // Received messages
   sentMessages: BroadcastMessage[]; // Messages sent by this instance
-  postMessage: (
-    type: string,
-    content: any,
-    options?: SendMessageOptions
-  ) => void;
+  postMessage: (type: string, content: any, options?: SendMessageOptions) => void;
   clearMessage: (id: string) => void;
   clearAllMessages: () => void;
   clearSentMessage: (id: string) => void;
@@ -298,7 +315,7 @@ function NotificationSystem() {
 
   return (
     <div>
-      {messages.map((msg) => (
+      {messages.map(msg => (
         <Notification key={msg.id} type={msg.type} content={msg.message} />
       ))}
     </div>
@@ -316,11 +333,7 @@ function FormSync() {
   });
 
   const handleChange = (field: string, value: string) => {
-    postMessage(
-      'field-update',
-      { field, value },
-      { expirationDuration: 300000 }
-    ); // 5 minutes
+    postMessage('field-update', { field, value }, { expirationDuration: 300000 }); // 5 minutes
   };
 
   return <Form onChange={handleChange} />;
