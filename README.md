@@ -4,6 +4,14 @@
 
 # react-broadcast-sync
 
+![CI](https://github.com/IdanShalem/react-broadcast-sync/actions/workflows/ci.yml/badge.svg)
+[![codecov](https://codecov.io/gh/IdanShalem/react-broadcast-sync/branch/main/graph/badge.svg)](https://codecov.io/gh/IdanShalem/react-broadcast-sync)
+[![npm version](https://img.shields.io/npm/v/react-broadcast-sync.svg)](https://www.npmjs.com/package/react-broadcast-sync)
+[![npm downloads](https://img.shields.io/npm/dm/react-broadcast-sync.svg)](https://www.npmjs.com/package/react-broadcast-sync)
+[![bundlephobia](https://badgen.net/bundlephobia/minzip/react-broadcast-sync)](https://bundlephobia.com/result?p=react-broadcast-sync)
+[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](https://opensource.org/licenses/MIT)
+[![Issues](https://img.shields.io/github/issues/IdanShalem/react-broadcast-sync)](https://github.com/IdanShalem/react-broadcast-sync/issues)
+
 A lightweight React hook for syncing state and communication across browser tabs using the BroadcastChannel API. This package provides a clean and type-safe abstraction over the native API, enabling efficient, scoped, and reliable cross-tab messaging.
 
 ## ✨ Features
@@ -41,7 +49,8 @@ pnpm add react-broadcast-sync
 import { useBroadcastChannel } from 'react-broadcast-sync';
 
 function MyComponent() {
-  const { messages, postMessage, clearMessage } = useBroadcastChannel('my-channel');
+  const { messages, postMessage, clearMessage } =
+    useBroadcastChannel('my-channel');
 
   const handleSend = () => {
     postMessage('greeting', { text: 'Hello from another tab!' });
@@ -89,7 +98,11 @@ const {
 #### 💬 Sending a message with expiration:
 
 ```tsx
-postMessage('notification', { text: 'This disappears in 5s' }, { expirationDuration: 5000 });
+postMessage(
+  'notification',
+  { text: 'This disappears in 5s' },
+  { expirationDuration: 5000 }
+);
 ```
 
 ---
@@ -137,7 +150,7 @@ const {
   clearMessage,
   clearAllMessages,
   clearSentMessage,
-  error
+  error,
 } = useBroadcastChannel(channelName, options);
 ```
 
@@ -145,40 +158,44 @@ const {
 
 ```typescript
 interface BroadcastOptions {
-  sourceName?: string;           // Custom name for the message source
-  cleaningInterval?: number;     // Interval in ms for cleaning expired messages (default: 1000)
-  keepLatestMessage?: boolean;   // Keep only the latest message (default: false)
-  registeredTypes?: string[];    // List of allowed message types
-  namespace?: string;           // Channel namespace for isolation
-  deduplicationTTL?: number;    // Time in ms to keep message IDs for deduplication (default: 5 minutes)
-  cleanupDebounceMs?: number;   // Debounce time in ms for cleanup operations (default: 0)
+  sourceName?: string; // Custom name for the message source
+  cleaningInterval?: number; // Interval in ms for cleaning expired messages (default: 1000)
+  keepLatestMessage?: boolean; // Keep only the latest message (default: false)
+  registeredTypes?: string[]; // List of allowed message types
+  namespace?: string; // Channel namespace for isolation
+  deduplicationTTL?: number; // Time in ms to keep message IDs for deduplication (default: 5 minutes)
+  cleanupDebounceMs?: number; // Debounce time in ms for cleanup operations (default: 0)
 }
 ```
 
 #### Default Values
 
-| Option              | Default Value | Description |
-|---------------------|---------------|-------------|
-| `sourceName`        | `undefined`   | Auto-generated if not provided |
-| `cleaningInterval`  | `1000`        | 1 second between cleanup runs |
-| `keepLatestMessage` | `false`       | Keep all messages by default |
+| Option              | Default Value | Description                         |
+| ------------------- | ------------- | ----------------------------------- |
+| `sourceName`        | `undefined`   | Auto-generated if not provided      |
+| `cleaningInterval`  | `1000`        | 1 second between cleanup runs       |
+| `keepLatestMessage` | `false`       | Keep all messages by default        |
 | `registeredTypes`   | `[]`          | Accept all message types by default |
-| `namespace`         | `''`          | No namespace by default |
-| `deduplicationTTL`  | `300000`      | 5 minutes (5 * 60 * 1000 ms) |
-| `cleanupDebounceMs` | `0`           | No debounce by default |
+| `namespace`         | `''`          | No namespace by default             |
+| `deduplicationTTL`  | `300000`      | 5 minutes (5 _ 60 _ 1000 ms)        |
+| `cleanupDebounceMs` | `0`           | No debounce by default              |
 
 #### Return Value
 
 ```typescript
 interface BroadcastActions {
-  channelName: string;          // The resolved channel name (includes namespace)
+  channelName: string; // The resolved channel name (includes namespace)
   messages: BroadcastMessage[]; // Received messages
   sentMessages: BroadcastMessage[]; // Messages sent by this instance
-  postMessage: (type: string, content: any, options?: SendMessageOptions) => void;
+  postMessage: (
+    type: string,
+    content: any,
+    options?: SendMessageOptions
+  ) => void;
   clearMessage: (id: string) => void;
   clearAllMessages: () => void;
   clearSentMessage: (id: string) => void;
-  error: string | null;        // Current error state
+  error: string | null; // Current error state
 }
 ```
 
@@ -186,23 +203,23 @@ interface BroadcastActions {
 
 Returns an object with:
 
-| Property              | Type                    | Description |
-|-----------------------|-------------------------|-------------|
-| `channelName`         | `string`                | The resolved channel name (includes namespace) |
-| `messages`            | `BroadcastMessage[]`    | All received messages from other tabs |
-| `sentMessages`        | `BroadcastMessage[]`    | Messages sent from this tab |
-| `postMessage()`       | `function`              | Send a message to all tabs |
-| `clearMessage()`      | `function`              | Remove a message locally and notify others to clear it |
-| `clearAllMessages()`  | `function`              | Remove all messages locally and notify others |
-| `clearSentMessage()`  | `function`              | Remove a sent message without affecting others |
-| `error`               | `string \| null`        | Any runtime error from the channel |
+| Property             | Type                 | Description                                            |
+| -------------------- | -------------------- | ------------------------------------------------------ |
+| `channelName`        | `string`             | The resolved channel name (includes namespace)         |
+| `messages`           | `BroadcastMessage[]` | All received messages from other tabs                  |
+| `sentMessages`       | `BroadcastMessage[]` | Messages sent from this tab                            |
+| `postMessage()`      | `function`           | Send a message to all tabs                             |
+| `clearMessage()`     | `function`           | Remove a message locally and notify others to clear it |
+| `clearAllMessages()` | `function`           | Remove all messages locally and notify others          |
+| `clearSentMessage()` | `function`           | Remove a sent message without affecting others         |
+| `error`              | `string \| null`     | Any runtime error from the channel                     |
 
 #### 📨 Send Options:
 
 ```ts
 interface SendMessageOptions {
-  expirationDuration?: number;  // TTL in ms
-  expirationDate?: number;      // Exact expiry timestamp
+  expirationDuration?: number; // TTL in ms
+  expirationDate?: number; // Exact expiry timestamp
 }
 ```
 
@@ -233,6 +250,7 @@ interface BroadcastMessage {
 ## 🎯 Common Use Cases
 
 ### Real-time Notifications
+
 ```tsx
 function NotificationSystem() {
   const { messages, postMessage } = useBroadcastChannel('notifications', {
@@ -243,7 +261,7 @@ function NotificationSystem() {
 
   return (
     <div>
-      {messages.map(msg => (
+      {messages.map((msg) => (
         <Notification key={msg.id} type={msg.type} content={msg.message} />
       ))}
     </div>
@@ -252,6 +270,7 @@ function NotificationSystem() {
 ```
 
 ### Multi-tab Form Synchronization
+
 ```tsx
 function FormSync() {
   const { messages, postMessage } = useBroadcastChannel('form-sync', {
@@ -260,7 +279,11 @@ function FormSync() {
   });
 
   const handleChange = (field: string, value: string) => {
-    postMessage('field-update', { field, value }, { expirationDuration: 300000 }); // 5 minutes
+    postMessage(
+      'field-update',
+      { field, value },
+      { expirationDuration: 300000 }
+    ); // 5 minutes
   };
 
   return <Form onChange={handleChange} />;
@@ -268,6 +291,7 @@ function FormSync() {
 ```
 
 ### Tab Status Synchronization
+
 ```tsx
 function TabStatus() {
   const { postMessage } = useBroadcastChannel('tab-status', {
@@ -287,6 +311,7 @@ function TabStatus() {
 ## 🔧 Performance Considerations
 
 ### Message Deduplication
+
 The `deduplicationTTL` option creates a time window (in milliseconds) during which messages with the same content and type from the same source are considered duplicates and will be ignored. This is particularly useful for:
 
 - **Preventing Message Loops**: Avoids infinite message echo between tabs when they broadcast the same message back and forth
@@ -294,11 +319,13 @@ The `deduplicationTTL` option creates a time window (in milliseconds) during whi
 - **Natural Debouncing**: Provides built-in debouncing behavior for broadcast events without additional code
 
 Recommended TTL values based on use case:
+
 - **High-frequency updates** (e.g., real-time typing, cursor position): 1000-5000ms
 - **Medium-frequency updates** (e.g., form sync, status changes): 5000-15000ms
 - **Low-frequency updates** (e.g., notifications, alerts): 15000-30000ms
 
 Example:
+
 ```tsx
 // Without deduplication, this could cause a message loop
 function ChatComponent() {
@@ -313,6 +340,7 @@ function ChatComponent() {
 ```
 
 ### Cleanup Optimization
+
 - Use `cleanupDebounceMs` to prevent excessive cleanup operations
 - Recommended values:
   - For frequent updates: 500-1000ms
@@ -320,6 +348,7 @@ function ChatComponent() {
 - Adjust `cleaningInterval` based on your message expiration needs
 
 ### Memory Management
+
 - Clear messages when they're no longer needed using `clearMessage` or `clearAllMessages`
 - Use message expiration for temporary data
 - Consider using `keepLatestMessage: true` for status updates to prevent memory buildup
@@ -329,12 +358,14 @@ function ChatComponent() {
 ### Common Issues
 
 1. **Messages Not Received**
+
    - Check if `registeredTypes` includes your message type
    - Verify the channel name and namespace match
    - Ensure the message hasn't expired
    - Check if `deduplicationTTL` isn't too short
 
 2. **Performance Issues**
+
    - Increase `cleanupDebounceMs` if cleanup is too frequent
    - Use `keepLatestMessage: true` for high-frequency updates
    - Consider increasing `cleaningInterval` if cleanup is too aggressive
@@ -347,11 +378,13 @@ function ChatComponent() {
 ### Debug Mode
 
 Enable debug logging by setting the environment variable:
+
 ```bash
 REACT_APP_DEBUG_BROADCAST=true
 ```
 
 This will log:
+
 - Channel creation and closure
 - Message sending and receiving
 - Cleanup operations
@@ -360,11 +393,13 @@ This will log:
 ## ⚡ Performance Considerations
 
 1. **Message Size**
+
    - Keep messages small and serializable
    - Avoid sending large objects or circular references
    - Consider using message IDs to reference larger data
 
 2. **Message Frequency**
+
    - Use `keepLatestMessage: true` for high-frequency updates
    - Implement debouncing for rapid state changes
    - Consider using `expirationDuration` for temporary messages

@@ -28,7 +28,8 @@
     "noImplicitReturns": true,
     "noFallthroughCasesInSwitch": true,
     "allowJs": true,
-    "checkJs": false
+    "checkJs": false,
+    "types": ["jest", "node", "react"]
   },
   "include": ["src/**/*"],
   "exclude": ["node_modules", "dist"]
