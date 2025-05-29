@@ -3,7 +3,9 @@
 </p>
 
 <p align="center">
-  <b>react-broadcast-sync</b>
+
+# react-broadcast-sync
+
 </p>
 
 <p align="center">
