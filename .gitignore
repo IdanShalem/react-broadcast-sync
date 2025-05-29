@@ -23,5 +23,9 @@ yarn-error.log*
 # Env files
 .env
 
-# tests
+# Tests
 coverage/
+
+# Demo app
+demo/react-broadcast-sync-demo/node_modules/
+demo/react-broadcast-sync-demo/dist/
