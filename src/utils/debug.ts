@@ -44,4 +44,4 @@ export const debug = {
     completed: (removedCount: number) => log('info', 'Cleanup completed:', { removedCount }),
   },
   error: (error: string) => log('error', 'Error:', error),
-}; 
+};

@@ -28,7 +28,7 @@ class MockBroadcastChannel {
 }
 
 const waitForChannel = async () => {
-  return new Promise<void>((resolve) => {
+  return new Promise<void>(resolve => {
     const checkChannel = () => {
       if (mockChannels.length > 0) {
         resolve();
@@ -73,7 +73,7 @@ describe('useBroadcastChannel', () => {
       type: 'greeting',
       message: { text: 'hi' },
       source: 'another-tab',
-      timestamp: Date.now()
+      timestamp: Date.now(),
     };
 
     act(() => {
@@ -108,7 +108,7 @@ describe('useBroadcastChannel', () => {
       type: 'greeting',
       message: 'hi',
       source: 'external',
-      timestamp: Date.now()
+      timestamp: Date.now(),
     };
 
     act(() => {
@@ -135,14 +135,14 @@ describe('useBroadcastChannel', () => {
         type: 'a',
         message: 'a',
         source: 'x',
-        timestamp: Date.now()
+        timestamp: Date.now(),
       });
       channel.simulateMessage({
         id: '2',
         type: 'b',
         message: 'b',
         source: 'x',
-        timestamp: Date.now()
+        timestamp: Date.now(),
       });
     });
 
@@ -158,7 +158,7 @@ describe('useBroadcastChannel', () => {
   it('clears sent message', async () => {
     const { result } = renderHook(() => useBroadcastChannel('test-channel'));
     await waitForChannel();
-    
+
     act(() => {
       result.current.postMessage('test-type', { key: 'value' });
     });
@@ -177,7 +177,7 @@ describe('useBroadcastChannel', () => {
     jest.useFakeTimers();
 
     const original = global.BroadcastChannel;
-    // @ts-ignore
+    // @ts-expect-error - Testing invalid input
     delete global.BroadcastChannel;
 
     const { result } = renderHook(() => useBroadcastChannel('test-channel'));
@@ -200,7 +200,9 @@ describe('useBroadcastChannel', () => {
 
     const { result } = renderHook(() => useBroadcastChannel('unsupported-channel'));
 
-    expect(result.current.error).toBe('BroadcastChannel is not supported in this browser. Please check browser compatibility.');
+    expect(result.current.error).toBe(
+      'BroadcastChannel is not supported in this browser. Please check browser compatibility.'
+    );
     global.BroadcastChannel = original;
   });
 
@@ -227,7 +229,7 @@ describe('useBroadcastChannel', () => {
       message: 'expired',
       source: 'another-tab',
       timestamp: Date.now() - 1000000,
-      expirationDate: Date.now() - 1000000
+      expirationDate: Date.now() - 1000000,
     };
 
     act(() => {
@@ -238,7 +240,9 @@ describe('useBroadcastChannel', () => {
   });
 
   it('handles duplicate messages within TTL', async () => {
-    const { result } = renderHook(() => useBroadcastChannel('test-channel', { deduplicationTTL: 5000 }));
+    const { result } = renderHook(() =>
+      useBroadcastChannel('test-channel', { deduplicationTTL: 5000 })
+    );
     await waitForChannel();
     const channel = mockChannels[0];
 
@@ -247,7 +251,7 @@ describe('useBroadcastChannel', () => {
       type: 'test',
       message: 'duplicate',
       source: 'another-tab',
-      timestamp: Date.now()
+      timestamp: Date.now(),
     };
 
     act(() => {
@@ -269,7 +273,7 @@ describe('useBroadcastChannel', () => {
         type: 'test',
         message: 'will be cleared',
         source: 'another-tab',
-        timestamp: Date.now()
+        timestamp: Date.now(),
       });
     });
 
@@ -278,9 +282,10 @@ describe('useBroadcastChannel', () => {
     act(() => {
       channel.simulateMessage({
         id: 'to-clear',
-        type: '__INTERNAL__:CLEAR_MESSAGE:' + btoa('react-broadcast-sync:CLEAR_MESSAGE:test-channel-'),
+        type:
+          '__INTERNAL__:CLEAR_MESSAGE:' + btoa('react-broadcast-sync:CLEAR_MESSAGE:test-channel-'),
         source: 'another-tab',
-        timestamp: Date.now()
+        timestamp: Date.now(),
       });
     });
 
@@ -298,14 +303,14 @@ describe('useBroadcastChannel', () => {
         type: 'test1',
         message: 'first',
         source: 'another-tab',
-        timestamp: Date.now()
+        timestamp: Date.now(),
       });
       channel.simulateMessage({
         id: 'msg2',
         type: 'test2',
         message: 'second',
         source: 'another-tab',
-        timestamp: Date.now()
+        timestamp: Date.now(),
       });
     });
 
@@ -313,10 +318,14 @@ describe('useBroadcastChannel', () => {
 
     act(() => {
       channel.simulateMessage({
-        id: '__INTERNAL__:CLEAR_ALL_MESSAGES:' + btoa('react-broadcast-sync:CLEAR_ALL_MESSAGES:test-channel-'),
-        type: '__INTERNAL__:CLEAR_ALL_MESSAGES:' + btoa('react-broadcast-sync:CLEAR_ALL_MESSAGES:test-channel-'),
+        id:
+          '__INTERNAL__:CLEAR_ALL_MESSAGES:' +
+          btoa('react-broadcast-sync:CLEAR_ALL_MESSAGES:test-channel-'),
+        type:
+          '__INTERNAL__:CLEAR_ALL_MESSAGES:' +
+          btoa('react-broadcast-sync:CLEAR_ALL_MESSAGES:test-channel-'),
         source: 'another-tab',
-        timestamp: Date.now()
+        timestamp: Date.now(),
       });
     });
 
@@ -325,7 +334,9 @@ describe('useBroadcastChannel', () => {
 
   it('performs cleanup of expired messages', async () => {
     jest.useFakeTimers();
-    const { result } = renderHook(() => useBroadcastChannel('test-channel', { cleaningInterval: 1000 }));
+    const { result } = renderHook(() =>
+      useBroadcastChannel('test-channel', { cleaningInterval: 1000 })
+    );
     await waitForChannel();
     const channel = mockChannels[0];
 
@@ -336,7 +347,7 @@ describe('useBroadcastChannel', () => {
         message: 'expired',
         source: 'another-tab',
         timestamp: Date.now() - 1000000,
-        expirationDate: Date.now() - 1000000
+        expirationDate: Date.now() - 1000000,
       });
     });
 
@@ -349,7 +360,7 @@ describe('useBroadcastChannel', () => {
   });
 
   it('handles registered types filtering', async () => {
-    const { result } = renderHook(() => 
+    const { result } = renderHook(() =>
       useBroadcastChannel('test-channel', { registeredTypes: ['allowed-type'] })
     );
     await waitForChannel();
@@ -361,7 +372,7 @@ describe('useBroadcastChannel', () => {
         type: 'unregistered-type',
         message: 'test',
         source: 'another-tab',
-        timestamp: Date.now()
+        timestamp: Date.now(),
       });
     });
 
@@ -373,7 +384,7 @@ describe('useBroadcastChannel', () => {
         type: 'allowed-type',
         message: 'test',
         source: 'another-tab',
-        timestamp: Date.now()
+        timestamp: Date.now(),
       });
     });
 
@@ -381,7 +392,7 @@ describe('useBroadcastChannel', () => {
   });
 
   it('handles keepLatestMessage option', async () => {
-    const { result } = renderHook(() => 
+    const { result } = renderHook(() =>
       useBroadcastChannel('test-channel', { keepLatestMessage: true })
     );
     await waitForChannel();
@@ -393,14 +404,14 @@ describe('useBroadcastChannel', () => {
         type: 'test',
         message: 'first',
         source: 'another-tab',
-        timestamp: Date.now()
+        timestamp: Date.now(),
       });
       channel.simulateMessage({
         id: 'msg2',
         type: 'test',
         message: 'second',
         source: 'another-tab',
-        timestamp: Date.now()
+        timestamp: Date.now(),
       });
     });
 
@@ -410,10 +421,10 @@ describe('useBroadcastChannel', () => {
 
   it('handles cleanup debounce', async () => {
     jest.useFakeTimers();
-    const { result } = renderHook(() => 
-      useBroadcastChannel('test-channel', { 
+    const { result } = renderHook(() =>
+      useBroadcastChannel('test-channel', {
         cleaningInterval: 1000,
-        cleanupDebounceMs: 500
+        cleanupDebounceMs: 500,
       })
     );
     await waitForChannel();
@@ -426,7 +437,7 @@ describe('useBroadcastChannel', () => {
         message: 'expired',
         source: 'another-tab',
         timestamp: Date.now() - 1000000,
-        expirationDate: Date.now() - 1000000
+        expirationDate: Date.now() - 1000000,
       });
     });
 
@@ -463,7 +474,9 @@ describe('useBroadcastChannel', () => {
 
     const badMessage: any = {};
     Object.defineProperty(badMessage, 'id', {
-      get() { throw new Error('fail'); }
+      get() {
+        throw new Error('fail');
+      },
     });
     badMessage.type = 'test';
     badMessage.source = 'z';
@@ -484,7 +497,9 @@ describe('useBroadcastChannel', () => {
 
     const { result } = renderHook(() => useBroadcastChannel('test-channel'));
 
-    expect(result.current.error).toBe('BroadcastChannel is not supported in this browser. Please check browser compatibility.');
+    expect(result.current.error).toBe(
+      'BroadcastChannel is not supported in this browser. Please check browser compatibility.'
+    );
 
     global.BroadcastChannel = originalBroadcastChannel;
   });

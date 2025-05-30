@@ -8,7 +8,7 @@ import {
   getInternalMessageType,
   isInternalType,
   isValidInternalClearMessage,
-  debounce
+  debounce,
 } from '../utils/messageUtils';
 
 beforeEach(() => {
@@ -86,7 +86,7 @@ describe('messageUtils', () => {
     const valid = {
       id: 'abc',
       type: getInternalMessageType('CLEAR_ALL_MESSAGES', 'ch'),
-      source: 'tab-1'
+      source: 'tab-1',
     };
     const invalid = { id: 123, type: 'bad', source: 'tab-1' };
     expect(isValidInternalClearMessage(valid)).toBe(true);
@@ -112,9 +112,14 @@ describe('debounce', () => {
   });
 
   it('debounce handles multiple calls and preserves this context', () => {
-    const obj = { value: 0, increment: function() { this.value++; } };
+    const obj = {
+      value: 0,
+      increment: function () {
+        this.value++;
+      },
+    };
     const debounced = debounce(obj.increment.bind(obj), 100);
-    
+
     debounced();
     debounced();
     debounced.flush();
@@ -124,7 +129,7 @@ describe('debounce', () => {
   it('debounce flush returns undefined when no pending call', () => {
     const fn = jest.fn();
     const debounced = debounce(fn, 100);
-    
+
     expect(debounced.flush()).toBeUndefined();
     expect(fn).not.toHaveBeenCalled();
   });
@@ -132,7 +137,7 @@ describe('debounce', () => {
   it('debounce handles function with return value', () => {
     const fn = jest.fn().mockReturnValue('test');
     const debounced = debounce(fn, 100);
-    
+
     debounced();
     expect(debounced.flush()).toBe('test');
   });
@@ -145,7 +150,7 @@ describe('debounce', () => {
     jest.advanceTimersByTime(200);
     expect(fn).not.toHaveBeenCalled();
   });
-  
+
   it('debounce.flush executes immediately', () => {
     const fn = jest.fn();
     const debounced = debounce(fn, 100);
@@ -157,11 +162,11 @@ describe('debounce', () => {
   it('debounce handles multiple calls with different arguments', () => {
     const fn = jest.fn();
     const debounced = debounce(fn, 100);
-    
+
     debounced('first');
     debounced('second');
     debounced('third');
-    
+
     expect(fn).not.toHaveBeenCalled();
     debounced.flush();
     expect(fn).toHaveBeenCalledTimes(1);
@@ -171,7 +176,7 @@ describe('debounce', () => {
   it('debounce handles cancel and flush in sequence', () => {
     const fn = jest.fn();
     const debounced = debounce(fn, 100);
-    
+
     debounced('test');
     debounced.cancel();
     expect(debounced.flush()).toBeUndefined();
@@ -217,14 +222,14 @@ describe('debounce', () => {
   it('debounce.flush handles case where timeoutId exists but lastArgs is null', () => {
     const fn = jest.fn();
     const debounced = debounce(fn, 100);
-    
+
     // Schedule a call
     debounced('test');
-    
+
     // Force the timeout to be set but clear lastArgs
     jest.advanceTimersByTime(50); // Advance partially through the timeout
     debounced.cancel(); // This clears lastArgs but might not clear timeoutId immediately
-    
+
     // Call flush when timeoutId exists but lastArgs is null
     const result = debounced.flush();
     expect(result).toBeUndefined();
@@ -234,11 +239,11 @@ describe('debounce', () => {
   it('debounce.flush handles multiple calls with different arguments and preserves return value', () => {
     const fn = jest.fn((x: number) => x * 2);
     const debounced = debounce(fn, 100);
-    
+
     debounced(1);
     debounced(2);
     debounced(3);
-    
+
     const result = debounced.flush();
     expect(result).toBe(6); // 3 * 2
     expect(fn).toHaveBeenCalledTimes(1);

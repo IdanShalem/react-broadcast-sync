@@ -19,7 +19,20 @@ export default [
       'react/prop-types': 'off',
       '@typescript-eslint/no-unused-vars': ['warn', { argsIgnorePattern: '^_' }],
       '@typescript-eslint/explicit-module-boundary-types': 'off',
+      '@typescript-eslint/no-explicit-any': [
+        'warn',
+        {
+          ignoreRestArgs: true,
+          fixToUnknown: false,
+        },
+      ],
       'prettier/prettier': 'error',
+    },
+  },
+  {
+    files: ['**/*.test.{ts,tsx}', '**/*.d.ts'],
+    rules: {
+      '@typescript-eslint/no-explicit-any': 'off',
     },
   },
 ];

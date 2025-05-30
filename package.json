@@ -18,7 +18,7 @@
     "build": "rollup -c rollup.config.mjs",
     "prepare": "npm run build && husky install",
     "test": "jest",
-    "lint": "eslint \"**/*.{ts,tsx}\"",
+    "lint": "eslint \"**/*.{ts,tsx}\" --ignore-pattern dist",
     "typecheck": "tsc --noEmit",
     "format": "prettier --write .",
     "format:check": "prettier --check .",

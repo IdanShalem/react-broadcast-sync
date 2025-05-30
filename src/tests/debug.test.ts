@@ -48,14 +48,18 @@ describe('debug', () => {
     it('logs channel events', () => {
       debug.channel.created('test-channel');
       expect(console.log).toHaveBeenCalledWith(
-        expect.stringMatching(/\[\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}.\d{3}Z\] \[react-broadcast-sync\]/),
+        expect.stringMatching(
+          /\[\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}.\d{3}Z\] \[react-broadcast-sync\]/
+        ),
         'Channel created:',
         'test-channel'
       );
 
       debug.channel.closed('test-channel');
       expect(console.log).toHaveBeenCalledWith(
-        expect.stringMatching(/\[\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}.\d{3}Z\] \[react-broadcast-sync\]/),
+        expect.stringMatching(
+          /\[\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}.\d{3}Z\] \[react-broadcast-sync\]/
+        ),
         'Channel closed:',
         'test-channel'
       );
@@ -63,38 +67,48 @@ describe('debug', () => {
 
     it('logs message events', () => {
       const testMessage = { id: '123', type: 'test' };
-      
+
       debug.message.sent(testMessage);
       expect(console.log).toHaveBeenCalledWith(
-        expect.stringMatching(/\[\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}.\d{3}Z\] \[react-broadcast-sync\]/),
+        expect.stringMatching(
+          /\[\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}.\d{3}Z\] \[react-broadcast-sync\]/
+        ),
         'Message sent:',
         testMessage
       );
 
       debug.message.received(testMessage);
       expect(console.log).toHaveBeenCalledWith(
-        expect.stringMatching(/\[\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}.\d{3}Z\] \[react-broadcast-sync\]/),
+        expect.stringMatching(
+          /\[\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}.\d{3}Z\] \[react-broadcast-sync\]/
+        ),
         'Message received:',
         testMessage
       );
 
       debug.message.cleared('123');
       expect(console.log).toHaveBeenCalledWith(
-        expect.stringMatching(/\[\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}.\d{3}Z\] \[react-broadcast-sync\]/),
+        expect.stringMatching(
+          /\[\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}.\d{3}Z\] \[react-broadcast-sync\]/
+        ),
         'Message cleared:',
         '123'
       );
 
       debug.message.expired('123');
       expect(console.log).toHaveBeenCalledWith(
-        expect.stringMatching(/\[\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}.\d{3}Z\] \[react-broadcast-sync\]/),
+        expect.stringMatching(
+          /\[\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}.\d{3}Z\] \[react-broadcast-sync\]/
+        ),
         'Message expired:',
         '123'
       );
 
       debug.message.duplicate('123');
       expect(console.warn).toHaveBeenCalledWith(
-        expect.stringMatching(/\[\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}.\d{3}Z\] \[react-broadcast-sync\]/),
+        expect.stringMatching(
+          /\[\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}.\d{3}Z\] \[react-broadcast-sync\]/
+        ),
         'Duplicate message ignored:',
         '123'
       );
@@ -103,14 +117,18 @@ describe('debug', () => {
     it('logs cleanup events', () => {
       debug.cleanup.started();
       expect(console.log).toHaveBeenCalledWith(
-        expect.stringMatching(/\[\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}.\d{3}Z\] \[react-broadcast-sync\]/),
+        expect.stringMatching(
+          /\[\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}.\d{3}Z\] \[react-broadcast-sync\]/
+        ),
         'Cleanup started',
         ''
       );
 
       debug.cleanup.completed(5);
       expect(console.log).toHaveBeenCalledWith(
-        expect.stringMatching(/\[\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}.\d{3}Z\] \[react-broadcast-sync\]/),
+        expect.stringMatching(
+          /\[\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}.\d{3}Z\] \[react-broadcast-sync\]/
+        ),
         'Cleanup completed:',
         { removedCount: 5 }
       );
@@ -119,7 +137,9 @@ describe('debug', () => {
     it('logs errors', () => {
       debug.error('test error');
       expect(console.error).toHaveBeenCalledWith(
-        expect.stringMatching(/\[\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}.\d{3}Z\] \[react-broadcast-sync\]/),
+        expect.stringMatching(
+          /\[\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}.\d{3}Z\] \[react-broadcast-sync\]/
+        ),
         'Error:',
         'test error'
       );
@@ -153,18 +173,18 @@ describe('debug', () => {
     });
 
     it('logs message with no data', () => {
-        debug.cleanup.started();
-        expect(console.log).toHaveBeenCalledWith(
-          expect.stringContaining('[react-broadcast-sync]'),
-          'Cleanup started',
-          ''
-        );
-      });
+      debug.cleanup.started();
+      expect(console.log).toHaveBeenCalledWith(
+        expect.stringContaining('[react-broadcast-sync]'),
+        'Cleanup started',
+        ''
+      );
+    });
   });
 
   describe('when process.env is undefined', () => {
     beforeEach(() => {
-      // @ts-ignore - Simulating environment where process.env is undefined
+      // @ts-expect-error - Testing invalid input
       process.env = undefined;
     });
 
@@ -176,24 +196,44 @@ describe('debug', () => {
 
   it('logs info messages', () => {
     debug.channel.created('test-channel');
-    expect(console.log).toHaveBeenCalledWith(expect.stringContaining('[react-broadcast-sync]'), 'Channel created:', 'test-channel');
+    expect(console.log).toHaveBeenCalledWith(
+      expect.stringContaining('[react-broadcast-sync]'),
+      'Channel created:',
+      'test-channel'
+    );
   });
 
   it('logs warning messages', () => {
     debug.message.duplicate('test-id');
-    expect(console.warn).toHaveBeenCalledWith(expect.stringContaining('[react-broadcast-sync]'), 'Duplicate message ignored:', 'test-id');
+    expect(console.warn).toHaveBeenCalledWith(
+      expect.stringContaining('[react-broadcast-sync]'),
+      'Duplicate message ignored:',
+      'test-id'
+    );
   });
 
   it('logs error messages', () => {
     debug.error('Test error');
-    expect(console.error).toHaveBeenCalledWith(expect.stringContaining('[react-broadcast-sync]'), 'Error:', 'Test error');
+    expect(console.error).toHaveBeenCalledWith(
+      expect.stringContaining('[react-broadcast-sync]'),
+      'Error:',
+      'Test error'
+    );
   });
 
   it('logs cleanup information', () => {
     debug.cleanup.started();
-    expect(console.log).toHaveBeenCalledWith(expect.stringContaining('[react-broadcast-sync]'), 'Cleanup started', '');
+    expect(console.log).toHaveBeenCalledWith(
+      expect.stringContaining('[react-broadcast-sync]'),
+      'Cleanup started',
+      ''
+    );
 
     debug.cleanup.completed(2);
-    expect(console.log).toHaveBeenCalledWith(expect.stringContaining('[react-broadcast-sync]'), 'Cleanup completed:', { removedCount: 2 });
+    expect(console.log).toHaveBeenCalledWith(
+      expect.stringContaining('[react-broadcast-sync]'),
+      'Cleanup completed:',
+      { removedCount: 2 }
+    );
   });
-}); 
+});

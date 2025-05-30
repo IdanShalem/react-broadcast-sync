@@ -36,7 +36,7 @@ const TestComponent = () => {
     <div>
       <div data-testid="error">{error}</div>
       <div data-testid="messages">
-        {messages.map((msg) => (
+        {messages.map(msg => (
           <div key={msg.id} data-testid={`message-${msg.id}`}>
             {msg.message.text}
           </div>
@@ -92,7 +92,7 @@ describe('BroadcastProvider', () => {
       type: 'test',
       message: { text: 'Hello' },
       source: 'other-tab',
-      timestamp: Date.now()
+      timestamp: Date.now(),
     };
 
     act(() => {
@@ -138,7 +138,7 @@ describe('BroadcastProvider', () => {
     };
 
     const consoleError = jest.spyOn(console, 'error').mockImplementation(() => {});
-    
+
     render(
       <BroadcastProvider channelName="test-channel">
         <ThrowComponent />
@@ -147,17 +147,17 @@ describe('BroadcastProvider', () => {
 
     expect(screen.getByText('Error occurred in BroadcastProvider')).toBeInTheDocument();
     expect(consoleError).toHaveBeenCalledWith('BroadcastChannel error:', expect.any(Error));
-    
+
     consoleError.mockRestore();
   });
 
   it('throws error when useBroadcastProvider is used outside provider', () => {
     const consoleError = jest.spyOn(console, 'error').mockImplementation(() => {});
-    
+
     expect(() => {
       render(<TestComponent />);
     }).toThrow('useBroadcastProvider must be used within a BroadcastProvider');
-    
+
     consoleError.mockRestore();
   });
-}); 
+});

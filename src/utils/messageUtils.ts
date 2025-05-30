@@ -37,28 +37,30 @@ export const createMessage = (
     message: content,
     timestamp,
     source,
-    expirationDate: options.expirationDate ?? 
+    expirationDate:
+      options.expirationDate ??
       (options.expirationDuration ? timestamp + options.expirationDuration : undefined),
   };
 };
 
-
 export const getInternalMessageType = (
-    baseType: 'CLEAR_MESSAGE' | 'CLEAR_ALL_MESSAGES',
-    channelName: string,
-    namespace = ''
-  ): string => {
-    const fullChannel = `${channelName}-${namespace}`;
-    const input = `${SECRET}:${baseType}:${fullChannel}`;
-    const hash = btoa(input); // optional: use sha256 if added
-    return `${INTERNAL_PREFIX}:${baseType}:${hash}`;
-  };
-
-export const isInternalType = (type: string): boolean => {
-    return type.startsWith(`${INTERNAL_PREFIX}:`);
+  baseType: 'CLEAR_MESSAGE' | 'CLEAR_ALL_MESSAGES',
+  channelName: string,
+  namespace = ''
+): string => {
+  const fullChannel = `${channelName}-${namespace}`;
+  const input = `${SECRET}:${baseType}:${fullChannel}`;
+  const hash = btoa(input); // optional: use sha256 if added
+  return `${INTERNAL_PREFIX}:${baseType}:${hash}`;
 };
 
-export const isValidInternalClearMessage = (message: any): message is { id: string, type: string, source: string } => {
+export const isInternalType = (type: string): boolean => {
+  return type.startsWith(`${INTERNAL_PREFIX}:`);
+};
+
+export const isValidInternalClearMessage = (
+  message: any
+): message is { id: string; type: string; source: string } => {
   return (
     message &&
     typeof message === 'object' &&
@@ -67,7 +69,7 @@ export const isValidInternalClearMessage = (message: any): message is { id: stri
     typeof message.type === 'string' &&
     isInternalType(message.type)
   );
-}
+};
 
 export const debounce = <T extends (...args: any[]) => any>(
   fn: T,
@@ -78,23 +80,18 @@ export const debounce = <T extends (...args: any[]) => any>(
 } => {
   let timeoutId: ReturnType<typeof setTimeout> | null = null;
   let lastArgs: Parameters<T> | null = null;
-  let lastThis: any = null;
   let result: ReturnType<T> | undefined;
 
-  const debounced = function(this: any, ...args: Parameters<T>) {
+  const debounced = (...args: Parameters<T>) => {
     lastArgs = args;
-    lastThis = this;
-
     if (timeoutId !== null) {
       clearTimeout(timeoutId);
     }
-
     timeoutId = setTimeout(() => {
       timeoutId = null;
       if (lastArgs !== null) {
-        result = fn.apply(lastThis, lastArgs);
+        result = fn(...lastArgs);
         lastArgs = null;
-        lastThis = null;
       }
     }, wait);
   };
@@ -104,7 +101,6 @@ export const debounce = <T extends (...args: any[]) => any>(
       clearTimeout(timeoutId);
       timeoutId = null;
       lastArgs = null;
-      lastThis = null;
     }
   };
 
@@ -113,9 +109,8 @@ export const debounce = <T extends (...args: any[]) => any>(
       clearTimeout(timeoutId);
       timeoutId = null;
       if (lastArgs !== null) {
-        result = fn.apply(lastThis, lastArgs);
+        result = fn(...lastArgs);
         lastArgs = null;
-        lastThis = null;
       }
     }
     return result;

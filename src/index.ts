@@ -5,5 +5,5 @@ export type {
   BroadcastOptions,
   SendMessageOptions,
   BroadcastMessage,
-  BroadcastActions
+  BroadcastActions,
 } from './types/types';

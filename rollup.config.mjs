@@ -13,7 +13,7 @@ const external = [
   /^react-dom\//,
   'typescript',
   'tslib',
-  '@babel/runtime'
+  '@babel/runtime',
 ];
 
 export default {
@@ -28,9 +28,9 @@ export default {
         'react-dom': 'ReactDOM',
         typescript: 'ts',
         tslib: 'tslib',
-        '@babel/runtime': 'babelRuntime'
+        '@babel/runtime': 'babelRuntime',
       },
-      exports: 'named'
+      exports: 'named',
     },
     {
       file: 'dist/index.cjs.js',
@@ -41,52 +41,58 @@ export default {
         'react-dom': 'ReactDOM',
         typescript: 'ts',
         tslib: 'tslib',
-        '@babel/runtime': 'babelRuntime'
+        '@babel/runtime': 'babelRuntime',
       },
-      exports: 'named'
+      exports: 'named',
     },
   ],
   plugins: [
     peerDepsExternal({
-      includeDependencies: false
+      includeDependencies: false,
     }),
     resolve({
       mainFields: ['module', 'main'],
       extensions: ['.js', '.jsx', '.ts', '.tsx'],
       preferBuiltins: true,
-      dedupe: ['react', 'react-dom']
+      dedupe: ['react', 'react-dom'],
     }),
     commonjs({
       include: /node_modules/,
       transformMixedEsModules: true,
-      requireReturnsDefault: 'auto'
+      requireReturnsDefault: 'auto',
     }),
-    typescript({ 
+    typescript({
       tsconfig: './tsconfig.json',
       exclude: ['**/__tests__/**', '**/*.test.ts', '**/*.test.tsx'],
       declaration: true,
       declarationDir: './dist',
       emitDeclarationOnly: false,
-      sourceMap: true
+      sourceMap: true,
     }),
     babel({
       babelHelpers: 'runtime',
       presets: [
-        ['@babel/preset-react', {
-          runtime: 'automatic',
-          development: process.env.NODE_ENV === 'development'
-        }]
+        [
+          '@babel/preset-react',
+          {
+            runtime: 'automatic',
+            development: process.env.NODE_ENV === 'development',
+          },
+        ],
       ],
       plugins: [
-        ['@babel/plugin-transform-runtime', {
-          regenerator: true,
-          useESModules: true
-        }]
+        [
+          '@babel/plugin-transform-runtime',
+          {
+            regenerator: true,
+            useESModules: true,
+          },
+        ],
       ],
       extensions: ['.js', '.jsx', '.ts', '.tsx'],
-      exclude: 'node_modules/**'
+      exclude: 'node_modules/**',
     }),
-    terser()
+    terser(),
   ],
-  external
+  external,
 };

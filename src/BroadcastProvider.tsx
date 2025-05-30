@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useEffect, useMemo, useRef } from 'react';
-import { useBroadcastChannel } from './hooks/useBroadcastChannel';  
+import { useBroadcastChannel } from './hooks/useBroadcastChannel';
 import { BroadcastMessage } from './types/types';
 
 interface BroadcastContextValue {
@@ -39,14 +39,16 @@ interface BroadcastProviderProps {
 }
 
 export const BroadcastProvider: React.FC<BroadcastProviderProps> = ({ children, channelName }) => {
-  const { messages, error: hookError } = useBroadcastChannel(channelName); 
+  const { messages, error: hookError } = useBroadcastChannel(channelName);
 
   const [error, setError] = React.useState<string | null>(null);
   const channel = useRef<BroadcastChannel | null>(null);
 
   useEffect(() => {
     if (typeof BroadcastChannel === 'undefined') {
-      setError('BroadcastChannel is not supported in this browser. Please check browser compatibility.');
+      setError(
+        'BroadcastChannel is not supported in this browser. Please check browser compatibility.'
+      );
       return;
     }
     const bc = new BroadcastChannel(channelName);
@@ -64,9 +66,7 @@ export const BroadcastProvider: React.FC<BroadcastProviderProps> = ({ children, 
 
   return (
     <ErrorBoundary>
-      <BroadcastChannelContext.Provider value={value}>
-        {children}
-      </BroadcastChannelContext.Provider>
+      <BroadcastChannelContext.Provider value={value}>{children}</BroadcastChannelContext.Provider>
     </ErrorBoundary>
   );
 };
