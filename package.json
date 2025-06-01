@@ -31,6 +31,9 @@
       "prettier --write"
     ]
   },
+  "engines": {
+    "node": ">=20.11.1"
+  },
   "keywords": [
     "react",
     "hooks",
