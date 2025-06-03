@@ -1,3 +1,10 @@
+## [1.1.1](https://github.com/IdanShalem/react-broadcast-sync/compare/v1.1.0...v1.1.1) (2025-06-03)
+
+
+### Bug Fixes
+
+* fixed sync problem in counter demo app ([481bda7](https://github.com/IdanShalem/react-broadcast-sync/commit/481bda79f55b3b902861877d4446bc4adaa76941))
+
 # [1.1.0](https://github.com/IdanShalem/react-broadcast-sync/compare/v1.0.0...v1.1.0) (2025-06-03)
 
 
