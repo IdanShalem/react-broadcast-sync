@@ -1,3 +1,10 @@
+## [1.1.2](https://github.com/IdanShalem/react-broadcast-sync/compare/v1.1.1...v1.1.2) (2025-06-03)
+
+
+### Bug Fixes
+
+* added demo gif presentation ([23781aa](https://github.com/IdanShalem/react-broadcast-sync/commit/23781aa4b61ab30ae9c37fd2b017446bc9cf039e))
+
 ## [1.1.1](https://github.com/IdanShalem/react-broadcast-sync/compare/v1.1.0...v1.1.1) (2025-06-03)
 
 
