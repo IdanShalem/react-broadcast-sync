@@ -1,3 +1,10 @@
+## [1.1.4](https://github.com/IdanShalem/react-broadcast-sync/compare/v1.1.3...v1.1.4) (2025-06-03)
+
+
+### Bug Fixes
+
+* removed icon ([3488a8d](https://github.com/IdanShalem/react-broadcast-sync/commit/3488a8d9526e5561f5ffdd14dfcce5ebb20c6838))
+
 ## [1.1.3](https://github.com/IdanShalem/react-broadcast-sync/compare/v1.1.2...v1.1.3) (2025-06-03)
 
 
