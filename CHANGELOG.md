@@ -1,3 +1,10 @@
+## [1.1.3](https://github.com/IdanShalem/react-broadcast-sync/compare/v1.1.2...v1.1.3) (2025-06-03)
+
+
+### Bug Fixes
+
+* updated readme ([621d73b](https://github.com/IdanShalem/react-broadcast-sync/commit/621d73bc93c0b5538faf158e97a06696a8ad1f0e))
+
 ## [1.1.2](https://github.com/IdanShalem/react-broadcast-sync/compare/v1.1.1...v1.1.2) (2025-06-03)
 
 
