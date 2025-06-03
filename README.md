@@ -58,7 +58,7 @@ Easily sync UI state or user events across browser tabs in React apps — notifi
 - [Contributing](#-contributing)
 - [License](#-license)
 
-## ✨ Features
+## Features
 
 - Simple and intuitive API
 - Real-time synchronization across tabs
