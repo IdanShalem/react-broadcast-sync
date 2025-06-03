@@ -26,6 +26,7 @@ export const useCounterBroadcast = () => {
   const [count, setCount] = useState<number>(0);
   const [isSyncing, setIsSyncing] = useState(false);
   const [showCheckmark, setShowCheckmark] = useState(false);
+  const lastTimestampRef = useRef<number>(0);
 
   const syncTimeoutRef = useRef<NodeJS.Timeout>();
   const checkmarkTimeoutRef = useRef<NodeJS.Timeout>();
@@ -33,7 +34,7 @@ export const useCounterBroadcast = () => {
   // Update count when new messages arrive
   useEffect(() => {
     const lastMessage = messages[messages.length - 1];
-    if (lastMessage?.message !== undefined) {
+    if (lastMessage?.message !== undefined && lastMessage.timestamp > lastTimestampRef.current) {
       // Clear any existing timeouts
       if (syncTimeoutRef.current) {
         clearTimeout(syncTimeoutRef.current);
@@ -46,8 +47,9 @@ export const useCounterBroadcast = () => {
       setIsSyncing(true);
       setShowCheckmark(false);
 
-      // Update count
+      // Update count and timestamp
       setCount(lastMessage.message);
+      lastTimestampRef.current = lastMessage.timestamp;
 
       // Show checkmark after a short delay
       syncTimeoutRef.current = setTimeout(() => {
@@ -59,17 +61,17 @@ export const useCounterBroadcast = () => {
           setShowCheckmark(false);
         }, 1000);
       }, 500);
-
-      // Cleanup
-      return () => {
-        if (syncTimeoutRef.current) {
-          clearTimeout(syncTimeoutRef.current);
-        }
-        if (checkmarkTimeoutRef.current) {
-          clearTimeout(checkmarkTimeoutRef.current);
-        }
-      };
     }
+
+    // Cleanup
+    return () => {
+      if (syncTimeoutRef.current) {
+        clearTimeout(syncTimeoutRef.current);
+      }
+      if (checkmarkTimeoutRef.current) {
+        clearTimeout(checkmarkTimeoutRef.current);
+      }
+    };
   }, [messages]);
 
   const increment = () => {
