@@ -32,6 +32,10 @@
   </a>
 </p>
 
+<p align="center">
+  <img src="https://raw.githubusercontent.com/IdanShalem/react-broadcast-sync/main/demo/react-broadcast-sync-demo/public/assets/react-broadcast-sync-demo-video.gif" alt="React Broadcast Sync Demo" width="600" />
+</p>
+
 Easily sync UI state or user events across browser tabs in React apps — notifications, presence, forms, and more. This package provides a clean and type-safe abstraction over the native API, enabling efficient, scoped, and reliable cross-tab messaging.
 
 ## 📚 Table of Contents
