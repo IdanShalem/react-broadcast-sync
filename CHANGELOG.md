@@ -1,3 +1,10 @@
+# [1.1.0](https://github.com/IdanShalem/react-broadcast-sync/compare/v1.0.0...v1.1.0) (2025-06-03)
+
+
+### Features
+
+* added demo app deployment ([755bee2](https://github.com/IdanShalem/react-broadcast-sync/commit/755bee2c11bafcaa0653917bae8e288500f6dec6))
+
 # 1.0.0 (2025-05-30)
 
 
