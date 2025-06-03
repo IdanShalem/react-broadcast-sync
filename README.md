@@ -32,13 +32,13 @@
   </a>
 </p>
 
+Easily sync UI state or user events across browser tabs in React apps — notifications, presence, forms, and more. This package provides a clean and type-safe abstraction over the native API, enabling efficient, scoped, and reliable cross-tab messaging.
+
 <p align="center">
   <img src="https://raw.githubusercontent.com/IdanShalem/react-broadcast-sync/main/demo/react-broadcast-sync-demo/public/assets/react-broadcast-sync-demo-video.gif" alt="React Broadcast Sync Demo" width="600" />
 </p>
 
-Easily sync UI state or user events across browser tabs in React apps — notifications, presence, forms, and more. This package provides a clean and type-safe abstraction over the native API, enabling efficient, scoped, and reliable cross-tab messaging.
-
-## 📚 Table of Contents
+## Table of Contents
 
 - [Features](#-features)
 - [Demo App](#-demo-app)
@@ -54,24 +54,24 @@ Easily sync UI state or user events across browser tabs in React apps — notifi
 - [Testing](#-testing)
 - [Browser Support](#-browser-support)
 - [Coming Soon](#-coming-soon)
-- [📦 Versioning & Releases](#-versioning--releases)
+- [Versioning & Releases](#-versioning--releases)
 - [Contributing](#-contributing)
 - [License](#-license)
 
 ## ✨ Features
 
-- 🚀 Simple and intuitive API
-- 🔄 Real-time synchronization across tabs
-- ✅ TypeScript support
-- 📦 Zero dependencies
-- 🧹 Automatic message expiration and cleanup
-- 🧪 Send/receive any serializable message
-- 🧩 Namespace and source scoping support
-- 🔒 Clear individual or all messages
-- ✅ Only accept allowed message types (optional)
-- 🧠 `BroadcastProvider` for context-based usage
+- Simple and intuitive API
+- Real-time synchronization across tabs
+- TypeScript support
+- Zero dependencies
+- Automatic message expiration and cleanup
+- Send/receive any serializable message
+- Namespace and source scoping support
+- Clear individual or all messages
+- Only accept allowed message types (optional)
+- `BroadcastProvider` for context-based usage
 
-## 🎮 Demo App
+## Demo App
 
 Check out our [live demo](https://react-broadcast-sync-3w3m.vercel.app/) to see the library in action! The demo showcases three main features:
 
@@ -98,7 +98,7 @@ The demo is built with React 19, TypeScript, Material-UI, and Framer Motion. You
 
 ---
 
-## 📦 Installation
+## Installation
 
 ```bash
 npm install react-broadcast-sync
@@ -110,9 +110,9 @@ pnpm add react-broadcast-sync
 
 ---
 
-## 🚀 Quick Start
+## Quick Start
 
-### 🔧 Basic Usage
+### Basic Usage
 
 ```tsx
 import { useBroadcastChannel } from 'react-broadcast-sync';
@@ -140,7 +140,7 @@ function MyComponent() {
 
 ---
 
-### ⚙️ Advanced Usage
+### Advanced Usage
 
 ```tsx
 const {
@@ -163,7 +163,7 @@ const {
 });
 ```
 
-#### 💬 Sending a message with expiration:
+#### Sending a message with expiration:
 
 ```tsx
 postMessage('notification', { text: 'This disappears in 5s' }, { expirationDuration: 5000 });
@@ -171,7 +171,7 @@ postMessage('notification', { text: 'This disappears in 5s' }, { expirationDurat
 
 ---
 
-### 🧩 Using `BroadcastProvider`
+### Using `BroadcastProvider`
 
 You can wrap part of your app with `BroadcastProvider` and use `useBroadcastProvider()` to consume the channel context.
 
@@ -201,7 +201,7 @@ function NotificationBar() {
 
 ---
 
-## 📘 API Reference
+## API Reference
 
 ### `useBroadcastChannel` Hook
 
@@ -274,7 +274,7 @@ Returns an object with:
 | `clearSentMessage()` | `function`           | Remove a sent message without affecting others         |
 | `error`              | `string \| null`     | Any runtime error from the channel                     |
 
-#### 📨 Send Options:
+#### Send Options:
 
 ```ts
 interface SendMessageOptions {
@@ -283,7 +283,7 @@ interface SendMessageOptions {
 }
 ```
 
-#### 📩 Message Format:
+#### Message Format:
 
 ```ts
 interface BroadcastMessage {
@@ -298,7 +298,7 @@ interface BroadcastMessage {
 
 ---
 
-## ✅ Best Practices
+## Best Practices
 
 - **Use `namespace`** to isolate functionality between different app modules.
 - **Register allowed message types** using `registeredTypes` to avoid processing unknown or irrelevant messages.
@@ -307,7 +307,7 @@ interface BroadcastMessage {
 - **Set appropriate `deduplicationTTL`** based on your message frequency and importance.
 - **Use `cleanupDebounceMs`** when dealing with rapid message updates to prevent performance issues.
 
-## 🎯 Common Use Cases
+## Common Use Cases
 
 ### Real-time Notifications
 
@@ -364,7 +364,7 @@ function TabStatus() {
 }
 ```
 
-## 🔧 Performance Considerations
+## Performance Considerations
 
 ### Message Size
 
@@ -427,7 +427,7 @@ function ChatComponent() {
 - Use message expiration for temporary data
 - Consider using `keepLatestMessage: true` for status updates to prevent memory buildup
 
-## 🚨 Troubleshooting
+## Troubleshooting
 
 ### Common Issues
 
@@ -464,7 +464,7 @@ This will log:
 - Cleanup operations
 - Error states
 
-## 🧪 Testing
+## Testing
 
 ### Unit Testing
 
@@ -503,7 +503,7 @@ test('should render messages from provider', () => {
 
 ---
 
-## 🌐 Browser Support
+## Browser Support
 
 Relies on [BroadcastChannel API](https://developer.mozilla.org/en-US/docs/Web/API/BroadcastChannel):
 
@@ -515,23 +515,23 @@ Relies on [BroadcastChannel API](https://developer.mozilla.org/en-US/docs/Web/AP
 
 ---
 
-## 🛠️ Coming Soon
+## Coming Soon
 
 We're actively improving `react-broadcast-sync`! Here are some features and enhancements planned for upcoming versions:
 
-- ✅ **Unit and Integration Tests**  
+- **Integration Tests**  
   Ensure robust behavior and edge-case coverage.
 
-- 🔄 **Automatic Channel Recovery**  
+- **Automatic Channel Recovery**  
   Reconnect automatically if the `BroadcastChannel` gets disconnected or closed by the browser.
 
-- 🧼 **`clearMessagesByType()`**  
+- **`clearMessagesByType()`**  
   Clear all messages of a specific type with a single call.
 
-- 🎯 **Per-Type Callbacks**  
+- **Per-Type Callbacks**  
   Define message handlers for specific types with `onMessage({ type, callback })`.
 
-- 🧹 **`clearAllSentMessages()` / `clearAllReceivedMessages()`**  
+- **`clearAllSentMessages()` / `clearAllReceivedMessages()`**  
   Fine-grained control for clearing messages based on source.
 
 We're committed to keeping this package lightweight, flexible, and production-ready.  
@@ -539,7 +539,7 @@ Your feedback and contributions are welcome — feel free to [open an issue](htt
 
 ---
 
-## 📦 Versioning & Releases
+## Versioning & Releases
 
 This project uses [Semantic Release](https://semantic-release.gitbook.io/) for fully automated versioning and changelog generation.
 
@@ -549,7 +549,7 @@ Every push to the `main` branch with a [Conventional Commit](https://www.convent
 - ✅ Changelog generation and publishing to GitHub Releases
 - ✅ Publishing to [npm](https://www.npmjs.com/package/react-broadcast-sync)
 
-### 🔧 Example Commit Messages
+### Example Commit Messages
 
 ```bash
 feat: add support for per-type callbacks
@@ -558,13 +558,13 @@ chore: update dependencies
 
 ---
 
-## 🤝 Contributing
+## Contributing
 
 PRs and feature suggestions welcome! Open an issue or submit a pull request.
 
 ---
 
-## 🪪 License
+## License
 
 MIT © [Idan Shalem](https://github.com/IdanShalem)
 ```
