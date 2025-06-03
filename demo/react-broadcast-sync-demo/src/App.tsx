@@ -60,7 +60,7 @@ const App = () => {
               }}
             >
               <motion.img
-                src="../public/assets/react-broadcast-sync-logo.png"
+                src="/assets/react-broadcast-sync-logo.png"
                 alt="React Broadcast Sync Logo"
                 style={{
                   width: isMobile ? '60px' : '130px',

@@ -69,7 +69,7 @@ Easily sync UI state or user events across browser tabs in React apps — notifi
 
 ## 🎮 Demo App
 
-Check out our [live demo](https://react-broadcast-sync.vercel.app) to see the library in action! The demo showcases three main features:
+Check out our [live demo](https://react-broadcast-sync-3w3m.vercel.app/) to see the library in action! The demo showcases three main features:
 
 1. **Counter Synchronization**
 
