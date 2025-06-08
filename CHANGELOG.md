@@ -1,3 +1,10 @@
+# [1.2.0](https://github.com/IdanShalem/react-broadcast-sync/compare/v1.1.4...v1.2.0) (2025-06-08)
+
+
+### Features
+
+* clearReceivedMessages and clearSentMessages improved logic ([92916d8](https://github.com/IdanShalem/react-broadcast-sync/commit/92916d80f3a79cadb2f34c11f3f9759f6d74f8b2))
+
 ## [1.1.4](https://github.com/IdanShalem/react-broadcast-sync/compare/v1.1.3...v1.1.4) (2025-06-03)
 
 
