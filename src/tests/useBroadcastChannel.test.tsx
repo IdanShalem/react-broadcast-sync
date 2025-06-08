@@ -1,5 +1,6 @@
 import { renderHook, act } from '@testing-library/react';
 import { useBroadcastChannel } from '../hooks/useBroadcastChannel';
+import { getInternalMessageType } from '../utils/messageUtils';
 
 let mockChannels: any[] = [];
 
@@ -118,7 +119,7 @@ describe('useBroadcastChannel', () => {
     expect(result.current.messages.length).toBe(1);
 
     act(() => {
-      result.current.clearMessage('123');
+      result.current.clearReceivedMessages({ ids: ['123'] });
     });
 
     expect(result.current.messages.length).toBe(0);
@@ -149,7 +150,7 @@ describe('useBroadcastChannel', () => {
     expect(result.current.messages.length).toBe(2);
 
     act(() => {
-      result.current.clearAllMessages();
+      result.current.clearReceivedMessages();
     });
 
     expect(result.current.messages.length).toBe(0);
@@ -167,7 +168,7 @@ describe('useBroadcastChannel', () => {
     expect(result.current.sentMessages.length).toBe(1);
 
     act(() => {
-      result.current.clearSentMessage(sentId);
+      result.current.clearSentMessages({ ids: [sentId] });
     });
 
     expect(result.current.sentMessages.length).toBe(0);
@@ -262,7 +263,7 @@ describe('useBroadcastChannel', () => {
     expect(result.current.messages.length).toBe(1);
   });
 
-  it('handles internal clear message from other source', async () => {
+  it('handles internal clear message (single id) from other source', async () => {
     const { result } = renderHook(() => useBroadcastChannel('test-channel'));
     await waitForChannel();
     const channel = mockChannels[0];
@@ -279,11 +280,12 @@ describe('useBroadcastChannel', () => {
 
     expect(result.current.messages.length).toBe(1);
 
+    const internalType = getInternalMessageType('CLEAR_SENT_MESSAGES', 'test-channel');
     act(() => {
       channel.simulateMessage({
-        id: 'to-clear',
-        type:
-          '__INTERNAL__:CLEAR_MESSAGE:' + btoa('react-broadcast-sync:CLEAR_MESSAGE:test-channel-'),
+        id: 'internal-1',
+        type: internalType,
+        message: { ids: ['to-clear'], types: [] },
         source: 'another-tab',
         timestamp: Date.now(),
       });
@@ -292,7 +294,7 @@ describe('useBroadcastChannel', () => {
     expect(result.current.messages.length).toBe(0);
   });
 
-  it('handles internal clear all messages from other source', async () => {
+  it('handles internal clear all messages (wildcard) from other source', async () => {
     const { result } = renderHook(() => useBroadcastChannel('test-channel'));
     await waitForChannel();
     const channel = mockChannels[0];
@@ -316,14 +318,12 @@ describe('useBroadcastChannel', () => {
 
     expect(result.current.messages.length).toBe(2);
 
+    const internalTypeAll = getInternalMessageType('CLEAR_SENT_MESSAGES', 'test-channel');
     act(() => {
       channel.simulateMessage({
-        id:
-          '__INTERNAL__:CLEAR_ALL_MESSAGES:' +
-          btoa('react-broadcast-sync:CLEAR_ALL_MESSAGES:test-channel-'),
-        type:
-          '__INTERNAL__:CLEAR_ALL_MESSAGES:' +
-          btoa('react-broadcast-sync:CLEAR_ALL_MESSAGES:test-channel-'),
+        id: 'internal-2',
+        type: internalTypeAll,
+        message: { ids: [], types: [] },
         source: 'another-tab',
         timestamp: Date.now(),
       });

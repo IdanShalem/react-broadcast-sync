@@ -65,19 +65,19 @@ describe('messageUtils', () => {
   });
 
   it('getInternalMessageType produces unique hashes for different channels', () => {
-    const one = getInternalMessageType('CLEAR_MESSAGE', 'chanA');
-    const two = getInternalMessageType('CLEAR_MESSAGE', 'chanB');
+    const one = getInternalMessageType('CLEAR_SENT_MESSAGES', 'chanA');
+    const two = getInternalMessageType('CLEAR_SENT_MESSAGES', 'chanB');
     expect(one).not.toBe(two);
   });
 
   it('getInternalMessageType generates consistent hash string', () => {
-    const type = getInternalMessageType('CLEAR_MESSAGE', 'my-channel', 'ns');
+    const type = getInternalMessageType('CLEAR_SENT_MESSAGES', 'my-channel', 'ns');
     expect(type).toContain('__INTERNAL__');
-    expect(type).toContain('CLEAR_MESSAGE');
+    expect(type).toContain('CLEAR_SENT_MESSAGES');
   });
 
   it('isInternalType detects internal message types', () => {
-    const type = getInternalMessageType('CLEAR_ALL_MESSAGES', 'chan');
+    const type = getInternalMessageType('CLEAR_SENT_MESSAGES', 'chan');
     expect(isInternalType(type)).toBe(true);
     expect(isInternalType('normal-type')).toBe(false);
   });
@@ -85,7 +85,7 @@ describe('messageUtils', () => {
   it('isValidInternalClearMessage detects valid structure', () => {
     const valid = {
       id: 'abc',
-      type: getInternalMessageType('CLEAR_ALL_MESSAGES', 'ch'),
+      type: getInternalMessageType('CLEAR_SENT_MESSAGES', 'ch'),
       source: 'tab-1',
     };
     const invalid = { id: 123, type: 'bad', source: 'tab-1' };

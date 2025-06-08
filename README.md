@@ -40,23 +40,23 @@ Easily sync UI state or user events across browser tabs in React apps — notifi
 
 ## Table of Contents
 
-- [Features](#-features)
-- [Demo App](#-demo-app)
-- [Installation](#-installation)
-- [Quick Start](#-quick-start)
-- [Advanced Usage](#️-advanced-usage)
-- [BroadcastProvider](#-using-broadcastprovider)
-- [API Reference](#-api-reference)
-- [Best Practices](#-best-practices)
-- [Common Use Cases](#-common-use-cases)
-- [Performance Considerations](#-performance-considerations)
-- [Troubleshooting](#-troubleshooting)
-- [Testing](#-testing)
-- [Browser Support](#-browser-support)
-- [Coming Soon](#-coming-soon)
-- [Versioning & Releases](#-versioning--releases)
-- [Contributing](#-contributing)
-- [License](#-license)
+- [Features](#features)
+- [Demo App](#demo-app)
+- [Installation](#installation)
+- [Quick Start](#quick-start)
+- [Advanced Usage](#️advanced-usage)
+- [BroadcastProvider](#using-broadcastprovider)
+- [API Reference](#api-reference)
+- [Best Practices](#best-practices)
+- [Common Use Cases](#common-use-cases)
+- [Performance Considerations](#performance-considerations)
+- [Troubleshooting](#-roubleshooting)
+- [Testing](#testing)
+- [Browser Support](#browser-support)
+- [Coming Soon](#coming-soon)
+- [Versioning & Releases](#versioning--releases)
+- [Contributing](#contributing)
+- [License](#license)
 
 ## Features
 
@@ -118,7 +118,7 @@ pnpm add react-broadcast-sync
 import { useBroadcastChannel } from 'react-broadcast-sync';
 
 function MyComponent() {
-  const { messages, postMessage, clearMessage } = useBroadcastChannel('my-channel');
+  const { messages, postMessage, clearReceivedMessages } = useBroadcastChannel('my-channel');
 
   const handleSend = () => {
     postMessage('greeting', { text: 'Hello from another tab!' });
@@ -130,7 +130,7 @@ function MyComponent() {
       {messages.map(msg => (
         <div key={msg.id}>
           {msg.message.text}
-          <button onClick={() => clearMessage(msg.id)}>Clear</button>
+          <button onClick={() => clearReceivedMessages({ ids: [msg.id] })}>Clear</button>
         </div>
       ))}
     </>
@@ -148,9 +148,8 @@ const {
   messages,
   sentMessages,
   postMessage,
-  clearMessage,
-  clearAllMessages,
-  clearSentMessage,
+  clearReceivedMessages,
+  clearSentMessages,
   error,
 } = useBroadcastChannel('my-channel', {
   sourceName: 'my-tab',
@@ -211,9 +210,8 @@ const {
   messages,
   sentMessages,
   postMessage,
-  clearMessage,
-  clearAllMessages,
-  clearSentMessage,
+  clearReceivedMessages,
+  clearSentMessages,
   error,
 } = useBroadcastChannel(channelName, options);
 ```
@@ -252,9 +250,8 @@ interface BroadcastActions {
   messages: BroadcastMessage[]; // Received messages
   sentMessages: BroadcastMessage[]; // Messages sent by this instance
   postMessage: (type: string, content: any, options?: SendMessageOptions) => void;
-  clearMessage: (id: string) => void;
-  clearAllMessages: () => void;
-  clearSentMessage: (id: string) => void;
+  clearReceivedMessages: (opts?: { ids?: string[]; types?: string[]; sources?: string[] }) => void;
+  clearSentMessages: (opts?: { ids?: string[]; types?: string[]; sync?: boolean }) => void;
   error: string | null; // Current error state
 }
 ```
@@ -263,16 +260,33 @@ interface BroadcastActions {
 
 Returns an object with:
 
-| Property             | Type                 | Description                                            |
-| -------------------- | -------------------- | ------------------------------------------------------ |
-| `channelName`        | `string`             | The resolved channel name (includes namespace)         |
-| `messages`           | `BroadcastMessage[]` | All received messages from other tabs                  |
-| `sentMessages`       | `BroadcastMessage[]` | Messages sent from this tab                            |
-| `postMessage()`      | `function`           | Send a message to all tabs                             |
-| `clearMessage()`     | `function`           | Remove a message locally and notify others to clear it |
-| `clearAllMessages()` | `function`           | Remove all messages locally and notify others          |
-| `clearSentMessage()` | `function`           | Remove a sent message without affecting others         |
-| `error`              | `string \| null`     | Any runtime error from the channel                     |
+| Property                  | Type                 | Description                                                                                                                                                                                  |
+| ------------------------- | -------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `channelName`             | `string`             | The resolved channel name (includes namespace)                                                                                                                                               |
+| `messages`                | `BroadcastMessage[]` | All received messages from other tabs                                                                                                                                                        |
+| `sentMessages`            | `BroadcastMessage[]` | Messages sent from this tab                                                                                                                                                                  |
+| `postMessage()`           | `function`           | Send a message to all tabs                                                                                                                                                                   |
+| `clearReceivedMessages()` | `function`           | Clear received messages. No filters ⇒ clear all. With filters, a message is deleted only if it matches **every** provided filter (`ids`, `types`, `sources`). Empty arrays act as wildcards. |
+| `clearSentMessages()`     | `function`           | Clear messages this tab sent (same matching rules). Pass `sync: true` to broadcast the clear to other tabs.                                                                                  |
+| `error`                   | `string \| null`     | Any runtime error from the channel                                                                                                                                                           |
+
+#### Clearing examples
+
+```tsx
+// Clear everything we've received
+clearReceivedMessages();
+
+// Clear all messages we sent and broadcast the clear to other tabs
+clearSentMessages({ sync: true });
+
+// Clear by id or by type (OR inside each array)
+clearReceivedMessages({ ids: ['123'] }); // id match
+clearReceivedMessages({ types: ['alert', 'chat'] }); // type match
+
+// Combine filters (logical AND between filters)
+// Removes messages whose id is '123' AND type is 'alert'
+clearSentMessages({ ids: ['123'], types: ['alert'] });
+```
 
 #### Send Options:
 
@@ -378,9 +392,9 @@ function TabStatus() {
 - Implement debouncing for rapid state changes
 - Consider using `expirationDuration` for temporary messages
 
-### Memory Management\*\*
+### Memory Management
 
-- Clear messages when they're no longer needed
+- Clear messages when they're no longer needed using `clearReceivedMessages` / `clearSentMessages`
 - Use `cleaningInterval` to automatically remove expired messages
 - Implement proper cleanup in component unmount
 
@@ -420,12 +434,6 @@ function ChatComponent() {
   - For frequent updates: 500-1000ms
   - For infrequent updates: 0ms (no debounce)
 - Adjust `cleaningInterval` based on your message expiration needs
-
-### Memory Management
-
-- Clear messages when they're no longer needed using `clearMessage` or `clearAllMessages`
-- Use message expiration for temporary data
-- Consider using `keepLatestMessage: true` for status updates to prevent memory buildup
 
 ## Troubleshooting
 

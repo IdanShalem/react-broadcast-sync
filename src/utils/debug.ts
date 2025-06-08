@@ -29,8 +29,8 @@ const log = (level: LogLevel, message: string, data?: any) => {
 
 export const debug = {
   channel: {
-    created: (channelName: string) => log('info', 'Channel created:', channelName),
-    closed: (channelName: string) => log('info', 'Channel closed:', channelName),
+    created: (name: string) => log('info', 'Channel created:', name),
+    closed: (name: string) => log('info', 'Channel closed:', name),
   },
   message: {
     sent: (message: any) => log('info', 'Message sent:', message),
@@ -38,6 +38,8 @@ export const debug = {
     cleared: (messageId: string) => log('info', 'Message cleared:', messageId),
     expired: (messageId: string) => log('info', 'Message expired:', messageId),
     duplicate: (messageId: string) => log('warn', 'Duplicate message ignored:', messageId),
+    allSentCleared: () => log('info', 'All sent messages cleared'),
+    allReceivedCleared: () => log('info', 'All received messages cleared'),
   },
   cleanup: {
     started: () => log('info', 'Cleanup started'),

@@ -57,6 +57,18 @@ export interface BroadcastMessage {
   /** Optional expiration timestamp */
   expirationDate?: number;
 }
+export interface ClearOptions {
+  ids?: string[];
+  types?: string[];
+}
+
+export interface ClearReceivedMessagesOptions extends ClearOptions {
+  sources?: string[];
+}
+
+export interface ClearSentMessagesOptions extends ClearOptions {
+  sync?: boolean;
+}
 
 /**
  * Actions and state provided by the broadcast channel hook
@@ -74,15 +86,14 @@ export interface BroadcastActions {
   /** Function to send a message */
   postMessage: (messageType: string, messageContent: any, options?: SendMessageOptions) => void;
 
-  /** Function to clear a specific message */
-  clearMessage: (id: string) => void;
+  /** Function to clear received messages */
+  clearReceivedMessages: (options?: ClearReceivedMessagesOptions) => void;
 
-  /** Function to clear all messages */
-  clearAllMessages: () => void;
-
-  /** Function to clear a specific sent message */
-  clearSentMessage: (id: string) => void;
+  /** Function to clear sent messages */
+  clearSentMessages: (options?: ClearSentMessagesOptions) => void;
 
   /** Current error state */
   error: string | null;
 }
+
+export type ClearMessage = 'CLEAR_SENT_MESSAGES';

@@ -1,3 +1,5 @@
+import { ClearMessage } from '../types/types';
+
 const INTERNAL_PREFIX = '__INTERNAL__';
 const SECRET = 'react-broadcast-sync';
 
@@ -44,7 +46,7 @@ export const createMessage = (
 };
 
 export const getInternalMessageType = (
-  baseType: 'CLEAR_MESSAGE' | 'CLEAR_ALL_MESSAGES',
+  baseType: ClearMessage,
   channelName: string,
   namespace = ''
 ): string => {
@@ -58,16 +60,13 @@ export const isInternalType = (type: string): boolean => {
   return type.startsWith(`${INTERNAL_PREFIX}:`);
 };
 
-export const isValidInternalClearMessage = (
-  message: any
-): message is { id: string; type: string; source: string } => {
+export const isValidInternalClearMessage = (message: any): boolean => {
   return (
     message &&
     typeof message === 'object' &&
-    typeof message.id === 'string' &&
-    typeof message.source === 'string' &&
     typeof message.type === 'string' &&
-    isInternalType(message.type)
+    isInternalType(message.type) &&
+    typeof message.source === 'string'
   );
 };
 

@@ -3,6 +3,9 @@ import {
   BroadcastActions,
   BroadcastMessage,
   BroadcastOptions,
+  ClearMessage,
+  ClearReceivedMessagesOptions,
+  ClearSentMessagesOptions,
   SendMessageOptions,
 } from '../types/types';
 import {
@@ -17,9 +20,8 @@ import {
 } from '../utils/messageUtils';
 import { debug } from '../utils/debug';
 
-const INTERNAL_MESSAGE_TYPES = {
-  CLEAR_MESSAGE: 'CLEAR_MESSAGE',
-  CLEAR_ALL_MESSAGES: 'CLEAR_ALL_MESSAGES',
+const INTERNAL_MESSAGE_TYPES: Record<string, ClearMessage> = {
+  CLEAR_SENT_MESSAGES: 'CLEAR_SENT_MESSAGES',
 } as const;
 
 export const useBroadcastChannel = (
@@ -46,13 +48,8 @@ export const useBroadcastChannel = (
   const receivedMessageIds = useRef(new Map<string, number>());
   const source = useRef(sourceName || generateSourceName()).current;
   const internalTypes = useRef({
-    CLEAR_MESSAGE: getInternalMessageType(
-      INTERNAL_MESSAGE_TYPES.CLEAR_MESSAGE,
-      channelName,
-      namespace
-    ),
-    CLEAR_ALL_MESSAGES: getInternalMessageType(
-      INTERNAL_MESSAGE_TYPES.CLEAR_ALL_MESSAGES,
+    CLEAR_SENT_MESSAGES: getInternalMessageType(
+      INTERNAL_MESSAGE_TYPES.CLEAR_SENT_MESSAGES,
       channelName,
       namespace
     ),
@@ -80,42 +77,6 @@ export const useBroadcastChannel = (
     setTimeout(() => setError(null), 3000);
   }, []);
 
-  const clearMessage = useCallback(
-    (id: string) => {
-      setMessages(prev => prev.filter(msg => msg.id !== id));
-      setSentMessages(prev => prev.filter(msg => msg.id !== id));
-      channel.current?.postMessage({
-        id,
-        type: internalTypes.CLEAR_MESSAGE,
-        source,
-      });
-      debug.message.cleared(id);
-    },
-    [source, internalTypes.CLEAR_MESSAGE]
-  );
-
-  const clearAllMessages = useCallback(() => {
-    setMessages([]);
-    setSentMessages([]);
-    channel.current?.postMessage({
-      id: internalTypes.CLEAR_ALL_MESSAGES,
-      type: internalTypes.CLEAR_ALL_MESSAGES,
-      source,
-    });
-  }, [source, internalTypes.CLEAR_ALL_MESSAGES]);
-
-  const clearSentMessage = useCallback(
-    (id: string) => {
-      setSentMessages(prev => prev.filter(msg => msg.id !== id));
-      channel.current?.postMessage({
-        id,
-        type: internalTypes.CLEAR_MESSAGE,
-        source,
-      });
-    },
-    [source, internalTypes.CLEAR_MESSAGE]
-  );
-
   const postMessage = useCallback(
     (messageType: string, messageContent: any, options: SendMessageOptions = {}) => {
       const channelCurrent = channel.current;
@@ -140,6 +101,55 @@ export const useBroadcastChannel = (
     [source, setErrorMessage]
   );
 
+  const clearReceivedMessages = useCallback((options: ClearReceivedMessagesOptions = {}) => {
+    const hasFilters = Boolean(
+      (options.ids && options.ids.length) ||
+        (options.types && options.types.length) ||
+        (options.sources && options.sources.length)
+    );
+
+    setMessages(prev =>
+      hasFilters
+        ? prev.filter(
+            msg =>
+              !(options.ids && options.ids.includes(msg.id)) &&
+              !(options.types && options.types.includes(msg.type)) &&
+              !(options.sources && options.sources.includes(msg.source))
+          )
+        : []
+    );
+  }, []);
+
+  const clearSentMessages = useCallback((options: ClearSentMessagesOptions = {}) => {
+    const { ids = [], types = [], sync = false } = options ?? {};
+    setSentMessages(prev =>
+      ids.length > 0 || types.length > 0
+        ? prev.filter(msg => {
+            // Only consider messages from the same sender
+            if (msg.source !== source) return true;
+
+            // Decide whether this message should be cleared:
+            // - If the ids array is empty, treat as wildcard (match all ids)
+            // - If the types array is empty, treat as wildcard (match all types)
+            const idMatches = ids.length === 0 || ids.includes(msg.id);
+            const typeMatches = types.length === 0 || types.includes(msg.type);
+
+            // Remove when BOTH criteria match (wildcards included)
+            return !(idMatches && typeMatches);
+          })
+        : []
+    );
+    if (sync) {
+      channel.current?.postMessage(
+        createMessage(
+          internalTypes.CLEAR_SENT_MESSAGES,
+          { ids: options.ids ?? [], types: options.types ?? [] },
+          source
+        )
+      );
+    }
+  }, []);
+
   const handleMessage = useCallback(
     (event: MessageEvent) => {
       try {
@@ -160,15 +170,26 @@ export const useBroadcastChannel = (
         }
 
         if (isValidInternalClearMessage(message)) {
-          if (message.type === internalTypes.CLEAR_MESSAGE) {
-            setMessages(prev =>
-              prev.filter(msg => !(msg.id === message.id && msg.source === message.source))
-            );
-            return;
-          }
+          if (message.type === internalTypes.CLEAR_SENT_MESSAGES) {
+            const { ids = [], types = [] } = (message as any).message || {};
 
-          if (message.type === internalTypes.CLEAR_ALL_MESSAGES) {
-            setMessages(prev => prev.filter(msg => msg.source !== message.source));
+            setMessages(prev =>
+              prev.filter(msg => {
+                // Only consider messages from the same sender
+                if (msg.source !== message.source) return true;
+
+                // Decide whether this message should be cleared:
+                // - If the ids array is empty, treat as wildcard (match all ids)
+                // - If the types array is empty, treat as wildcard (match all types)
+                const idMatches = ids.length === 0 || ids.includes(msg.id);
+                const typeMatches = types.length === 0 || types.includes(msg.type);
+
+                // Remove when BOTH criteria match (wildcards included)
+                return !(idMatches && typeMatches);
+              })
+            );
+
+            // After handling we don't want to process this internal control packet further
             return;
           }
         }
@@ -249,9 +270,8 @@ export const useBroadcastChannel = (
     messages,
     sentMessages,
     postMessage,
-    clearMessage,
-    clearAllMessages,
-    clearSentMessage,
+    clearReceivedMessages,
+    clearSentMessages,
     error,
   };
 };
