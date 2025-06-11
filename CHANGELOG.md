@@ -1,3 +1,10 @@
+## [1.2.1](https://github.com/IdanShalem/react-broadcast-sync/compare/v1.2.0...v1.2.1) (2025-06-11)
+
+
+### Bug Fixes
+
+* added unit testing for same tab scenarios ([5e3df1d](https://github.com/IdanShalem/react-broadcast-sync/commit/5e3df1deab456565a09f0dfda84b21b526f157ba))
+
 # [1.2.0](https://github.com/IdanShalem/react-broadcast-sync/compare/v1.1.4...v1.2.0) (2025-06-08)
 
 
