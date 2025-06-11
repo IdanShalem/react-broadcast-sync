@@ -16,6 +16,7 @@ yarn-error.log*
 *.ntvs*
 *.njsproj
 *.sln
+codegen/
 
 # Mac system files
 .DS_Store
