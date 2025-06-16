@@ -6,6 +6,7 @@ import {
   ClearMessage,
   ClearReceivedMessagesOptions,
   ClearSentMessagesOptions,
+  GetLatestMessageOptions,
   SendMessageOptions,
 } from '../types/types';
 import {
@@ -14,7 +15,6 @@ import {
   isMessageExpired,
   createMessage,
   getInternalMessageType,
-  isInternalType,
   isValidInternalClearMessage,
   debounce,
 } from '../utils/messageUtils';
@@ -46,18 +46,23 @@ export const useBroadcastChannel = (
   // Refs
   const channel = useRef<BroadcastChannel | null>(null);
   const receivedMessageIds = useRef(new Map<string, number>());
-  const source = useRef(sourceName || generateSourceName()).current;
-  const internalTypes = useRef({
-    CLEAR_SENT_MESSAGES: getInternalMessageType(
-      INTERNAL_MESSAGE_TYPES.CLEAR_SENT_MESSAGES,
-      channelName,
-      namespace
-    ),
-  }).current;
+  const source = useMemo(() => sourceName || generateSourceName(), [sourceName]);
+  const internalTypes = useMemo(
+    () => ({
+      CLEAR_SENT_MESSAGES: getInternalMessageType(
+        INTERNAL_MESSAGE_TYPES.CLEAR_SENT_MESSAGES,
+        channelName,
+        namespace
+      ),
+    }),
+    [channelName, namespace]
+  );
 
   const resolvedChannelName = useMemo(() => {
     return `${channelName}-${namespace}`;
   }, [channelName, namespace]);
+
+  const stableRegisteredTypes = useMemo(() => registeredTypes, [JSON.stringify(registeredTypes)]);
 
   const performCleanup = useCallback(() => {
     setMessages(prev => prev.filter(msg => !isMessageExpired(msg)));
@@ -81,7 +86,8 @@ export const useBroadcastChannel = (
     (messageType: string, messageContent: any, options: SendMessageOptions = {}) => {
       const channelCurrent = channel.current;
       if (!channelCurrent) {
-        const error = 'Channel not available';
+        const error =
+          'BroadcastChannel is not supported in this browser. Please check browser compatibility.';
         debug.error(error);
         setErrorMessage(error);
         return;
@@ -150,6 +156,24 @@ export const useBroadcastChannel = (
     }
   }, []);
 
+  const getLatestMessage = useCallback(
+    (options: GetLatestMessageOptions = {}) => {
+      const { source, type } = options;
+
+      for (let i = messages.length - 1; i >= 0; i--) {
+        const msg = messages[i];
+        const sourceMatches = !source || msg.source === source;
+        const typeMatches = !type || msg.type === type;
+        if (sourceMatches && typeMatches) {
+          return msg;
+        }
+      }
+
+      return null;
+    },
+    [messages]
+  );
+
   const handleMessage = useCallback(
     (event: MessageEvent) => {
       try {
@@ -158,23 +182,12 @@ export const useBroadcastChannel = (
 
         if (!isValidMessage(message)) return;
         if (message.source === source) return;
-        if (
-          !isInternalType(message.type) &&
-          registeredTypes.length > 0 &&
-          !registeredTypes.includes(message.type)
-        )
-          return;
-        if (isMessageExpired(message)) {
-          debug.message.expired(message.id);
-          return;
-        }
-
         if (isValidInternalClearMessage(message)) {
           if (message.type === internalTypes.CLEAR_SENT_MESSAGES) {
             const { ids = [], types = [] } = (message as any).message || {};
 
-            setMessages(prev =>
-              prev.filter(msg => {
+            setMessages(prev => [
+              ...prev.filter(msg => {
                 // Only consider messages from the same sender
                 if (msg.source !== message.source) return true;
 
@@ -186,12 +199,20 @@ export const useBroadcastChannel = (
 
                 // Remove when BOTH criteria match (wildcards included)
                 return !(idMatches && typeMatches);
-              })
-            );
+              }),
+            ]);
 
             // After handling we don't want to process this internal control packet further
             return;
           }
+        }
+        if (stableRegisteredTypes.length > 0 && !stableRegisteredTypes.includes(message.type)) {
+          debug.message.ignored(message.type);
+          return;
+        }
+        if (isMessageExpired(message)) {
+          debug.message.expired(message.id);
+          return;
         }
 
         const now = Date.now();
@@ -209,8 +230,25 @@ export const useBroadcastChannel = (
         setErrorMessage(error);
       }
     },
-    [source, registeredTypes, keepLatestMessage, setErrorMessage, internalTypes, deduplicationTTL]
+    [
+      source,
+      stableRegisteredTypes,
+      keepLatestMessage,
+      setErrorMessage,
+      internalTypes,
+      deduplicationTTL,
+    ]
   );
+
+  const closeChannel = useCallback(() => {
+    const bc = channel.current;
+    if (bc && typeof bc.close === 'function') {
+      bc.removeEventListener('message', handleMessage);
+      bc.close();
+      debug.channel.closed(resolvedChannelName);
+      channel.current = null;
+    }
+  }, [handleMessage, resolvedChannelName]);
 
   useEffect(() => {
     if (typeof BroadcastChannel === 'undefined') {
@@ -227,9 +265,7 @@ export const useBroadcastChannel = (
 
     bc.addEventListener('message', handleMessage);
     return () => {
-      bc.removeEventListener('message', handleMessage);
-      bc.close();
-      debug.channel.closed(resolvedChannelName);
+      closeChannel();
     };
   }, [resolvedChannelName, handleMessage, setErrorMessage]);
 
@@ -272,7 +308,9 @@ export const useBroadcastChannel = (
     postMessage,
     clearReceivedMessages,
     clearSentMessages,
+    getLatestMessage,
     error,
+    closeChannel,
   };
 };
 

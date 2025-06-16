@@ -252,6 +252,8 @@ interface BroadcastActions {
   postMessage: (type: string, content: any, options?: SendMessageOptions) => void;
   clearReceivedMessages: (opts?: { ids?: string[]; types?: string[]; sources?: string[] }) => void;
   clearSentMessages: (opts?: { ids?: string[]; types?: string[]; sync?: boolean }) => void;
+  getLatestMessage: (opts?: { type?: string; source?: string }) => BroadcastMessage | null;
+  closeChannel: () => void;
   error: string | null; // Current error state
 }
 ```
@@ -268,6 +270,8 @@ Returns an object with:
 | `postMessage()`           | `function`           | Send a message to all tabs                                                                                                                                                                   |
 | `clearReceivedMessages()` | `function`           | Clear received messages. No filters ⇒ clear all. With filters, a message is deleted only if it matches **every** provided filter (`ids`, `types`, `sources`). Empty arrays act as wildcards. |
 | `clearSentMessages()`     | `function`           | Clear messages this tab sent (same matching rules). Pass `sync: true` to broadcast the clear to other tabs.                                                                                  |
+| `getLatestMessage()`      | `function`           | Get the latest message matching optional filters (`type`, `source`). Returns the most recent message that matches, or `null` if none.                                                        |
+| `closeChannel()`          | `function`           | Explicitly closes the broadcast channel and removes event listeners. Safe to call multiple times.                                                                                            |
 | `error`                   | `string \| null`     | Any runtime error from the channel                                                                                                                                                           |
 
 #### Clearing examples
@@ -309,6 +313,68 @@ interface BroadcastMessage {
   expirationDate?: number;
 }
 ```
+
+#### Getting the Latest Message
+
+You can use `getLatestMessage` to retrieve the most recent message received, optionally filtered by `type` and/or `source`. If no options are provided, it returns the latest message of any kind. If no message matches, it returns `null`.
+
+**Signature:**
+
+```ts
+getLatestMessage(options?: { type?: string; source?: string }): BroadcastMessage | null
+```
+
+**Examples:**
+
+```tsx
+// Get the latest message of any type/source
+const latest = getLatestMessage();
+
+// Get the latest message of a specific type
+const latestAlert = getLatestMessage({ type: 'alert' });
+
+// Get the latest message from a specific source
+const latestFromTab = getLatestMessage({ source: 'tab-123' });
+
+// Get the latest message of a specific type from a specific source
+const latestInfoFromTab = getLatestMessage({ type: 'info', source: 'tab-123' });
+
+// Check if there are any messages of a type
+if (getLatestMessage({ type: 'notification' })) {
+  // ...
+}
+```
+
+**Behavior:**
+
+- If no messages are present, returns `null`.
+- If no message matches the filter, returns `null`.
+- If multiple messages match, returns the most recently received one.
+
+#### Closing the Channel Explicitly
+
+You can use `closeChannel` to explicitly close the underlying BroadcastChannel and remove all event listeners. This is useful if you want to clean up resources before the component unmounts, or to stop all cross-tab communication on demand. Note that the channel will automatically close and all event listeners will be removed when the component unmounts, so this method is mainly useful for manual cleanup.
+
+**Signature:**
+
+```ts
+closeChannel(): void
+```
+
+**Example:**
+
+```tsx
+const { closeChannel } = useBroadcastChannel('my-channel');
+
+// ... later, when you want to stop all communication:
+closeChannel();
+```
+
+**Notes:**
+
+- After calling `closeChannel`, the channel is closed and will not send or receive any more messages.
+- It is safe to call `closeChannel` multiple times (idempotent).
+- You do not need to call this for normal React unmounting; the hook will clean up automatically. Use it for explicit/manual cleanup only.
 
 ---
 

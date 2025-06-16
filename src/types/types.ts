@@ -70,6 +70,11 @@ export interface ClearSentMessagesOptions extends ClearOptions {
   sync?: boolean;
 }
 
+export interface GetLatestMessageOptions {
+  source?: string;
+  type?: string;
+}
+
 /**
  * Actions and state provided by the broadcast channel hook
  */
@@ -91,6 +96,12 @@ export interface BroadcastActions {
 
   /** Function to clear sent messages */
   clearSentMessages: (options?: ClearSentMessagesOptions) => void;
+
+  /** Function to get the latest message by source and type */
+  getLatestMessage: (options?: GetLatestMessageOptions) => BroadcastMessage | null;
+
+  /** Explicitly close the broadcast channel and remove listeners */
+  closeChannel: () => void;
 
   /** Current error state */
   error: string | null;

@@ -40,6 +40,8 @@ export const debug = {
     duplicate: (messageId: string) => log('warn', 'Duplicate message ignored:', messageId),
     allSentCleared: () => log('info', 'All sent messages cleared'),
     allReceivedCleared: () => log('info', 'All received messages cleared'),
+    ignored: (messageType: string) =>
+      log('info', 'Message ignored due to type filter:', messageType),
   },
   cleanup: {
     started: () => log('info', 'Cleanup started'),
