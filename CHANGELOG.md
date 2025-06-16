@@ -1,3 +1,10 @@
+# [1.3.0](https://github.com/IdanShalem/react-broadcast-sync/compare/v1.2.1...v1.3.0) (2025-06-16)
+
+
+### Features
+
+* added getLatestMessage and closeChannel methods ([2ca0c32](https://github.com/IdanShalem/react-broadcast-sync/commit/2ca0c320c6558fd4205a8965d364d49c07609e97))
+
 ## [1.2.1](https://github.com/IdanShalem/react-broadcast-sync/compare/v1.2.0...v1.2.1) (2025-06-11)
 
 
