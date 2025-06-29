@@ -43,6 +43,9 @@ export const debug = {
     ignored: (messageType: string) =>
       log('info', 'Message ignored due to type filter:', messageType),
   },
+  ping: {
+    inProgress: () => log('warn', 'Ping already in progress. Skipping call.'),
+  },
   cleanup: {
     started: () => log('info', 'Cleanup started'),
     completed: (removedCount: number) => log('info', 'Cleanup completed:', { removedCount }),

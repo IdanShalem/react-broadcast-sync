@@ -70,6 +70,7 @@ Easily sync UI state or user events across browser tabs in React apps — notifi
 - Clear individual or all messages
 - Only accept allowed message types (optional)
 - `BroadcastProvider` for context-based usage
+- **Ping and active source detection** (discover other tabs and their source names)
 
 ## Demo App
 
@@ -271,6 +272,8 @@ Returns an object with:
 | `clearReceivedMessages()` | `function`           | Clear received messages. No filters ⇒ clear all. With filters, a message is deleted only if it matches **every** provided filter (`ids`, `types`, `sources`). Empty arrays act as wildcards. |
 | `clearSentMessages()`     | `function`           | Clear messages this tab sent (same matching rules). Pass `sync: true` to broadcast the clear to other tabs.                                                                                  |
 | `getLatestMessage()`      | `function`           | Get the latest message matching optional filters (`type`, `source`). Returns the most recent message that matches, or `null` if none.                                                        |
+| `ping(timeoutMs?)`        | `function`           | Ping other tabs on the channel and collect their source names. `timeoutMs` (default: 300ms) controls how long to wait for responses before resolving. Returns a Promise of string array.     |
+| `isPingInProgress`        | `boolean`            | `true` while a ping is active, otherwise `false`.                                                                                                                                            |
 | `closeChannel()`          | `function`           | Explicitly closes the broadcast channel and removes event listeners. Safe to call multiple times.                                                                                            |
 | `error`                   | `string \| null`     | Any runtime error from the channel                                                                                                                                                           |
 
@@ -350,6 +353,29 @@ if (getLatestMessage({ type: 'notification' })) {
 - If no messages are present, returns `null`.
 - If no message matches the filter, returns `null`.
 - If multiple messages match, returns the most recently received one.
+
+#### Ping & Active Source Detection
+
+`useBroadcastChannel` provides a `ping` method and an `isPingInProgress` state for discovering active sources (tabs) on the same channel.
+
+- **`ping(timeoutMs?: number): Promise<string[]>`**: Broadcasts a ping and collects responses from other tabs within the timeout. Returns an array of source names (excluding your own).
+- **`isPingInProgress: boolean`**: Indicates if a ping is currently in progress.
+
+**Example:**
+
+```tsx
+const { ping, isPingInProgress } = useBroadcastChannel('my-channel', {
+  sourceName: 'my-tab',
+});
+
+// To discover other active sources:
+const activeSources = await ping(300); // e.g., ['tab-2', 'tab-3']
+
+// To show loading state:
+if (isPingInProgress) {
+  // Show spinner or status
+}
+```
 
 #### Closing the Channel Explicitly
 

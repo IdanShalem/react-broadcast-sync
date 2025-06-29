@@ -1,4 +1,4 @@
-import { ClearMessage } from '../types/types';
+import { InternalMessage } from '../types/types';
 
 const INTERNAL_PREFIX = '__INTERNAL__';
 const SECRET = 'react-broadcast-sync';
@@ -46,7 +46,7 @@ export const createMessage = (
 };
 
 export const getInternalMessageType = (
-  baseType: ClearMessage,
+  baseType: InternalMessage,
   channelName: string,
   namespace = ''
 ): string => {

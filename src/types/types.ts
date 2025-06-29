@@ -88,6 +88,12 @@ export interface BroadcastActions {
   /** Array of sent messages */
   sentMessages: BroadcastMessage[];
 
+  /** Whether a ping operation is currently in progress */
+  isPingInProgress: boolean;
+
+  /** Function to ping the channel and get active sources */
+  ping: (timeoutMs?: number) => Promise<string[]>;
+
   /** Function to send a message */
   postMessage: (messageType: string, messageContent: any, options?: SendMessageOptions) => void;
 
@@ -108,3 +114,5 @@ export interface BroadcastActions {
 }
 
 export type ClearMessage = 'CLEAR_SENT_MESSAGES';
+
+export type InternalMessage = ClearMessage | 'PING' | 'PONG';
