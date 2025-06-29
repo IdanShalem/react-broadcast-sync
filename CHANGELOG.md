@@ -1,3 +1,10 @@
+# [1.4.0](https://github.com/IdanShalem/react-broadcast-sync/compare/v1.3.0...v1.4.0) (2025-06-29)
+
+
+### Features
+
+* ping for other sources ([794631a](https://github.com/IdanShalem/react-broadcast-sync/commit/794631ae118da61dd888b18ca3d960ae4869498d))
+
 # [1.3.0](https://github.com/IdanShalem/react-broadcast-sync/compare/v1.2.1...v1.3.0) (2025-06-16)
 
 

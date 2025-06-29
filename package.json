@@ -1,6 +1,6 @@
 {
   "name": "react-broadcast-sync",
-  "version": "1.3.0",
+  "version": "1.4.0",
   "description": "A lightweight React hook and provider for syncing state across browser tabs using BroadcastChannel API.",
   "main": "dist/index.cjs.js",
   "module": "dist/index.esm.js",
