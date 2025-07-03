@@ -65,7 +65,7 @@ describe('BroadcastProvider', () => {
 
     // The provider creates two channels - one in the provider and one in useBroadcastChannel
     expect(mockChannels).toHaveLength(2);
-    expect(mockChannels[0].name).toBe('test-channel-');
+    expect(mockChannels[0].name).toBe('test-channel');
     expect(mockChannels[1].name).toBe('test-channel');
   });
 

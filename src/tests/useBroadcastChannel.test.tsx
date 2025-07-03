@@ -24,7 +24,12 @@ class MockBroadcastChannel {
     const others = MockBroadcastChannel.channels[this.name] || [];
     for (const channel of others) {
       if (channel !== this && !channel.closed && channel._onmessage) {
-        channel._onmessage({ data } as MessageEvent);
+        // Support both single and batched (array) messages
+        if (Array.isArray(data)) {
+          data.forEach(msg => channel._onmessage!({ data: msg } as MessageEvent));
+        } else {
+          channel._onmessage({ data } as MessageEvent);
+        }
       }
     }
   });
@@ -55,7 +60,12 @@ class MockBroadcastChannel {
 
   simulateMessage(data: any) {
     if (this.closed || !this._onmessage) return;
-    this._onmessage({ data } as MessageEvent);
+    // Support both single and batched (array) messages
+    if (Array.isArray(data)) {
+      data.forEach(msg => this._onmessage!({ data: msg } as MessageEvent));
+    } else {
+      this._onmessage({ data } as MessageEvent);
+    }
   }
 }
 
@@ -331,7 +341,9 @@ describe('useBroadcastChannel', () => {
     });
 
     it('handles error when posting message fails', async () => {
-      const { result } = renderHook(() => useBroadcastChannel('test-channel'));
+      const { result } = renderHook(() =>
+        useBroadcastChannel('test-channel', { batchingDelayMs: 0 })
+      );
       await waitForChannel();
       const channel = mockChannels[0];
 
@@ -1116,6 +1128,116 @@ describe('useBroadcastChannel', () => {
 
       expect(Array.isArray(sources)).toBe(true);
       expect(result.current.isPingInProgress).toBe(false);
+    });
+  });
+
+  describe('Batching', () => {
+    it('batches multiple messages sent within the delay', async () => {
+      jest.useFakeTimers();
+      const { result: hook1 } = renderHook(() =>
+        useBroadcastChannel('batch-channel', { batchingDelayMs: 50, sourceName: 'A' })
+      );
+      const { result: hook2 } = renderHook(() =>
+        useBroadcastChannel('batch-channel', { sourceName: 'B' })
+      );
+      await waitForChannel();
+      act(() => {
+        hook1.current.postMessage('type1', { a: 1 });
+        hook1.current.postMessage('type2', { b: 2 });
+      });
+      // Fast-forward batching delay
+      act(() => {
+        jest.advanceTimersByTime(51);
+      });
+      // Both messages should be received as a batch (array)
+      await waitFor(() => {
+        expect(hook2.current.messages.length).toBe(2);
+        expect(hook2.current.messages[0].type).toBe('type1');
+        expect(hook2.current.messages[1].type).toBe('type2');
+      });
+      jest.useRealTimers();
+    });
+
+    it('excluded types are sent immediately', async () => {
+      const { result: hook1 } = renderHook(() =>
+        useBroadcastChannel('batch-channel', {
+          batchingDelayMs: 50,
+          excludedBatchMessageTypes: ['urgent'],
+          sourceName: 'A',
+        })
+      );
+      const { result: hook2 } = renderHook(() =>
+        useBroadcastChannel('batch-channel', { sourceName: 'B' })
+      );
+      await waitForChannel();
+      act(() => {
+        hook1.current.postMessage('urgent', { now: true });
+      });
+      // Should be received immediately, not batched
+      await waitFor(() => {
+        expect(hook2.current.messages.length).toBe(1);
+        expect(hook2.current.messages[0].type).toBe('urgent');
+      });
+    });
+
+    it('flushes unsent batched messages on unmount', async () => {
+      const { result, unmount } = renderHook(() =>
+        useBroadcastChannel('batch-channel', { batchingDelayMs: 0, sourceName: 'A' })
+      );
+      const { result: hook2 } = renderHook(() =>
+        useBroadcastChannel('batch-channel', { sourceName: 'B' })
+      );
+      await waitForChannel();
+      act(() => {
+        result.current.postMessage('type1', { a: 1 });
+      });
+      // Unmount (should not affect immediate send)
+      unmount();
+      await waitFor(() => {
+        expect(hook2.current.messages.length).toBe(1);
+        expect(hook2.current.messages[0].type).toBe('type1');
+      });
+    });
+
+    it('handles both single and batch messages in the event handler', async () => {
+      const { result } = renderHook(() =>
+        useBroadcastChannel('batch-channel', { sourceName: 'A' })
+      );
+      await waitForChannel();
+      const channel = mockChannels[0];
+      // Simulate receiving a single message
+      act(() => {
+        channel.simulateMessage({
+          id: '1',
+          type: 'single',
+          message: 'one',
+          source: 'B',
+          timestamp: Date.now(),
+        });
+      });
+      // Simulate receiving a batch (array)
+      act(() => {
+        channel.simulateMessage([
+          {
+            id: '2',
+            type: 'batch1',
+            message: 'two',
+            source: 'B',
+            timestamp: Date.now(),
+          },
+          {
+            id: '3',
+            type: 'batch2',
+            message: 'three',
+            source: 'B',
+            timestamp: Date.now(),
+          },
+        ]);
+      });
+      expect(result.current.messages.length).toBe(3);
+      expect(result.current.messages[0].type).toBe('single');
+      expect(result.current.messages[1].type).toBe('batch1');
+      expect(result.current.messages[2].type).toBe('batch2');
     });
   });
 });

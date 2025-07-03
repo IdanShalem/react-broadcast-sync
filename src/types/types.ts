@@ -22,6 +22,12 @@ export interface BroadcastOptions {
 
   /** Debounce time for messages cleanup in milliseconds (default: 1000) */
   cleanupDebounceMs?: number;
+
+  /** Delay in milliseconds for batching messages (default: 20) */
+  batchingDelayMs?: number;
+
+  /** Array of message types that should not be batched and sent immediately (default: []) */
+  excludedBatchMessageTypes?: string[];
 }
 
 /**

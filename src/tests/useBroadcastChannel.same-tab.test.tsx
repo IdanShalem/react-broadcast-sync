@@ -16,7 +16,12 @@ class MockBroadcastChannel {
       if (channel.onmessage) {
         // Use setTimeout to simulate async behavior
         setTimeout(() => {
-          channel.onmessage!({ data } as MessageEvent);
+          // Support both single and batched (array) messages
+          if (Array.isArray(data)) {
+            data.forEach(msg => channel.onmessage!({ data: msg } as MessageEvent));
+          } else {
+            channel.onmessage!({ data } as MessageEvent);
+          }
         }, 0);
       }
     });
@@ -37,7 +42,12 @@ class MockBroadcastChannel {
   simulateMessage(data: any) {
     if (this.onmessage) {
       setTimeout(() => {
-        this.onmessage!({ data } as MessageEvent);
+        // Support both single and batched (array) messages
+        if (Array.isArray(data)) {
+          data.forEach(msg => this.onmessage!({ data: msg } as MessageEvent));
+        } else {
+          this.onmessage!({ data } as MessageEvent);
+        }
       }, 0);
     }
   }
@@ -74,6 +84,7 @@ describe('useBroadcastChannel - Same Tab Multi-Hook Behavior', () => {
   const testOptions = {
     cleaningInterval: 0, // Disable auto cleanup to avoid act warnings
     deduplicationTTL: 60000, // Long TTL for tests
+    batchingDelayMs: 0, // Disable batching for immediate delivery in tests
   };
 
   describe('1. Two Hooks with Different Source Names', () => {
@@ -204,8 +215,8 @@ describe('useBroadcastChannel - Same Tab Multi-Hook Behavior', () => {
       await waitForAsync();
 
       // Verify both hooks are working (channel name includes namespace suffix)
-      expect(hook1.current.channelName).toBe(`${CHANNEL_NAME}-`);
-      expect(hook2.current.channelName).toBe(`${CHANNEL_NAME}-`);
+      expect(hook1.current.channelName).toBe(`${CHANNEL_NAME}`);
+      expect(hook2.current.channelName).toBe(`${CHANNEL_NAME}`);
 
       // Unmount hook1
       unmount1();

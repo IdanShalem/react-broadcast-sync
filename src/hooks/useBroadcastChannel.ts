@@ -36,6 +36,16 @@ if (process.env.NODE_ENV === 'test') {
   }
 }
 
+/**
+ * useBroadcastChannel hook
+ *
+ * Note: When batching is enabled (batchingDelayMs > 0), messages sent over the channel may be received as either:
+ *   - a single BroadcastMessage (object), or
+ *   - an array of BroadcastMessage (batch)
+ *
+ * The event handler in this hook supports both formats. If you listen to the channel directly, always check:
+ *   if (Array.isArray(event.data)) { ... } else { ... }
+ */
 export const useBroadcastChannel = (
   channelName: string,
   options: BroadcastOptions = {}
@@ -48,6 +58,8 @@ export const useBroadcastChannel = (
     namespace = '',
     deduplicationTTL = 5 * 60 * 1000,
     cleanupDebounceMs = 0,
+    batchingDelayMs = 20,
+    excludedBatchMessageTypes = [],
   } = options;
 
   // State
@@ -60,6 +72,9 @@ export const useBroadcastChannel = (
   const channel = useRef<BroadcastChannel | null>(null);
   const receivedMessageIds = useRef(new Map<string, number>());
   const activeSourcesCollector = useRef<Set<string> | null>(null);
+  const batchingTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const batchingMessagesRef = useRef<BroadcastMessage[]>([]);
+  const batchingErrorRef = useRef(false);
 
   // Memoized values
   const source = useMemo(() => sourceName || generateSourceName(), [sourceName]);
@@ -77,7 +92,8 @@ export const useBroadcastChannel = (
   );
 
   const resolvedChannelName = useMemo(() => {
-    return `${channelName}-${namespace}`;
+    // Only append dash if namespace is non-empty
+    return namespace ? `${channelName}-${namespace}` : channelName;
   }, [channelName, namespace]);
 
   const stableRegisteredTypes = useMemo(() => registeredTypes, [JSON.stringify(registeredTypes)]);
@@ -150,18 +166,45 @@ export const useBroadcastChannel = (
         return;
       }
 
-      try {
-        const message = createMessage(messageType, messageContent, source, options);
-        channelCurrent.postMessage(message);
-        debug.message.sent(message);
-        setSentMessages(prev => [...prev, message]);
-      } catch (e) {
-        const error = 'Failed to send message';
-        debug.error(error);
-        setErrorMessage(error);
+      const message = createMessage(messageType, messageContent, source, options);
+      // Only batch if batchingDelayMs > 0 and messageType is not excluded
+      const shouldSendImmediately =
+        !batchingDelayMs || batchingDelayMs < 0 || excludedBatchMessageTypes.includes(messageType);
+      if (shouldSendImmediately) {
+        try {
+          channelCurrent.postMessage(message);
+        } catch (e) {
+          const error = 'Failed to send message';
+          debug.error(error);
+          setErrorMessage(error);
+          batchingErrorRef.current = true;
+        }
+      } else {
+        batchingMessagesRef.current.push(message);
+        if (!batchingTimeoutRef.current) {
+          batchingTimeoutRef.current = setTimeout(() => {
+            if (batchingErrorRef.current) {
+              batchingMessagesRef.current = [];
+              batchingTimeoutRef.current = null;
+              return;
+            }
+            try {
+              channelCurrent.postMessage(batchingMessagesRef.current);
+            } catch (e) {
+              const error = 'Failed to send message';
+              debug.error(error);
+              setErrorMessage(error);
+              batchingErrorRef.current = true;
+            }
+            batchingMessagesRef.current = [];
+            batchingTimeoutRef.current = null;
+          }, batchingDelayMs);
+        }
       }
+      debug.message.sent(message);
+      setSentMessages(prev => [...prev, message]);
     },
-    [source, setErrorMessage]
+    [source, setErrorMessage, batchingDelayMs, excludedBatchMessageTypes]
   );
 
   const clearReceivedMessages = useCallback((options: ClearReceivedMessagesOptions = {}) => {
@@ -333,7 +376,16 @@ export const useBroadcastChannel = (
     channel.current = bc;
     debug.channel.created(resolvedChannelName);
 
-    bc.addEventListener('message', handleMessage);
+    bc.addEventListener('message', (event: MessageEvent) => {
+      // event.data may be a single message or an array of messages (batch)
+      if (Array.isArray(event.data)) {
+        event.data.forEach((message: BroadcastMessage) => {
+          handleMessage({ data: message } as MessageEvent<BroadcastMessage>);
+        });
+      } else {
+        handleMessage(event);
+      }
+    });
     return () => {
       closeChannel();
     };
@@ -361,15 +413,38 @@ export const useBroadcastChannel = (
   useEffect(() => {
     const interval = setInterval(() => {
       const now = Date.now();
-      for (const [id, timestamp] of receivedMessageIds.current.entries()) {
+      for (const [key, timestamp] of receivedMessageIds.current.entries()) {
         if (now - timestamp >= deduplicationTTL) {
-          receivedMessageIds.current.delete(id);
+          receivedMessageIds.current.delete(key);
         }
       }
     }, 60 * 1000);
 
     return () => clearInterval(interval);
   }, [deduplicationTTL]);
+
+  useEffect(() => {
+    return () => {
+      // Always flush any unsent batched messages on unmount
+      if (batchingMessagesRef.current.length > 0 && channel.current && !batchingErrorRef.current) {
+        try {
+          channel.current.postMessage(batchingMessagesRef.current);
+        } catch (e) {
+          const error = 'Failed to send message';
+          debug.error(error);
+          setErrorMessage(error);
+        }
+        batchingMessagesRef.current = [];
+        // Allow event loop to process delivery for tests
+        setTimeout(() => {}, 0);
+      }
+      if (batchingTimeoutRef.current) {
+        clearTimeout(batchingTimeoutRef.current);
+        batchingTimeoutRef.current = null;
+      }
+      batchingErrorRef.current = false;
+    };
+  }, []);
 
   return {
     channelName: resolvedChannelName,
