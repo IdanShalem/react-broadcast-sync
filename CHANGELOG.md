@@ -1,3 +1,10 @@
+# [1.5.0](https://github.com/IdanShalem/react-broadcast-sync/compare/v1.4.0...v1.5.0) (2025-07-03)
+
+
+### Features
+
+* batch messages with delay ([6dde9fa](https://github.com/IdanShalem/react-broadcast-sync/commit/6dde9fa441e2f5fc4745c00fdbabdf48f697d58b))
+
 # [1.4.0](https://github.com/IdanShalem/react-broadcast-sync/compare/v1.3.0...v1.4.0) (2025-06-29)
 
 
