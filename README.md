@@ -228,20 +228,24 @@ interface BroadcastOptions {
   namespace?: string; // Channel namespace for isolation
   deduplicationTTL?: number; // Time in ms to keep message IDs for deduplication (default: 5 minutes)
   cleanupDebounceMs?: number; // Debounce time in ms for cleanup operations (default: 0)
+  batchingDelayMs?: number; // Delay in ms to batch outgoing messages (default: 20). If > 0, messages are batched and sent together.
+  excludedBatchMessageTypes?: string[]; // Message types to always send immediately, never batched (default: []).
 }
 ```
 
 #### Default Values
 
-| Option              | Default Value | Description                         |
-| ------------------- | ------------- | ----------------------------------- |
-| `sourceName`        | `undefined`   | Auto-generated if not provided      |
-| `cleaningInterval`  | `1000`        | 1 second between cleanup runs       |
-| `keepLatestMessage` | `false`       | Keep all messages by default        |
-| `registeredTypes`   | `[]`          | Accept all message types by default |
-| `namespace`         | `''`          | No namespace by default             |
-| `deduplicationTTL`  | `300000`      | 5 minutes (5 _ 60 _ 1000 ms)        |
-| `cleanupDebounceMs` | `0`           | No debounce by default              |
+| Option                      | Default Value | Description                         |
+| --------------------------- | ------------- | ----------------------------------- |
+| `sourceName`                | `undefined`   | Auto-generated if not provided      |
+| `cleaningInterval`          | `1000`        | 1 second between cleanup runs       |
+| `keepLatestMessage`         | `false`       | Keep all messages by default        |
+| `registeredTypes`           | `[]`          | Accept all message types by default |
+| `namespace`                 | `''`          | No namespace by default             |
+| `deduplicationTTL`          | `300000`      | 5 minutes (5 _ 60 _ 1000 ms)        |
+| `cleanupDebounceMs`         | `0`           | No debounce by default              |
+| `batchingDelayMs`           | `20`          | Batch delay in ms (0 = off)         |
+| `excludedBatchMessageTypes` | `[]`          | Types never batched                 |
 
 #### Return Value
 
@@ -483,6 +487,40 @@ function TabStatus() {
 - Use `keepLatestMessage: true` for high-frequency updates
 - Implement debouncing for rapid state changes
 - Consider using `expirationDuration` for temporary messages
+
+#### Batching Mechanism
+
+**Batching** allows you to group multiple outgoing messages and send them together in a single post to the BroadcastChannel. This can significantly reduce the number of cross-tab events, improve performance, and avoid flooding the channel when many messages are sent in rapid succession (e.g., during fast typing or bulk updates).
+
+- **batchingDelayMs**: If set to a value greater than 0 (default: 20ms), outgoing messages are collected for up to this delay and then sent as an array. If 0 or negative, batching is disabled and all messages are sent immediately.
+- **excludedBatchMessageTypes**: An array of message types that should always be sent immediately, even if batching is enabled. Use this for urgent or high-priority messages (e.g., 'alert', 'sync-now').
+
+**How it works:**
+
+- When batching is enabled, calls to `postMessage` within the batching window are buffered and sent as a batch (array of messages) after the delay.
+- On the receiving side, the hook automatically handles both single messages and batches (arrays). If you listen to the channel directly, always check if `Array.isArray(event.data)`.
+- If the tab unmounts or the channel closes, any unsent batched messages are flushed immediately.
+
+**Why batching matters:**
+
+- Reduces the number of events and improves efficiency, especially for high-frequency updates.
+- Prevents message storms that can occur when many updates happen in a short time.
+- Lets you control which messages are always sent immediately for real-time needs.
+
+**Example:**
+
+```tsx
+const { postMessage } = useBroadcastChannel('my-channel', {
+  batchingDelayMs: 50, // Batch messages for up to 50ms
+  excludedBatchMessageTypes: ['alert'], // Always send 'alert' immediately
+});
+
+// These will be batched if sent within 50ms
+postMessage('edit', { field: 'a', value: 1 });
+postMessage('edit', { field: 'b', value: 2 });
+// This will be sent immediately
+postMessage('alert', { message: 'Something happened!' });
+```
 
 ### Memory Management
 
