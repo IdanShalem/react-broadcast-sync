@@ -1,3 +1,10 @@
+## [1.5.1](https://github.com/IdanShalem/react-broadcast-sync/compare/v1.5.0...v1.5.1) (2025-07-03)
+
+
+### Bug Fixes
+
+* added readme for batching ([568a52c](https://github.com/IdanShalem/react-broadcast-sync/commit/568a52c4d23443a1e4c2a0c2ab10a6c618c68529))
+
 # [1.5.0](https://github.com/IdanShalem/react-broadcast-sync/compare/v1.4.0...v1.5.0) (2025-07-03)
 
 
