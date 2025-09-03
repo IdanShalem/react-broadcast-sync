@@ -128,7 +128,7 @@ export const useBroadcastChannel = (
           'BroadcastChannel is not supported in this browser. Please check browser compatibility.';
         debug.error({
           action: 'ping',
-          channelName,
+          channelName: resolvedChannelName,
           originalError: error,
         });
         setErrorMessage(error);
@@ -167,7 +167,7 @@ export const useBroadcastChannel = (
           'BroadcastChannel is not supported in this browser. Please check browser compatibility.';
         debug.error({
           action: 'postMessage',
-          channelName,
+          channelName: resolvedChannelName,
           type: messageType,
           originalError: error,
         });
@@ -186,7 +186,7 @@ export const useBroadcastChannel = (
           const error = 'Failed to send message';
           debug.error({
             action: 'postMessage',
-            channelName,
+            channelName: resolvedChannelName,
             type: messageType,
             originalError: error,
           });
@@ -208,7 +208,7 @@ export const useBroadcastChannel = (
               const error = 'Failed to send message';
               debug.error({
                 action: 'postMessage',
-                channelName,
+                channelName: resolvedChannelName,
                 type: messageType,
                 originalError: error,
               });
@@ -243,6 +243,9 @@ export const useBroadcastChannel = (
           )
         : []
     );
+    if (!hasFilters) {
+      debug.message.allReceivedCleared();
+    }
   }, []);
 
   const clearSentMessages = useCallback((options: ClearSentMessagesOptions = {}) => {
@@ -264,6 +267,9 @@ export const useBroadcastChannel = (
           })
         : []
     );
+    if (ids.length === 0 && types.length === 0) {
+      debug.message.allSentCleared();
+    }
     if (sync) {
       channel.current?.postMessage(
         createMessage(
@@ -360,7 +366,7 @@ export const useBroadcastChannel = (
         const error = 'Error processing broadcast message';
         debug.error({
           action: 'handleMessage',
-          channelName,
+          channelName: resolvedChannelName,
           originalError: error,
         });
         setErrorMessage(error);
@@ -392,14 +398,26 @@ export const useBroadcastChannel = (
         'BroadcastChannel is not supported in this browser. Please check browser compatibility.';
       debug.error({
         action: 'useBroadcastChannel',
-        channelName,
+        channelName: resolvedChannelName,
         originalError: error,
       });
       setErrorMessage(error);
       return;
     }
 
-    const bc = new BroadcastChannel(resolvedChannelName);
+    let bc: BroadcastChannel | null = null;
+    try {
+      bc = new BroadcastChannel(resolvedChannelName);
+    } catch (e) {
+      const error = 'Failed to create BroadcastChannel';
+      debug.error({
+        action: 'useBroadcastChannel',
+        channelName: resolvedChannelName,
+        originalError: e instanceof Error ? e : String(e),
+      });
+      setErrorMessage(error);
+      return;
+    }
     channel.current = bc;
     debug.channel.created(resolvedChannelName);
 
@@ -460,8 +478,8 @@ export const useBroadcastChannel = (
           const error = 'Failed to send message';
           debug.error({
             action: 'useBroadcastChannel',
-            channelName,
-            originalError: error,
+            channelName: resolvedChannelName,
+            originalError: e instanceof Error ? e : String(e),
           });
           setErrorMessage(error);
         }

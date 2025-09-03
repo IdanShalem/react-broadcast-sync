@@ -145,6 +145,24 @@ describe('debug', () => {
       );
     });
 
+    it('includes string cause in error logs', () => {
+      debug.error({ action: 'action', originalError: 'string-cause' });
+      expect(console.error).toHaveBeenCalledWith(
+        expect.stringMatching(/\[.*react-broadcast-sync\]/),
+        'Error:',
+        expect.stringContaining('action | cause: string-cause')
+      );
+    });
+
+    it('includes object cause in error logs (JSON stringified)', () => {
+      debug.error({ action: 'action', originalError: { reason: 'bad', code: 500 } });
+      expect(console.error).toHaveBeenCalledWith(
+        expect.stringMatching(/\[.*react-broadcast-sync\]/),
+        'Error:',
+        expect.stringContaining('action | cause: {"reason":"bad","code":500}')
+      );
+    });
+
     it('logs info with no data', () => {
       debug.channel.created('test-channel');
       expect(console.log).toHaveBeenCalledWith(
@@ -234,6 +252,22 @@ describe('debug', () => {
       expect.stringContaining('[react-broadcast-sync]'),
       'Cleanup completed:',
       2
+    );
+  });
+
+  it('logs all-cleared messages', () => {
+    debug.message.allSentCleared();
+    expect(console.log).toHaveBeenCalledWith(
+      expect.stringContaining('[react-broadcast-sync]'),
+      'All sent messages cleared',
+      ''
+    );
+
+    debug.message.allReceivedCleared();
+    expect(console.log).toHaveBeenCalledWith(
+      expect.stringContaining('[react-broadcast-sync]'),
+      'All received messages cleared',
+      ''
     );
   });
 });

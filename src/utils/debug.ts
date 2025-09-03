@@ -65,6 +65,14 @@ export const debug = {
     if (source) message += ` | source: ${source}`;
     if (originalError instanceof Error) {
       message += ` | cause: ${originalError.message}`;
+    } else if (typeof originalError === 'string') {
+      message += ` | cause: ${originalError}`;
+    } else if (originalError != null) {
+      try {
+        message += ` | cause: ${JSON.stringify(originalError)}`;
+      } catch {
+        message += ' | cause: [unserializable]';
+      }
     }
 
     log('error', 'Error:', message);
