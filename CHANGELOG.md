@@ -1,3 +1,10 @@
+# [1.6.0](https://github.com/IdanShalem/react-broadcast-sync/compare/v1.5.1...v1.6.0) (2025-09-03)
+
+
+### Features
+
+* improve error messaging for debug mode ([3a1016f](https://github.com/IdanShalem/react-broadcast-sync/commit/3a1016f45244f412eaa96d8ca8310b5ca72cd73a))
+
 ## [1.5.1](https://github.com/IdanShalem/react-broadcast-sync/compare/v1.5.0...v1.5.1) (2025-07-03)
 
 
