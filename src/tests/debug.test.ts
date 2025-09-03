@@ -32,7 +32,7 @@ describe('debug', () => {
     it('does not log anything', () => {
       debug.channel.created('test-channel');
       debug.message.sent({ id: '123' });
-      debug.error('test error');
+      debug.error({ action: 'test error' });
 
       expect(console.log).not.toHaveBeenCalled();
       expect(console.warn).not.toHaveBeenCalled();
@@ -130,12 +130,12 @@ describe('debug', () => {
           /\[\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}.\d{3}Z\] \[react-broadcast-sync\]/
         ),
         'Cleanup completed:',
-        { removedCount: 5 }
+        5
       );
     });
 
     it('logs errors', () => {
-      debug.error('test error');
+      debug.error({ action: 'test error' });
       expect(console.error).toHaveBeenCalledWith(
         expect.stringMatching(
           /\[\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}.\d{3}Z\] \[react-broadcast-sync\]/
@@ -164,7 +164,7 @@ describe('debug', () => {
     });
 
     it('logs error with no data', () => {
-      debug.error('error!');
+      debug.error({ action: 'error!' });
       expect(console.error).toHaveBeenCalledWith(
         expect.stringMatching(/\[.*react-broadcast-sync\]/),
         'Error:',
@@ -213,7 +213,7 @@ describe('debug', () => {
   });
 
   it('logs error messages', () => {
-    debug.error('Test error');
+    debug.error({ action: 'Test error' });
     expect(console.error).toHaveBeenCalledWith(
       expect.stringContaining('[react-broadcast-sync]'),
       'Error:',
@@ -233,7 +233,7 @@ describe('debug', () => {
     expect(console.log).toHaveBeenCalledWith(
       expect.stringContaining('[react-broadcast-sync]'),
       'Cleanup completed:',
-      { removedCount: 2 }
+      2
     );
   });
 });

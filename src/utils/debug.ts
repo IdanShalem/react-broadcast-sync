@@ -48,7 +48,25 @@ export const debug = {
   },
   cleanup: {
     started: () => log('info', 'Cleanup started'),
-    completed: (removedCount: number) => log('info', 'Cleanup completed:', { removedCount }),
+    completed: (removedCount: number) => log('info', 'Cleanup completed:', removedCount),
   },
-  error: (error: string) => log('error', 'Error:', error),
+  error: (context: {
+    action: string;
+    channelName?: string;
+    type?: string;
+    source?: string;
+    originalError?: unknown;
+  }) => {
+    const { action, channelName, type, source, originalError } = context;
+
+    let message = `${action}`;
+    if (channelName) message += ` | channel: ${channelName}`;
+    if (type) message += ` | type: ${type}`;
+    if (source) message += ` | source: ${source}`;
+    if (originalError instanceof Error) {
+      message += ` | cause: ${originalError.message}`;
+    }
+
+    log('error', 'Error:', message);
+  },
 };

@@ -63,10 +63,9 @@ describe('BroadcastProvider', () => {
       </BroadcastProvider>
     );
 
-    // The provider creates two channels - one in the provider and one in useBroadcastChannel
-    expect(mockChannels).toHaveLength(2);
+    // The provider delegates to useBroadcastChannel which creates one channel
+    expect(mockChannels).toHaveLength(1);
     expect(mockChannels[0].name).toBe('test-channel');
-    expect(mockChannels[1].name).toBe('test-channel');
   });
 
   it('provides context values to children', () => {
@@ -132,23 +131,18 @@ describe('BroadcastProvider', () => {
     expect(mockChannels[0].close).toHaveBeenCalled();
   });
 
-  it('handles error boundary when child component throws', () => {
+  it('propagates child component errors (no internal error boundary)', () => {
     const ThrowComponent = () => {
       throw new Error('Test error');
     };
 
-    const consoleError = jest.spyOn(console, 'error').mockImplementation(() => {});
-
-    render(
-      <BroadcastProvider channelName="test-channel">
-        <ThrowComponent />
-      </BroadcastProvider>
-    );
-
-    expect(screen.getByText('Error occurred in BroadcastProvider')).toBeInTheDocument();
-    expect(consoleError).toHaveBeenCalledWith('BroadcastChannel error:', expect.any(Error));
-
-    consoleError.mockRestore();
+    expect(() => {
+      render(
+        <BroadcastProvider channelName="test-channel">
+          <ThrowComponent />
+        </BroadcastProvider>
+      );
+    }).toThrow('Test error');
   });
 
   it('throws error when useBroadcastProvider is used outside provider', () => {

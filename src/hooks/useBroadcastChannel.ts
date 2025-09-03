@@ -126,7 +126,11 @@ export const useBroadcastChannel = (
       if (!channel.current) {
         const error =
           'BroadcastChannel is not supported in this browser. Please check browser compatibility.';
-        debug.error(error);
+        debug.error({
+          action: 'ping',
+          channelName,
+          originalError: error,
+        });
         setErrorMessage(error);
         return Promise.resolve([]);
       }
@@ -161,7 +165,12 @@ export const useBroadcastChannel = (
       if (!channelCurrent) {
         const error =
           'BroadcastChannel is not supported in this browser. Please check browser compatibility.';
-        debug.error(error);
+        debug.error({
+          action: 'postMessage',
+          channelName,
+          type: messageType,
+          originalError: error,
+        });
         setErrorMessage(error);
         return;
       }
@@ -175,7 +184,12 @@ export const useBroadcastChannel = (
           channelCurrent.postMessage(message);
         } catch (e) {
           const error = 'Failed to send message';
-          debug.error(error);
+          debug.error({
+            action: 'postMessage',
+            channelName,
+            type: messageType,
+            originalError: error,
+          });
           setErrorMessage(error);
           batchingErrorRef.current = true;
         }
@@ -192,7 +206,12 @@ export const useBroadcastChannel = (
               channelCurrent.postMessage(batchingMessagesRef.current);
             } catch (e) {
               const error = 'Failed to send message';
-              debug.error(error);
+              debug.error({
+                action: 'postMessage',
+                channelName,
+                type: messageType,
+                originalError: error,
+              });
               setErrorMessage(error);
               batchingErrorRef.current = true;
             }
@@ -339,7 +358,11 @@ export const useBroadcastChannel = (
         setMessages(prev => (keepLatestMessage ? [message] : [...prev, message]));
       } catch (e) {
         const error = 'Error processing broadcast message';
-        debug.error(error);
+        debug.error({
+          action: 'handleMessage',
+          channelName,
+          originalError: error,
+        });
         setErrorMessage(error);
       }
     },
@@ -367,7 +390,11 @@ export const useBroadcastChannel = (
     if (typeof BroadcastChannel === 'undefined') {
       const error =
         'BroadcastChannel is not supported in this browser. Please check browser compatibility.';
-      debug.error(error);
+      debug.error({
+        action: 'useBroadcastChannel',
+        channelName,
+        originalError: error,
+      });
       setErrorMessage(error);
       return;
     }
@@ -431,7 +458,11 @@ export const useBroadcastChannel = (
           channel.current.postMessage(batchingMessagesRef.current);
         } catch (e) {
           const error = 'Failed to send message';
-          debug.error(error);
+          debug.error({
+            action: 'useBroadcastChannel',
+            channelName,
+            originalError: error,
+          });
           setErrorMessage(error);
         }
         batchingMessagesRef.current = [];
