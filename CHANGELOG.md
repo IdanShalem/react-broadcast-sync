@@ -1,3 +1,11 @@
+# [1.7.0](https://github.com/IdanShalem/react-broadcast-sync/compare/v1.6.0...v1.7.0) (2026-02-23)
+
+
+### Features
+
+* add on message with per-type ([f61219d](https://github.com/IdanShalem/react-broadcast-sync/commit/f61219d2eacdc2c68462234176da5a7e73386882))
+* add onMessage callbacks with per-type handler map ([06cc19f](https://github.com/IdanShalem/react-broadcast-sync/commit/06cc19fe2eedde60c3ef80be597eda35ec034717))
+
 # [1.6.0](https://github.com/IdanShalem/react-broadcast-sync/compare/v1.5.1...v1.6.0) (2025-09-03)
 
 
