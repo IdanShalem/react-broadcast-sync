@@ -71,6 +71,7 @@ Easily sync UI state or user events across browser tabs in React apps — notifi
 - Only accept allowed message types (optional)
 - `BroadcastProvider` for context-based usage
 - **Ping and active source detection** (discover other tabs and their source names)
+- **Per-type `onMessage` callbacks** (react to incoming messages without polling state)
 
 ## Demo App
 
@@ -230,6 +231,7 @@ interface BroadcastOptions {
   cleanupDebounceMs?: number; // Debounce time in ms for cleanup operations (default: 0)
   batchingDelayMs?: number; // Delay in ms to batch outgoing messages (default: 20). If > 0, messages are batched and sent together.
   excludedBatchMessageTypes?: string[]; // Message types to always send immediately, never batched (default: []).
+  onMessage?: MessageCallback | OnMessageMap; // Callback(s) fired when a received message passes all filters (default: undefined).
 }
 ```
 
@@ -242,10 +244,11 @@ interface BroadcastOptions {
 | `keepLatestMessage`         | `false`       | Keep all messages by default        |
 | `registeredTypes`           | `[]`          | Accept all message types by default |
 | `namespace`                 | `''`          | No namespace by default             |
-| `deduplicationTTL`          | `300000`      | 5 minutes (5 _ 60 _ 1000 ms)        |
+| `deduplicationTTL`          | `300000`      | 5 minutes (5 × 60 × 1000 ms)        |
 | `cleanupDebounceMs`         | `0`           | No debounce by default              |
 | `batchingDelayMs`           | `20`          | Batch delay in ms (0 = off)         |
 | `excludedBatchMessageTypes` | `[]`          | Types never batched                 |
+| `onMessage`                 | `undefined`   | Callback(s) for received messages   |
 
 #### Return Value
 
@@ -408,6 +411,53 @@ closeChannel();
 
 ---
 
+#### `onMessage` Callbacks
+
+`onMessage` lets you react to incoming messages imperatively — without polling `messages` state or using `useEffect`. The callback fires after the message is added to state and only for messages that pass all active filters (`registeredTypes`, expiry, deduplication, self-filter). Internal protocol messages (PING, PONG, CLEAR_SENT_MESSAGES) never trigger it.
+
+**Two supported shapes:**
+
+```ts
+// 1. A single catch-all function — fires for every accepted message type
+type MessageCallback = (msg: BroadcastMessage) => void;
+
+// 2. A map from message type → one handler function
+type OnMessageMap = { [type: string]: (msg: BroadcastMessage) => void };
+```
+
+**Catch-all example:**
+
+```tsx
+const { postMessage } = useBroadcastChannel('my-channel', {
+  onMessage: (msg) => {
+    console.log('received', msg.type, msg.message);
+  },
+});
+```
+
+**Per-type map example:**
+
+```tsx
+useBroadcastChannel('my-channel', {
+  onMessage: {
+    error:   (msg) => showToast(`Error: ${msg.message.text}`),
+    success: (msg) => celebrate(),
+    log:     (msg) => console.log('[log]', msg.message),
+  },
+});
+```
+
+**Behavior:**
+
+- Fires for messages from **other** tabs only — self-messages are always ignored before this point.
+- Fires **after** `messages` state is updated — both the callback argument and `messages[messages.length - 1]` will be the same object.
+- A type not listed in the map causes no error — it is silently skipped.
+- If the callback throws, the error is caught and debug-logged. Message state is **not** affected.
+- Changing `onMessage` between renders is safe — the latest callback is always used with no stale closure risk.
+- Works with batched messages: each message in a batch triggers its own callback call.
+
+---
+
 ## Best Practices
 
 - **Use `namespace`** to isolate functionality between different app modules.
@@ -416,6 +466,7 @@ closeChannel();
 - **Use `keepLatestMessage: true`** if you only care about the most recent message (e.g. status updates).
 - **Set appropriate `deduplicationTTL`** based on your message frequency and importance.
 - **Use `cleanupDebounceMs`** when dealing with rapid message updates to prevent performance issues.
+- **Use `onMessage`** for imperative side-effects (toasts, analytics, logging) rather than `useEffect` on `messages` — it fires exactly once per accepted message, with no extra renders required.
 
 ## Common Use Cases
 
@@ -657,20 +708,17 @@ Relies on [BroadcastChannel API](https://developer.mozilla.org/en-US/docs/Web/AP
 
 We're actively improving `react-broadcast-sync`! Here are some features and enhancements planned for upcoming versions:
 
-- **Integration Tests**  
-  Ensure robust behavior and edge-case coverage.
+- **`BroadcastProvider` options support**  
+  Pass a full `BroadcastOptions` object to the provider so consumers can use `onMessage`, `registeredTypes`, and other options without dropping down to the hook.
 
 - **Automatic Channel Recovery**  
-  Reconnect automatically if the `BroadcastChannel` gets disconnected or closed by the browser.
+  Reconnect automatically if the `BroadcastChannel` gets disconnected or closed by the browser, with configurable retry delay and attempt cap.
 
-- **`clearMessagesByType()`**  
-  Clear all messages of a specific type with a single call.
+- **Cross-tab History (`withHistory`)**  
+  On connect, a new tab can request recent message history from already-open tabs. Includes chunked transfer, expiry filtering, and deduplication to prevent replaying stale or duplicate messages.
 
-- **Per-Type Callbacks**  
-  Define message handlers for specific types with `onMessage({ type, callback })`.
-
-- **`clearAllSentMessages()` / `clearAllReceivedMessages()`**  
-  Fine-grained control for clearing messages based on source.
+- **Integration Tests**  
+  Real browser cross-tab tests using Playwright that go beyond what jsdom mocks can cover.
 
 We're committed to keeping this package lightweight, flexible, and production-ready.  
 Your feedback and contributions are welcome — feel free to [open an issue](https://github.com/IdanShalem/react-broadcast-sync/issues)!
