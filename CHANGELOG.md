@@ -1,3 +1,10 @@
+# [1.8.0](https://github.com/IdanShalem/react-broadcast-sync/compare/v1.7.1...v1.8.0) (2026-02-23)
+
+
+### Features
+
+* added onMessage callbacks support ([8885993](https://github.com/IdanShalem/react-broadcast-sync/commit/88859936d8c22058cf180c2a365511fa24820846))
+
 ## [1.7.1](https://github.com/IdanShalem/react-broadcast-sync/compare/v1.7.0...v1.7.1) (2026-02-23)
 
 
