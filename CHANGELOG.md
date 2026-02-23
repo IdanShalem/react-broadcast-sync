@@ -1,3 +1,10 @@
+## [1.7.1](https://github.com/IdanShalem/react-broadcast-sync/compare/v1.7.0...v1.7.1) (2026-02-23)
+
+
+### Bug Fixes
+
+* add files field to exclude demo and src from npm publish ([60fec48](https://github.com/IdanShalem/react-broadcast-sync/commit/60fec48cff299d9cb3cca3f7c97f6fbbc9789bb3))
+
 # [1.7.0](https://github.com/IdanShalem/react-broadcast-sync/compare/v1.6.0...v1.7.0) (2026-02-23)
 
 
