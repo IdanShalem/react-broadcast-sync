@@ -28,6 +28,18 @@ export interface BroadcastOptions {
 
   /** Array of message types that should not be batched and sent immediately (default: []) */
   excludedBatchMessageTypes?: string[];
+
+  /**
+   * Callback(s) fired when an incoming message passes all filters
+   * (registeredTypes, expiry, deduplication, self-filter).
+   *
+   * - Pass a single function to handle all incoming message types.
+   * - Pass a type-keyed map `{ error: fn, success: fn }` for per-type handling.
+   *
+   * The callback fires after the message is added to state.
+   * Internal messages (PING, PONG, CLEAR_SENT_MESSAGES) never trigger this.
+   */
+  onMessage?: MessageCallback | OnMessageMap;
 }
 
 /**
@@ -80,6 +92,12 @@ export interface GetLatestMessageOptions {
   source?: string;
   type?: string;
 }
+
+/** Callback invoked when a received message passes all filters */
+export type MessageCallback = (msg: BroadcastMessage) => void;
+
+/** Map from message type string to a single handler callback */
+export type OnMessageMap = { [type: string]: MessageCallback };
 
 /**
  * Actions and state provided by the broadcast channel hook

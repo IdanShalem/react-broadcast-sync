@@ -1131,6 +1131,384 @@ describe('useBroadcastChannel', () => {
     });
   });
 
+  describe('registeredTypes ref', () => {
+    it('uses updated registeredTypes after re-render', async () => {
+      let registeredTypes = ['error'];
+
+      const { result, rerender } = renderHook(() =>
+        useBroadcastChannel('rt-channel', { sourceName: 'hook-A', registeredTypes })
+      );
+
+      await waitForChannel();
+      const channel = mockChannels[mockChannels.length - 1];
+
+      // 'success' is not in registeredTypes yet — should be ignored
+      act(() => {
+        channel.simulateMessage({
+          id: 'msg-1',
+          type: 'success',
+          message: 'first',
+          source: 'other',
+          timestamp: Date.now(),
+        });
+      });
+      expect(result.current.messages).toHaveLength(0);
+
+      // Update registeredTypes to include 'success'
+      registeredTypes = ['success'];
+      rerender();
+
+      // 'success' is now accepted
+      act(() => {
+        channel.simulateMessage({
+          id: 'msg-2',
+          type: 'success',
+          message: 'second',
+          source: 'other',
+          timestamp: Date.now(),
+        });
+      });
+      await waitFor(() => expect(result.current.messages).toHaveLength(1));
+      expect(result.current.messages[0].id).toBe('msg-2');
+
+      // 'error' is no longer in registeredTypes — should be ignored now
+      act(() => {
+        channel.simulateMessage({
+          id: 'msg-3',
+          type: 'error',
+          message: 'third',
+          source: 'other',
+          timestamp: Date.now(),
+        });
+      });
+      expect(result.current.messages).toHaveLength(1);
+    });
+
+    it('accepts all types when registeredTypes is empty', async () => {
+      const { result } = renderHook(() =>
+        useBroadcastChannel('rt-open-channel', { sourceName: 'hook-A', registeredTypes: [] })
+      );
+
+      await waitForChannel();
+      const channel = mockChannels[mockChannels.length - 1];
+
+      act(() => {
+        channel.simulateMessage({
+          id: 'any-1',
+          type: 'anything',
+          message: 'hello',
+          source: 'other',
+          timestamp: Date.now(),
+        });
+      });
+
+      await waitFor(() => expect(result.current.messages).toHaveLength(1));
+    });
+  });
+
+  describe('onMessage callbacks', () => {
+    it('catch-all callback fires for every incoming message type', async () => {
+      const onMessage = jest.fn();
+
+      const { result: hook1 } = renderHook(() =>
+        useBroadcastChannel('cb-channel', { sourceName: 'A', batchingDelayMs: 0 })
+      );
+      renderHook(() => useBroadcastChannel('cb-channel', { sourceName: 'B', onMessage }));
+
+      await waitForChannel();
+
+      act(() => {
+        hook1.current.postMessage('error', { msg: 'oops' });
+        hook1.current.postMessage('success', { msg: 'ok' });
+      });
+
+      await waitFor(() => expect(onMessage).toHaveBeenCalledTimes(2));
+      expect(onMessage.mock.calls[0][0].type).toBe('error');
+      expect(onMessage.mock.calls[1][0].type).toBe('success');
+    });
+
+    it('catch-all callback receives the correct BroadcastMessage shape', async () => {
+      const onMessage = jest.fn();
+
+      const { result: hook1 } = renderHook(() =>
+        useBroadcastChannel('cb-shape-channel', { sourceName: 'A', batchingDelayMs: 0 })
+      );
+      renderHook(() => useBroadcastChannel('cb-shape-channel', { sourceName: 'B', onMessage }));
+
+      await waitForChannel();
+
+      act(() => {
+        hook1.current.postMessage('ping-type', { data: 42 });
+      });
+
+      await waitFor(() => expect(onMessage).toHaveBeenCalledTimes(1));
+
+      const received = onMessage.mock.calls[0][0];
+      expect(typeof received.id).toBe('string');
+      expect(received.type).toBe('ping-type');
+      expect(received.message).toEqual({ data: 42 });
+      expect(received.source).toBe('A');
+      expect(typeof received.timestamp).toBe('number');
+    });
+
+    it('type-map callback fires only for its registered type', async () => {
+      const errCb = jest.fn();
+      const sucCb = jest.fn();
+
+      const { result: hook1 } = renderHook(() =>
+        useBroadcastChannel('cb-map-channel', { sourceName: 'A', batchingDelayMs: 0 })
+      );
+      renderHook(() =>
+        useBroadcastChannel('cb-map-channel', {
+          sourceName: 'B',
+          onMessage: { error: errCb, success: sucCb },
+        })
+      );
+
+      await waitForChannel();
+
+      act(() => {
+        hook1.current.postMessage('error', { msg: 'oops' });
+      });
+
+      await waitFor(() => expect(errCb).toHaveBeenCalledTimes(1));
+      expect(sucCb).not.toHaveBeenCalled();
+      expect(errCb.mock.calls[0][0].type).toBe('error');
+
+      act(() => {
+        hook1.current.postMessage('success', { msg: 'done' });
+      });
+
+      await waitFor(() => expect(sucCb).toHaveBeenCalledTimes(1));
+      expect(errCb).toHaveBeenCalledTimes(1);
+    });
+
+    it('type-map with no handler for a type causes no error and ignores it silently', async () => {
+      const sucCb = jest.fn();
+
+      const { result: hook1 } = renderHook(() =>
+        useBroadcastChannel('cb-unhandled-channel', { sourceName: 'A', batchingDelayMs: 0 })
+      );
+      renderHook(() =>
+        useBroadcastChannel('cb-unhandled-channel', {
+          sourceName: 'B',
+          onMessage: { success: sucCb },
+        })
+      );
+
+      await waitForChannel();
+
+      // 'log' has no handler registered
+      act(() => {
+        hook1.current.postMessage('log', { msg: 'info' });
+      });
+
+      await waitFor(() => expect(hook1.current.sentMessages).toHaveLength(1));
+      expect(sucCb).not.toHaveBeenCalled();
+    });
+
+    it('callback does not fire for self-messages', async () => {
+      const onMessage = jest.fn();
+
+      const { result } = renderHook(() =>
+        useBroadcastChannel('cb-self-channel', {
+          sourceName: 'self',
+          onMessage,
+          batchingDelayMs: 0,
+        })
+      );
+
+      await waitForChannel();
+
+      act(() => {
+        result.current.postMessage('test', { data: 'hi' });
+      });
+
+      expect(onMessage).not.toHaveBeenCalled();
+    });
+
+    it('callback does not fire for messages filtered by registeredTypes', async () => {
+      const onMessage = jest.fn();
+
+      const { result: hook1 } = renderHook(() =>
+        useBroadcastChannel('cb-filter-channel', { sourceName: 'A', batchingDelayMs: 0 })
+      );
+      renderHook(() =>
+        useBroadcastChannel('cb-filter-channel', {
+          sourceName: 'B',
+          registeredTypes: ['allowed'],
+          onMessage,
+        })
+      );
+
+      await waitForChannel();
+
+      act(() => {
+        hook1.current.postMessage('blocked', { msg: 'nope' });
+      });
+
+      await waitFor(() => expect(hook1.current.sentMessages).toHaveLength(1));
+      expect(onMessage).not.toHaveBeenCalled();
+    });
+
+    it('callback does not fire for expired messages', async () => {
+      const onMessage = jest.fn();
+
+      const { result } = renderHook(() =>
+        useBroadcastChannel('cb-expired-channel', { sourceName: 'B', onMessage })
+      );
+
+      await waitForChannel();
+      const channel = mockChannels[mockChannels.length - 1];
+
+      act(() => {
+        channel.simulateMessage({
+          id: 'exp-1',
+          type: 'test',
+          message: 'gone',
+          source: 'other',
+          timestamp: Date.now() - 10000,
+          expirationDate: Date.now() - 1,
+        });
+      });
+
+      expect(onMessage).not.toHaveBeenCalled();
+      expect(result.current.messages).toHaveLength(0);
+    });
+
+    it('callback does not fire for duplicate messages within deduplicationTTL', async () => {
+      const onMessage = jest.fn();
+
+      const { result } = renderHook(() =>
+        useBroadcastChannel('cb-dedup-channel', {
+          sourceName: 'B',
+          onMessage,
+          deduplicationTTL: 60000,
+        })
+      );
+
+      await waitForChannel();
+      const channel = mockChannels[mockChannels.length - 1];
+
+      const msg = {
+        id: 'dup-1',
+        type: 'test',
+        message: 'hi',
+        source: 'other',
+        timestamp: Date.now(),
+      };
+
+      act(() => {
+        channel.simulateMessage(msg);
+      });
+
+      await waitFor(() => expect(onMessage).toHaveBeenCalledTimes(1));
+
+      // Same message again — should be deduplicated
+      act(() => {
+        channel.simulateMessage(msg);
+      });
+
+      expect(onMessage).toHaveBeenCalledTimes(1);
+      expect(result.current.messages).toHaveLength(1);
+    });
+
+    it('callback fires alongside messages state — both are populated', async () => {
+      const received: any[] = [];
+      const onMessage = jest.fn(msg => received.push(msg));
+
+      const { result: hook1 } = renderHook(() =>
+        useBroadcastChannel('cb-state-channel', { sourceName: 'A', batchingDelayMs: 0 })
+      );
+      const { result: hook2 } = renderHook(() =>
+        useBroadcastChannel('cb-state-channel', { sourceName: 'B', onMessage })
+      );
+
+      await waitForChannel();
+
+      act(() => {
+        hook1.current.postMessage('sync', { value: 99 });
+      });
+
+      await waitFor(() => expect(onMessage).toHaveBeenCalledTimes(1));
+      expect(hook2.current.messages).toHaveLength(1);
+      expect(received[0]).toBe(hook2.current.messages[0]);
+    });
+
+    it('uses the latest callback after re-render (no stale closure)', async () => {
+      const firstCb = jest.fn();
+      const secondCb = jest.fn();
+      let onMessage: jest.Mock = firstCb;
+
+      const { result: hook1 } = renderHook(() =>
+        useBroadcastChannel('cb-stale-channel', { sourceName: 'A', batchingDelayMs: 0 })
+      );
+      const { rerender } = renderHook(() =>
+        useBroadcastChannel('cb-stale-channel', { sourceName: 'B', onMessage })
+      );
+
+      await waitForChannel();
+
+      // Swap callback and re-render
+      onMessage = secondCb;
+      rerender();
+
+      act(() => {
+        hook1.current.postMessage('event', { v: 1 });
+      });
+
+      await waitFor(() => expect(secondCb).toHaveBeenCalledTimes(1));
+      expect(firstCb).not.toHaveBeenCalled();
+    });
+
+    it('callback throwing does not break messages state', async () => {
+      const onMessage = jest.fn(() => {
+        throw new Error('boom');
+      });
+
+      const { result: hook1 } = renderHook(() =>
+        useBroadcastChannel('cb-throw-channel', { sourceName: 'A', batchingDelayMs: 0 })
+      );
+      const { result: hook2 } = renderHook(() =>
+        useBroadcastChannel('cb-throw-channel', { sourceName: 'B', onMessage })
+      );
+
+      await waitForChannel();
+
+      act(() => {
+        hook1.current.postMessage('crash', { data: 'test' });
+      });
+
+      await waitFor(() => expect(hook2.current.messages).toHaveLength(1));
+      expect(onMessage).toHaveBeenCalledTimes(1);
+      expect(hook2.current.messages[0].type).toBe('crash');
+    });
+
+    it('callback fires for each message in a batch', async () => {
+      const onMessage = jest.fn();
+      jest.useFakeTimers();
+
+      const { result: hook1 } = renderHook(() =>
+        useBroadcastChannel('cb-batch-channel', { sourceName: 'A', batchingDelayMs: 30 })
+      );
+      renderHook(() => useBroadcastChannel('cb-batch-channel', { sourceName: 'B', onMessage }));
+
+      await waitForChannel();
+
+      act(() => {
+        hook1.current.postMessage('a', { v: 1 });
+        hook1.current.postMessage('b', { v: 2 });
+        hook1.current.postMessage('c', { v: 3 });
+        jest.advanceTimersByTime(50);
+      });
+
+      await waitFor(() => expect(onMessage).toHaveBeenCalledTimes(3));
+      expect(onMessage.mock.calls.map((c: any[]) => c[0].type)).toEqual(['a', 'b', 'c']);
+
+      jest.useRealTimers();
+    });
+  });
+
   describe('Batching', () => {
     it('batches multiple messages sent within the delay', async () => {
       jest.useFakeTimers();

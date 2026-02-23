@@ -35,10 +35,48 @@ describe('messageUtils', () => {
     expect(id).toMatch(/^[A-Za-z0-9+/]+={0,2}$/);
   });
 
-  it('isValidMessage identifies a valid message object', () => {
-    expect(isValidMessage({ id: '123' })).toBe(true);
-    expect(isValidMessage(null)).toBe(false);
-    expect(isValidMessage({})).toBe(false);
+  describe('isValidMessage', () => {
+    it('returns true for a fully valid message', () => {
+      expect(isValidMessage({ id: 'x', type: 'T', source: 'S', timestamp: 1 })).toBe(true);
+    });
+
+    it('returns true when optional expirationDate is present', () => {
+      expect(
+        isValidMessage({ id: 'x', type: 'T', source: 'S', timestamp: 1, expirationDate: 999 })
+      ).toBe(true);
+    });
+
+    it('returns false for null', () => {
+      expect(isValidMessage(null)).toBe(false);
+    });
+
+    it('returns false for an empty object', () => {
+      expect(isValidMessage({})).toBe(false);
+    });
+
+    it('returns false when only id is present (missing type, source, timestamp)', () => {
+      expect(isValidMessage({ id: '123' })).toBe(false);
+    });
+
+    it('returns false when id is a number instead of a string', () => {
+      expect(isValidMessage({ id: 123, type: 'T', source: 'S', timestamp: 1 })).toBe(false);
+    });
+
+    it('returns false when type is null', () => {
+      expect(isValidMessage({ id: 'x', type: null, source: 'S', timestamp: 1 })).toBe(false);
+    });
+
+    it('returns false when source is missing', () => {
+      expect(isValidMessage({ id: 'x', type: 'T', timestamp: 1 })).toBe(false);
+    });
+
+    it('returns false when timestamp is a string instead of a number', () => {
+      expect(isValidMessage({ id: 'x', type: 'T', source: 'S', timestamp: 'bad' })).toBe(false);
+    });
+
+    it('returns false when timestamp is missing', () => {
+      expect(isValidMessage({ id: 'x', type: 'T', source: 'S' })).toBe(false);
+    });
   });
 
   it('isMessageExpired works correctly', () => {

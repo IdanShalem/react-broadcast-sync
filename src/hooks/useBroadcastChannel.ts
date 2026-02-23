@@ -7,6 +7,8 @@ import {
   ClearSentMessagesOptions,
   GetLatestMessageOptions,
   InternalMessage,
+  MessageCallback,
+  OnMessageMap,
   SendMessageOptions,
 } from '../types/types';
 import {
@@ -60,6 +62,7 @@ export const useBroadcastChannel = (
     cleanupDebounceMs = 0,
     batchingDelayMs = 20,
     excludedBatchMessageTypes = [],
+    onMessage,
   } = options;
 
   // State
@@ -75,6 +78,8 @@ export const useBroadcastChannel = (
   const batchingTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const batchingMessagesRef = useRef<BroadcastMessage[]>([]);
   const batchingErrorRef = useRef(false);
+  const onMessageRef = useRef<MessageCallback | OnMessageMap | undefined>(onMessage);
+  onMessageRef.current = onMessage;
 
   // Memoized values
   const source = useMemo(() => sourceName || generateSourceName(), [sourceName]);
@@ -96,7 +101,8 @@ export const useBroadcastChannel = (
     return namespace ? `${channelName}-${namespace}` : channelName;
   }, [channelName, namespace]);
 
-  const stableRegisteredTypes = useMemo(() => registeredTypes, [JSON.stringify(registeredTypes)]);
+  const registeredTypesRef = useRef<string[]>(registeredTypes);
+  registeredTypesRef.current = registeredTypes;
 
   const performCleanup = useCallback(() => {
     setMessages(prev => prev.filter(msg => !isMessageExpired(msg)));
@@ -248,38 +254,41 @@ export const useBroadcastChannel = (
     }
   }, []);
 
-  const clearSentMessages = useCallback((options: ClearSentMessagesOptions = {}) => {
-    const { ids = [], types = [], sync = false } = options ?? {};
-    setSentMessages(prev =>
-      ids.length > 0 || types.length > 0
-        ? prev.filter(msg => {
-            // Only consider messages from the same sender
-            if (msg.source !== source) return true;
+  const clearSentMessages = useCallback(
+    (options: ClearSentMessagesOptions = {}) => {
+      const { ids = [], types = [], sync = false } = options ?? {};
+      setSentMessages(prev =>
+        ids.length > 0 || types.length > 0
+          ? prev.filter(msg => {
+              // Only consider messages from the same sender
+              if (msg.source !== source) return true;
 
-            // Decide whether this message should be cleared:
-            // - If the ids array is empty, treat as wildcard (match all ids)
-            // - If the types array is empty, treat as wildcard (match all types)
-            const idMatches = ids.length === 0 || ids.includes(msg.id);
-            const typeMatches = types.length === 0 || types.includes(msg.type);
+              // Decide whether this message should be cleared:
+              // - If the ids array is empty, treat as wildcard (match all ids)
+              // - If the types array is empty, treat as wildcard (match all types)
+              const idMatches = ids.length === 0 || ids.includes(msg.id);
+              const typeMatches = types.length === 0 || types.includes(msg.type);
 
-            // Remove when BOTH criteria match (wildcards included)
-            return !(idMatches && typeMatches);
-          })
-        : []
-    );
-    if (ids.length === 0 && types.length === 0) {
-      debug.message.allSentCleared();
-    }
-    if (sync) {
-      channel.current?.postMessage(
-        createMessage(
-          internalTypes.CLEAR_SENT_MESSAGES,
-          { ids: options.ids ?? [], types: options.types ?? [] },
-          source
-        )
+              // Remove when BOTH criteria match (wildcards included)
+              return !(idMatches && typeMatches);
+            })
+          : []
       );
-    }
-  }, []);
+      if (ids.length === 0 && types.length === 0) {
+        debug.message.allSentCleared();
+      }
+      if (sync) {
+        channel.current?.postMessage(
+          createMessage(
+            internalTypes.CLEAR_SENT_MESSAGES,
+            { ids: options.ids ?? [], types: options.types ?? [] },
+            source
+          )
+        );
+      }
+    },
+    [source, internalTypes.CLEAR_SENT_MESSAGES]
+  );
 
   const getLatestMessage = useCallback(
     (options: GetLatestMessageOptions = {}) => {
@@ -344,7 +353,10 @@ export const useBroadcastChannel = (
             return;
           }
         }
-        if (stableRegisteredTypes.length > 0 && !stableRegisteredTypes.includes(message.type)) {
+        if (
+          registeredTypesRef.current.length > 0 &&
+          !registeredTypesRef.current.includes(message.type)
+        ) {
           debug.message.ignored(message.type);
           return;
         }
@@ -362,6 +374,21 @@ export const useBroadcastChannel = (
 
         receivedMessageIds.current.set(message.id, now);
         setMessages(prev => (keepLatestMessage ? [message] : [...prev, message]));
+
+        try {
+          const cb = onMessageRef.current;
+          if (typeof cb === 'function') {
+            cb(message);
+          } else if (cb) {
+            cb[message.type]?.(message);
+          }
+        } catch (e) {
+          debug.error({
+            action: 'onMessage',
+            channelName: resolvedChannelName,
+            originalError: e instanceof Error ? e.message : String(e),
+          });
+        }
       } catch (e) {
         const error = 'Error processing broadcast message';
         debug.error({
@@ -372,14 +399,7 @@ export const useBroadcastChannel = (
         setErrorMessage(error);
       }
     },
-    [
-      source,
-      stableRegisteredTypes,
-      keepLatestMessage,
-      setErrorMessage,
-      internalTypes,
-      deduplicationTTL,
-    ]
+    [source, keepLatestMessage, setErrorMessage, internalTypes, deduplicationTTL]
   );
 
   const closeChannel = useCallback(() => {

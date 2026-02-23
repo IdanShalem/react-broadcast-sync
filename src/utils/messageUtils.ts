@@ -17,7 +17,14 @@ export const generateMessageId = (source: string, timestamp: number) => {
 
 // Check if a message is valid
 export const isValidMessage = (message: any): boolean => {
-  return Boolean(message && typeof message === 'object' && 'id' in message);
+  return Boolean(
+    message &&
+      typeof message === 'object' &&
+      typeof message.id === 'string' &&
+      typeof message.type === 'string' &&
+      typeof message.source === 'string' &&
+      typeof message.timestamp === 'number'
+  );
 };
 
 // Check if a message has expired
