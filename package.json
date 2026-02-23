@@ -7,6 +7,11 @@
   "types": "dist/index.d.ts",
   "sideEffects": false,
   "type": "module",
+  "files": [
+    "dist",
+    "README.md",
+    "LICENSE"
+  ],
   "exports": {
     ".": {
       "import": "./dist/index.esm.js",
