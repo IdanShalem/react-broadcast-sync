@@ -429,7 +429,7 @@ type OnMessageMap = { [type: string]: (msg: BroadcastMessage) => void };
 
 ```tsx
 const { postMessage } = useBroadcastChannel('my-channel', {
-  onMessage: (msg) => {
+  onMessage: msg => {
     console.log('received', msg.type, msg.message);
   },
 });
@@ -440,9 +440,9 @@ const { postMessage } = useBroadcastChannel('my-channel', {
 ```tsx
 useBroadcastChannel('my-channel', {
   onMessage: {
-    error:   (msg) => showToast(`Error: ${msg.message.text}`),
-    success: (msg) => celebrate(),
-    log:     (msg) => console.log('[log]', msg.message),
+    error: msg => showToast(`Error: ${msg.message.text}`),
+    success: msg => celebrate(),
+    log: msg => console.log('[log]', msg.message),
   },
 });
 ```
