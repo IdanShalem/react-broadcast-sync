@@ -1,16 +1,21 @@
 import React, { createContext, useContext } from 'react';
 import { useBroadcastChannel } from './hooks/useBroadcastChannel';
-import { BroadcastActions } from './types/types';
+import { BroadcastActions, BroadcastOptions } from './types/types';
 
 const BroadcastChannelContext = createContext<BroadcastActions | undefined>(undefined);
 
 interface BroadcastProviderProps {
   channelName: string;
+  options?: BroadcastOptions;
   children: React.ReactNode;
 }
 
-export const BroadcastProvider: React.FC<BroadcastProviderProps> = ({ children, channelName }) => {
-  const BroadcastChannelActions = useBroadcastChannel(channelName);
+export const BroadcastProvider: React.FC<BroadcastProviderProps> = ({
+  children,
+  channelName,
+  options,
+}) => {
+  const BroadcastChannelActions = useBroadcastChannel(channelName, options);
 
   return (
     <BroadcastChannelContext.Provider value={BroadcastChannelActions}>

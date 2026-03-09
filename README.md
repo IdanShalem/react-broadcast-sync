@@ -69,7 +69,7 @@ Easily sync UI state or user events across browser tabs in React apps — notifi
 - Namespace and source scoping support
 - Clear individual or all messages
 - Only accept allowed message types (optional)
-- `BroadcastProvider` for context-based usage
+- `BroadcastProvider` for context-based usage with full options support
 - **Ping and active source detection** (discover other tabs and their source names)
 - **Per-type `onMessage` callbacks** (react to incoming messages without polling state)
 
@@ -198,6 +198,31 @@ function NotificationBar() {
     </div>
   );
 }
+```
+
+#### `BroadcastProvider` Props
+
+| Prop | Type | Required | Description |
+|------|------|----------|-------------|
+| `channelName` | `string` | ✅ | The name of the broadcast channel |
+| `options` | `BroadcastOptions` | ❌ | Any option accepted by `useBroadcastChannel` |
+| `children` | `React.ReactNode` | ✅ | Component subtree |
+
+All fields in `BroadcastOptions` (see the table in the [API Reference](#broadcastoptions)) can be forwarded via the `options` prop. This includes `namespace`, `registeredTypes`, `onMessage`, `keepLatestMessage`, `sourceName`, and more.
+
+```tsx
+<BroadcastProvider
+  channelName="notifications"
+  options={{
+    namespace: 'v2',
+    registeredTypes: ['alert', 'info'],
+    onMessage: {
+      alert: (msg) => showToast(msg.message.text),
+    },
+  }}
+>
+  <App />
+</BroadcastProvider>
 ```
 
 ---
@@ -707,9 +732,6 @@ Relies on [BroadcastChannel API](https://developer.mozilla.org/en-US/docs/Web/AP
 ## Coming Soon
 
 We're actively improving `react-broadcast-sync`! Here are some features and enhancements planned for upcoming versions:
-
-- **`BroadcastProvider` options support**  
-  Pass a full `BroadcastOptions` object to the provider so consumers can use `onMessage`, `registeredTypes`, and other options without dropping down to the hook.
 
 - **Automatic Channel Recovery**  
   Reconnect automatically if the `BroadcastChannel` gets disconnected or closed by the browser, with configurable retry delay and attempt cap.
