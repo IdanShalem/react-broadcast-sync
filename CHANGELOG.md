@@ -1,3 +1,10 @@
+# [1.9.0](https://github.com/IdanShalem/react-broadcast-sync/compare/v1.8.0...v1.9.0) (2026-03-09)
+
+
+### Features
+
+* **provider:** add options prop to BroadcastProvider ([98fdbd4](https://github.com/IdanShalem/react-broadcast-sync/commit/98fdbd4623a892a88db8d3f2027fbd972bd37932))
+
 # [1.8.0](https://github.com/IdanShalem/react-broadcast-sync/compare/v1.7.1...v1.8.0) (2026-02-23)
 
 
