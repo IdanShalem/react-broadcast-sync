@@ -3,7 +3,7 @@
 declare const process: { env: { MIXPANEL_TOKEN?: string } };
 let MIXPANEL_TOKEN: string = process.env.MIXPANEL_TOKEN ?? '';
 
-const MIXPANEL_ENDPOINT = 'https://api.mixpanel.com/track';
+const MIXPANEL_ENDPOINT = 'https://api-eu.mixpanel.com/track';
 const FLUSH_INTERVAL_MS = 30_000;
 
 // Session-scoped anonymous ID — not persisted, not tied to any user or device
