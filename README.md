@@ -53,6 +53,7 @@ Easily sync UI state or user events across browser tabs in React apps — notifi
 - [Troubleshooting](#-roubleshooting)
 - [Testing](#testing)
 - [Browser Support](#browser-support)
+- [Telemetry](#telemetry)
 - [Coming Soon](#coming-soon)
 - [Versioning & Releases](#versioning--releases)
 - [Contributing](#contributing)
@@ -257,6 +258,7 @@ interface BroadcastOptions {
   batchingDelayMs?: number; // Delay in ms to batch outgoing messages (default: 20). If > 0, messages are batched and sent together.
   excludedBatchMessageTypes?: string[]; // Message types to always send immediately, never batched (default: []).
   onMessage?: MessageCallback | OnMessageMap; // Callback(s) fired when a received message passes all filters (default: undefined).
+  telemetry?: boolean; // Opt-out anonymous usage telemetry (default: true). Pass false to disable.
 }
 ```
 
@@ -273,7 +275,8 @@ interface BroadcastOptions {
 | `cleanupDebounceMs`         | `0`           | No debounce by default              |
 | `batchingDelayMs`           | `20`          | Batch delay in ms (0 = off)         |
 | `excludedBatchMessageTypes` | `[]`          | Types never batched                 |
-| `onMessage`                 | `undefined`   | Callback(s) for received messages   |
+| `onMessage`                 | `undefined`   | Callback(s) for received messages        |
+| `telemetry`                 | `true`        | Anonymous usage stats. Pass `false` to opt out |
 
 #### Return Value
 
@@ -499,7 +502,11 @@ useBroadcastChannel('my-channel', {
 - Channel names, source names, message content, or message types
 - Any user-identifying data
 
+Telemetry is **on by default**. Pass `telemetry: false` to opt out at any time with no behaviour change.
+
 Events are batched and flushed in a single request when the tab is hidden or after 30 seconds. A failed request is silently discarded and never surfaces to your application.
+
+See [TELEMETRY.md](./TELEMETRY.md) for the full legal notice.
 
 ---
 
@@ -746,6 +753,24 @@ Relies on [BroadcastChannel API](https://developer.mozilla.org/en-US/docs/Web/AP
 - ✅ Edge 79+
 - ✅ Safari 15.4+
 - ✅ Opera 41+
+
+---
+
+## Telemetry
+
+`react-broadcast-sync` collects **anonymous, non-personal usage statistics** by default to help the maintainer prioritise features and fix real-world issues. No channel names, source names, message content, or user data of any kind is ever collected.
+
+A random session ID is generated on every page load and is never persisted to cookies or storage, making it impossible to track individual users or sessions.
+
+**To opt out**, pass `telemetry: false`:
+
+```tsx
+useBroadcastChannel('my-channel', { telemetry: false });
+// or
+<BroadcastProvider channelName="my-channel" options={{ telemetry: false }} />
+```
+
+See [TELEMETRY.md](./TELEMETRY.md) for full details, legal basis, and the complete list of signals collected.
 
 ---
 

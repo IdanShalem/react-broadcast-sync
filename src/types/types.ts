@@ -40,6 +40,25 @@ export interface BroadcastOptions {
    * Internal messages (PING, PONG, CLEAR_SENT_MESSAGES) never trigger this.
    */
   onMessage?: MessageCallback | OnMessageMap;
+
+  /**
+   * Allow the package to collect anonymous usage statistics (default: true).
+   *
+   * When true, structural signals are sent to the maintainer on channel mount:
+   * which options are in use, which methods are called, and whether the hook
+   * or provider entry point is used. No channel names, source names, message
+   * content, user identifiers, or any personally identifiable information is
+   * ever collected. The session ID is randomly generated on every page load
+   * and is never persisted to storage.
+   *
+   * Set to `false` to opt out:
+   * ```tsx
+   * useBroadcastChannel('my-channel', { telemetry: false });
+   * ```
+   *
+   * See TELEMETRY.md in the package repository for full details.
+   */
+  telemetry?: boolean;
 }
 
 /**

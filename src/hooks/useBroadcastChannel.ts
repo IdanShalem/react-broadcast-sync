@@ -66,6 +66,7 @@ export const useBroadcastChannel = (
     batchingDelayMs = 20,
     excludedBatchMessageTypes = [],
     onMessage,
+    telemetry = true,
   } = options;
 
   // State
@@ -109,6 +110,7 @@ export const useBroadcastChannel = (
 
   // Telemetry: fire once on mount to record configuration
   useEffect(() => {
+    if (!telemetry) return;
     const optionsUsed: string[] = [];
     if (sourceName !== undefined) optionsUsed.push('sourceName');
     if (cleaningInterval !== 1000) optionsUsed.push('cleaningInterval');
@@ -151,7 +153,7 @@ export const useBroadcastChannel = (
 
   const ping = useCallback(
     (timeoutMs: number = 300): Promise<string[]> => {
-      trackMethodCalled('ping');
+      if (telemetry) trackMethodCalled('ping');
       if (isPingInProgress) {
         debug.ping.inProgress();
         return Promise.resolve([]);
@@ -195,7 +197,7 @@ export const useBroadcastChannel = (
 
   const postMessage = useCallback(
     (messageType: string, messageContent: any, options: SendMessageOptions = {}) => {
-      trackMethodCalled('postMessage');
+      if (telemetry) trackMethodCalled('postMessage');
       const channelCurrent = channel.current;
       if (!channelCurrent) {
         const error =
@@ -262,7 +264,7 @@ export const useBroadcastChannel = (
   );
 
   const clearReceivedMessages = useCallback((options: ClearReceivedMessagesOptions = {}) => {
-    trackMethodCalled('clearReceivedMessages');
+    if (telemetry) trackMethodCalled('clearReceivedMessages');
     const hasFilters = Boolean(
       (options.ids && options.ids.length) ||
         (options.types && options.types.length) ||
@@ -286,7 +288,7 @@ export const useBroadcastChannel = (
 
   const clearSentMessages = useCallback(
     (options: ClearSentMessagesOptions = {}) => {
-      trackMethodCalled('clearSentMessages');
+      if (telemetry) trackMethodCalled('clearSentMessages');
       const { ids = [], types = [], sync = false } = options ?? {};
       setSentMessages(prev =>
         ids.length > 0 || types.length > 0
@@ -323,7 +325,7 @@ export const useBroadcastChannel = (
 
   const getLatestMessage = useCallback(
     (options: GetLatestMessageOptions = {}) => {
-      trackMethodCalled('getLatestMessage');
+      if (telemetry) trackMethodCalled('getLatestMessage');
       const { source, type } = options;
 
       for (let i = messages.length - 1; i >= 0; i--) {
@@ -435,7 +437,7 @@ export const useBroadcastChannel = (
   );
 
   const closeChannel = useCallback(() => {
-    trackMethodCalled('closeChannel');
+    if (telemetry) trackMethodCalled('closeChannel');
     const bc = channel.current;
     if (bc && typeof bc.close === 'function') {
       bc.removeEventListener('message', handleMessage);
@@ -454,7 +456,7 @@ export const useBroadcastChannel = (
         channelName: resolvedChannelName,
         originalError: error,
       });
-      trackBrowserUnsupported();
+      if (telemetry) trackBrowserUnsupported();
       setErrorMessage(error);
       return;
     }

@@ -19,3 +19,14 @@ AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
 LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 THE SOFTWARE.
+
+---
+
+TELEMETRY NOTICE
+
+This Software collects anonymous, non-personal usage statistics by default.
+No channel names, source names, message content, user identifiers, or any
+personally identifiable information is collected. Session identifiers are
+randomly generated on each page load and are never persisted. You may opt out
+at any time by passing { telemetry: false } to useBroadcastChannel or
+BroadcastProvider. See TELEMETRY.md for full details.
