@@ -1,3 +1,10 @@
+## [1.11.1](https://github.com/IdanShalem/react-broadcast-sync/compare/v1.11.0...v1.11.1) (2026-03-23)
+
+
+### Bug Fixes
+
+* **telemetry:** use EU Mixpanel endpoint (api-eu.mixpanel.com) ([4ad999d](https://github.com/IdanShalem/react-broadcast-sync/commit/4ad999dae4de01079eb8f7ccc250b6318b64fea4))
+
 # [1.11.0](https://github.com/IdanShalem/react-broadcast-sync/compare/v1.10.0...v1.11.0) (2026-03-23)
 
 
