@@ -1,3 +1,10 @@
+# [1.11.0](https://github.com/IdanShalem/react-broadcast-sync/compare/v1.10.0...v1.11.0) (2026-03-23)
+
+
+### Features
+
+* **telemetry:** make telemetry opt-out with full legal disclosure ([2d755c0](https://github.com/IdanShalem/react-broadcast-sync/commit/2d755c094ce996b8dab51365923dde79fad4606f))
+
 # [1.10.0](https://github.com/IdanShalem/react-broadcast-sync/compare/v1.9.0...v1.10.0) (2026-03-23)
 
 
