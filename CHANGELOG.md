@@ -1,3 +1,10 @@
+# [1.10.0](https://github.com/IdanShalem/react-broadcast-sync/compare/v1.9.0...v1.10.0) (2026-03-23)
+
+
+### Features
+
+* **telemetry:** add anonymous usage analytics via Mixpanel ([532ffb2](https://github.com/IdanShalem/react-broadcast-sync/commit/532ffb2446608751d2c229dfd2f9d874f408a66e))
+
 # [1.9.0](https://github.com/IdanShalem/react-broadcast-sync/compare/v1.8.0...v1.9.0) (2026-03-09)
 
 
