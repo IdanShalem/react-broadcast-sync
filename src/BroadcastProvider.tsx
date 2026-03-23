@@ -15,7 +15,7 @@ export const BroadcastProvider: React.FC<BroadcastProviderProps> = ({
   channelName,
   options,
 }) => {
-  const BroadcastChannelActions = useBroadcastChannel(channelName, options);
+  const BroadcastChannelActions = useBroadcastChannel(channelName, options, 'provider');
 
   return (
     <BroadcastChannelContext.Provider value={BroadcastChannelActions}>

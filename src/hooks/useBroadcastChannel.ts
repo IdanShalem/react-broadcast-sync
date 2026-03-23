@@ -21,6 +21,7 @@ import {
   debounce,
 } from '../utils/messageUtils';
 import { debug } from '../utils/debug';
+import { trackChannelInit, trackMethodCalled, trackBrowserUnsupported } from '../utils/telemetry';
 
 const INTERNAL_MESSAGE_TYPES: Record<string, InternalMessage> = {
   CLEAR_SENT_MESSAGES: 'CLEAR_SENT_MESSAGES',
@@ -50,7 +51,9 @@ if (process.env.NODE_ENV === 'test') {
  */
 export const useBroadcastChannel = (
   channelName: string,
-  options: BroadcastOptions = {}
+  options: BroadcastOptions = {},
+  /** @internal — used by BroadcastProvider to distinguish its entry point */
+  _entry: 'hook' | 'provider' = 'hook'
 ): BroadcastActions => {
   const {
     sourceName,
@@ -104,6 +107,30 @@ export const useBroadcastChannel = (
   const registeredTypesRef = useRef<string[]>(registeredTypes);
   registeredTypesRef.current = registeredTypes;
 
+  // Telemetry: fire once on mount to record configuration
+  useEffect(() => {
+    const optionsUsed: string[] = [];
+    if (sourceName !== undefined) optionsUsed.push('sourceName');
+    if (cleaningInterval !== 1000) optionsUsed.push('cleaningInterval');
+    if (keepLatestMessage) optionsUsed.push('keepLatestMessage');
+    if (registeredTypes.length > 0) optionsUsed.push('registeredTypes');
+    if (namespace) optionsUsed.push('namespace');
+    if (deduplicationTTL !== 5 * 60 * 1000) optionsUsed.push('deduplicationTTL');
+    if (cleanupDebounceMs > 0) optionsUsed.push('cleanupDebounceMs');
+    if (batchingDelayMs !== 20) optionsUsed.push('batchingDelayMs');
+    if (excludedBatchMessageTypes.length > 0) optionsUsed.push('excludedBatchMessageTypes');
+    if (onMessage !== undefined) optionsUsed.push('onMessage');
+    trackChannelInit({
+      entry: _entry,
+      options_used: optionsUsed,
+      onmessage_shape:
+        onMessage === undefined ? 'none' : typeof onMessage === 'function' ? 'function' : 'map',
+      batching_enabled: batchingDelayMs > 0,
+      browser_supported: typeof BroadcastChannel !== 'undefined',
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   const performCleanup = useCallback(() => {
     setMessages(prev => prev.filter(msg => !isMessageExpired(msg)));
   }, []);
@@ -124,6 +151,7 @@ export const useBroadcastChannel = (
 
   const ping = useCallback(
     (timeoutMs: number = 300): Promise<string[]> => {
+      trackMethodCalled('ping');
       if (isPingInProgress) {
         debug.ping.inProgress();
         return Promise.resolve([]);
@@ -167,6 +195,7 @@ export const useBroadcastChannel = (
 
   const postMessage = useCallback(
     (messageType: string, messageContent: any, options: SendMessageOptions = {}) => {
+      trackMethodCalled('postMessage');
       const channelCurrent = channel.current;
       if (!channelCurrent) {
         const error =
@@ -233,6 +262,7 @@ export const useBroadcastChannel = (
   );
 
   const clearReceivedMessages = useCallback((options: ClearReceivedMessagesOptions = {}) => {
+    trackMethodCalled('clearReceivedMessages');
     const hasFilters = Boolean(
       (options.ids && options.ids.length) ||
         (options.types && options.types.length) ||
@@ -256,6 +286,7 @@ export const useBroadcastChannel = (
 
   const clearSentMessages = useCallback(
     (options: ClearSentMessagesOptions = {}) => {
+      trackMethodCalled('clearSentMessages');
       const { ids = [], types = [], sync = false } = options ?? {};
       setSentMessages(prev =>
         ids.length > 0 || types.length > 0
@@ -292,6 +323,7 @@ export const useBroadcastChannel = (
 
   const getLatestMessage = useCallback(
     (options: GetLatestMessageOptions = {}) => {
+      trackMethodCalled('getLatestMessage');
       const { source, type } = options;
 
       for (let i = messages.length - 1; i >= 0; i--) {
@@ -403,6 +435,7 @@ export const useBroadcastChannel = (
   );
 
   const closeChannel = useCallback(() => {
+    trackMethodCalled('closeChannel');
     const bc = channel.current;
     if (bc && typeof bc.close === 'function') {
       bc.removeEventListener('message', handleMessage);
@@ -421,6 +454,7 @@ export const useBroadcastChannel = (
         channelName: resolvedChannelName,
         originalError: error,
       });
+      trackBrowserUnsupported();
       setErrorMessage(error);
       return;
     }

@@ -202,11 +202,11 @@ function NotificationBar() {
 
 #### `BroadcastProvider` Props
 
-| Prop | Type | Required | Description |
-|------|------|----------|-------------|
-| `channelName` | `string` | ✅ | The name of the broadcast channel |
-| `options` | `BroadcastOptions` | ❌ | Any option accepted by `useBroadcastChannel` |
-| `children` | `React.ReactNode` | ✅ | Component subtree |
+| Prop          | Type               | Required | Description                                  |
+| ------------- | ------------------ | -------- | -------------------------------------------- |
+| `channelName` | `string`           | ✅       | The name of the broadcast channel            |
+| `options`     | `BroadcastOptions` | ❌       | Any option accepted by `useBroadcastChannel` |
+| `children`    | `React.ReactNode`  | ✅       | Component subtree                            |
 
 All fields in `BroadcastOptions` (see the table in the [API Reference](#broadcastoptions)) can be forwarded via the `options` prop. This includes `namespace`, `registeredTypes`, `onMessage`, `keepLatestMessage`, `sourceName`, and more.
 
@@ -217,7 +217,7 @@ All fields in `BroadcastOptions` (see the table in the [API Reference](#broadcas
     namespace: 'v2',
     registeredTypes: ['alert', 'info'],
     onMessage: {
-      alert: (msg) => showToast(msg.message.text),
+      alert: msg => showToast(msg.message.text),
     },
   }}
 >
@@ -483,6 +483,26 @@ useBroadcastChannel('my-channel', {
 
 ---
 
+#### `telemetry` Option
+
+`react-broadcast-sync` collects anonymous, structural usage signals to help the maintainer understand how the library is used in the wild.
+
+**What is collected:**
+- Which `BroadcastOptions` keys are present (not their values)
+- The shape of `onMessage` (`none` / `function` / `map`)
+- Whether batching is enabled
+- Whether `BroadcastChannel` is supported in the browser
+- Which action methods (`postMessage`, `ping`, etc.) are called at least once per session
+- Hook vs. provider entry point
+
+**What is never collected:**
+- Channel names, source names, message content, or message types
+- Any user-identifying data
+
+Events are batched and flushed in a single request when the tab is hidden or after 30 seconds. A failed request is silently discarded and never surfaces to your application.
+
+---
+
 ## Best Practices
 
 - **Use `namespace`** to isolate functionality between different app modules.
@@ -741,6 +761,9 @@ We're actively improving `react-broadcast-sync`! Here are some features and enha
 
 - **Integration Tests**  
   Real browser cross-tab tests using Playwright that go beyond what jsdom mocks can cover.
+
+- **Anonymous Usage Telemetry**  
+  ✅ Released — the package collects anonymous structural signals (options used, methods called, hook vs. provider). No user data. No message content.
 
 We're committed to keeping this package lightweight, flexible, and production-ready.  
 Your feedback and contributions are welcome — feel free to [open an issue](https://github.com/IdanShalem/react-broadcast-sync/issues)!
