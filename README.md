@@ -264,18 +264,18 @@ interface BroadcastOptions {
 
 #### Default Values
 
-| Option                      | Default Value | Description                         |
-| --------------------------- | ------------- | ----------------------------------- |
-| `sourceName`                | `undefined`   | Auto-generated if not provided      |
-| `cleaningInterval`          | `1000`        | 1 second between cleanup runs       |
-| `keepLatestMessage`         | `false`       | Keep all messages by default        |
-| `registeredTypes`           | `[]`          | Accept all message types by default |
-| `namespace`                 | `''`          | No namespace by default             |
-| `deduplicationTTL`          | `300000`      | 5 minutes (5 × 60 × 1000 ms)        |
-| `cleanupDebounceMs`         | `0`           | No debounce by default              |
-| `batchingDelayMs`           | `20`          | Batch delay in ms (0 = off)         |
-| `excludedBatchMessageTypes` | `[]`          | Types never batched                 |
-| `onMessage`                 | `undefined`   | Callback(s) for received messages        |
+| Option                      | Default Value | Description                                    |
+| --------------------------- | ------------- | ---------------------------------------------- |
+| `sourceName`                | `undefined`   | Auto-generated if not provided                 |
+| `cleaningInterval`          | `1000`        | 1 second between cleanup runs                  |
+| `keepLatestMessage`         | `false`       | Keep all messages by default                   |
+| `registeredTypes`           | `[]`          | Accept all message types by default            |
+| `namespace`                 | `''`          | No namespace by default                        |
+| `deduplicationTTL`          | `300000`      | 5 minutes (5 × 60 × 1000 ms)                   |
+| `cleanupDebounceMs`         | `0`           | No debounce by default                         |
+| `batchingDelayMs`           | `20`          | Batch delay in ms (0 = off)                    |
+| `excludedBatchMessageTypes` | `[]`          | Types never batched                            |
+| `onMessage`                 | `undefined`   | Callback(s) for received messages              |
 | `telemetry`                 | `true`        | Anonymous usage stats. Pass `false` to opt out |
 
 #### Return Value
@@ -491,6 +491,7 @@ useBroadcastChannel('my-channel', {
 `react-broadcast-sync` collects anonymous, structural usage signals to help the maintainer understand how the library is used in the wild.
 
 **What is collected:**
+
 - Which `BroadcastOptions` keys are present (not their values)
 - The shape of `onMessage` (`none` / `function` / `map`)
 - Whether batching is enabled
@@ -499,6 +500,7 @@ useBroadcastChannel('my-channel', {
 - Hook vs. provider entry point
 
 **What is never collected:**
+
 - Channel names, source names, message content, or message types
 - Any user-identifying data
 
@@ -767,7 +769,7 @@ A random session ID is generated on every page load and is never persisted to co
 ```tsx
 useBroadcastChannel('my-channel', { telemetry: false });
 // or
-<BroadcastProvider channelName="my-channel" options={{ telemetry: false }} />
+<BroadcastProvider channelName="my-channel" options={{ telemetry: false }} />;
 ```
 
 See [TELEMETRY.md](./TELEMETRY.md) for full details, legal basis, and the complete list of signals collected.

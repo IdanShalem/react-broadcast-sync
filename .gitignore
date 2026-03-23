@@ -30,3 +30,6 @@ coverage/
 # Demo app
 demo/react-broadcast-sync-demo/node_modules/
 demo/react-broadcast-sync-demo/dist/
+
+# Cursor
+.cursor/

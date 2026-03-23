@@ -6,14 +6,14 @@
 
 The following structural signals are sent on every channel mount:
 
-| Signal | Description |
-|---|---|
-| `entry` | Whether `useBroadcastChannel` or `BroadcastProvider` was used |
-| `options_used` | Names of `BroadcastOptions` keys that differ from their default values |
-| `onmessage_shape` | Whether `onMessage` is absent, a function, or a type-keyed map |
-| `batching_enabled` | Whether `batchingDelayMs > 0` |
-| `browser_supported` | Whether `BroadcastChannel` is available in the browser |
-| `method_called` | Which action methods (`postMessage`, `ping`, etc.) were called at least once per page session |
+| Signal              | Description                                                                                   |
+| ------------------- | --------------------------------------------------------------------------------------------- |
+| `entry`             | Whether `useBroadcastChannel` or `BroadcastProvider` was used                                 |
+| `options_used`      | Names of `BroadcastOptions` keys that differ from their default values                        |
+| `onmessage_shape`   | Whether `onMessage` is absent, a function, or a type-keyed map                                |
+| `batching_enabled`  | Whether `batchingDelayMs > 0`                                                                 |
+| `browser_supported` | Whether `BroadcastChannel` is available in the browser                                        |
+| `method_called`     | Which action methods (`postMessage`, `ping`, etc.) were called at least once per page session |
 
 ## What is never collected
 
@@ -55,7 +55,7 @@ useBroadcastChannel('my-channel', { telemetry: false });
 // Disable via BroadcastProvider
 <BroadcastProvider channelName="my-channel" options={{ telemetry: false }}>
   <App />
-</BroadcastProvider>
+</BroadcastProvider>;
 ```
 
 There is no penalty, degraded functionality, or behaviour change when opting out.
