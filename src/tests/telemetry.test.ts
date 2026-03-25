@@ -6,7 +6,7 @@ import {
   _setTokenForTesting,
 } from '../utils/telemetry';
 
-const MIXPANEL_ENDPOINT = 'https://api.mixpanel.com/track';
+const MIXPANEL_ENDPOINT = 'https://api-eu.mixpanel.com/track';
 const FAKE_TOKEN = 'test-token-abc123';
 
 const mockFetch = jest.fn().mockResolvedValue({ ok: true });
