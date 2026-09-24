@@ -1,10 +1,3 @@
-## [1.11.2](https://github.com/IdanShalem/react-broadcast-sync/compare/v1.11.1...v1.11.2) (2026-09-24)
-
-
-### Bug Fixes
-
-* **release:** keep the Mixpanel token in the published bundle ([af3b268](https://github.com/IdanShalem/react-broadcast-sync/commit/af3b268c703f79f1c378d3842b7fd4970bf134e2))
-
 ## [1.11.1](https://github.com/IdanShalem/react-broadcast-sync/compare/v1.11.0...v1.11.1) (2026-03-23)
 
 
