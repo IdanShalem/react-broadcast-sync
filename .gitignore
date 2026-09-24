@@ -33,3 +33,6 @@ demo/react-broadcast-sync-demo/dist/
 
 # Cursor
 .cursor/
+# Playwright
+playwright-report/
+test-results/

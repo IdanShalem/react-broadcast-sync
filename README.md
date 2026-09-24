@@ -746,6 +746,25 @@ test('should render messages from provider', () => {
 
 ---
 
+### Running This Repository's Test Suites
+
+The repository has two test suites:
+
+```bash
+# Unit tests (Jest + jsdom)
+npm test
+
+# Cross-tab integration tests (Playwright + real Chromium tabs)
+npx playwright install chromium   # one-time browser install
+npm run test:integration
+```
+
+The integration suite serves a small React app from `integration/app` and drives two
+real browser tabs through the public hook API: message delivery between tabs,
+self-filtering, namespace isolation, `registeredTypes` filtering, `ping` source
+discovery, synced `clearSentMessages`, local `clearReceivedMessages`, and message
+expiration.
+
 ## Browser Support
 
 Relies on [BroadcastChannel API](https://developer.mozilla.org/en-US/docs/Web/API/BroadcastChannel):

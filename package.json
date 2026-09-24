@@ -31,7 +31,9 @@
     "release": "semantic-release",
     "lint-staged": "lint-staged",
     "prepack": "npm run build",
-    "verify:telemetry": "node scripts/verify-telemetry-token.mjs"
+    "verify:telemetry": "node scripts/verify-telemetry-token.mjs",
+    "dev:integration": "vite integration/app --port 5199 --strictPort",
+    "test:integration": "playwright test"
   },
   "release": {
     "branches": [
@@ -107,6 +109,7 @@
     "@babel/preset-react": "^7.23.3",
     "@commitlint/cli": "^19.0.3",
     "@commitlint/config-conventional": "^19.0.3",
+    "@playwright/test": "^1.63.0",
     "@rollup/plugin-babel": "^6.0.4",
     "@rollup/plugin-commonjs": "^25.0.7",
     "@rollup/plugin-node-resolve": "^15.2.3",
@@ -144,6 +147,7 @@
     "semantic-release": "^23.0.2",
     "ts-jest": "^29.1.2",
     "typescript": "^5.3.3",
-    "typescript-eslint": "^7.0.2"
+    "typescript-eslint": "^7.0.2",
+    "vite": "^5.4.21"
   }
 }
