@@ -41,6 +41,7 @@ Easily sync UI state or user events across browser tabs in React apps — notifi
 ## Table of Contents
 
 - [Features](#features)
+- [Why Not localStorage?](#why-not-localstorage)
 - [Demo App](#demo-app)
 - [Installation](#installation)
 - [Quick Start](#quick-start)
@@ -73,6 +74,25 @@ Easily sync UI state or user events across browser tabs in React apps — notifi
 - `BroadcastProvider` for context-based usage with full options support
 - **Ping and active source detection** (discover other tabs and their source names)
 - **Per-type `onMessage` callbacks** (react to incoming messages without polling state)
+
+## Why Not localStorage?
+
+The first instinct for sharing state between tabs is often `localStorage` plus the `storage` event. It works for simple cases, but it was designed for persistence, not messaging - and the ecosystem offers a few different trade-offs. Here's how `react-broadcast-sync` compares:
+
+|                    | **react-broadcast-sync**                                | **localStorage + `storage` events**   | **jotai `atomWithStorage`**   | **`broadcast-channel`**              | **`zustand-sync-tabs`** |
+| ------------------ | ------------------------------------------------------- | ------------------------------------- | ----------------------------- | ------------------------------------ | ----------------------- |
+| What it syncs      | Typed messages on named channels                        | Raw key-value strings                 | A single persisted atom value | Messages on a channel                | A Zustand store's state |
+| React integration  | First-class hook + provider                             | Manual event listeners                | Requires Jotai                | None - framework agnostic            | Requires Zustand        |
+| Payloads           | Any serializable value                                  | Strings only (manual JSON)            | JSON-serializable value       | Any serializable value               | Store state             |
+| Message lifecycle  | Expiration, deduplication, batching, selective clearing | None                                  | None                          | None                                 | Latest state only       |
+| Tab awareness      | Source naming, ping & active-source detection           | None (no event in the tab that wrote) | None                          | Leader election                      | None                    |
+| Extra environments | Browsers (same origin)                                  | Browsers (same origin)                | React Native via AsyncStorage | Old browsers, WebWorkers, Node, Deno | Browsers (same origin)  |
+
+A few honest notes:
+
+- **If you need persistence across reloads**, use a storage-based tool (`atomWithStorage`, plain `localStorage`). Messages in `react-broadcast-sync` are ephemeral - they notify and sync live tabs, they don't survive a refresh.
+- **If you need old-browser, WebWorker, or Node support**, [`broadcast-channel`](https://github.com/pubkey/broadcast-channel) is the right low-level primitive. `react-broadcast-sync` builds on the native `BroadcastChannel` API and gives you the React layer on top: hooks, typed messages, and lifecycle handling out of the box.
+- **If your app already lives in Zustand or Jotai**, their sync utilities may be enough. `react-broadcast-sync` is state-manager agnostic - it works next to any of them, or with plain `useState`.
 
 ## Demo App
 

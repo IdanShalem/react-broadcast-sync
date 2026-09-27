@@ -71,11 +71,19 @@
   },
   "keywords": [
     "react",
+    "react-hooks",
     "hooks",
     "broadcastchannel",
+    "broadcast-channel",
     "sync",
+    "state-sync",
     "cross-tab",
-    "state-management"
+    "multi-tab",
+    "tabs",
+    "state-management",
+    "localstorage-alternative",
+    "typescript",
+    "real-time"
   ],
   "author": "Idan Shalem <idanshalem25@gmail.com>",
   "license": "MIT",
