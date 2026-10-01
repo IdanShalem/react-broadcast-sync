@@ -2,9 +2,9 @@
 
 ## What is collected
 
-`react-broadcast-sync` collects **anonymous, non-personal usage statistics** to help the maintainer understand how the library is used in practice. This data is used solely to prioritise features and fix real-world issues.
+**Privacy-first: telemetry is off by default.** No usage events are sent to Mixpanel unless the application explicitly passes `telemetry: true` to `useBroadcastChannel` or `BroadcastProvider`. When enabled, structural usage signals help the maintainer prioritise features and fix issues.
 
-The following structural signals are sent on every channel mount:
+When telemetry is enabled, the following structural signals are sent on channel mount or method use:
 
 | Signal              | Description                                                                                   |
 | ------------------- | --------------------------------------------------------------------------------------------- |
@@ -20,8 +20,8 @@ The following structural signals are sent on every channel mount:
 - Channel names
 - Source names (`sourceName`)
 - Message content or message types
-- User identifiers of any kind
-- IP addresses (Mixpanel may record these server-side; see Mixpanel's privacy policy)
+- Application user identifiers in the event payload
+- IP addresses in the event payload (Mixpanel may process them from request metadata; see its privacy policy)
 - Any data from the messages your application sends or receives
 
 ## Session identifier
@@ -30,35 +30,29 @@ Each page load generates a random, ephemeral session ID using `crypto.randomUUID
 
 - Is **not persisted** to cookies, `localStorage`, `sessionStorage`, or any other storage mechanism.
 - Is **regenerated on every page load**, making it impossible to track users across sessions.
-- Cannot be linked back to any individual user or device.
+- Does not by itself identify a user, though the recipient may process request metadata such as IP addresses.
 
-Because the identifier is non-persistent and randomly regenerated, the data collected does not constitute "personal data" under the GDPR definition (Regulation (EU) 2016/679, Article 4(1)).
-
-## Legal basis
-
-The data collected is fully anonymous and structural. No personal data or data that can identify a natural person is processed. The collection falls under the **legitimate interests** of the package maintainer (GDPR Article 6(1)(f)) to understand aggregate library usage patterns.
-
-Because no cookies or persistent identifiers are set on the user's device, the ePrivacy Directive (Directive 2002/58/EC) cookie consent requirements do not apply.
+The session ID is not persisted by this package, but Mixpanel may process request metadata such as IP addresses. Applications enabling telemetry should assess their own privacy obligations and disclose this transfer to their users.
 
 ## Data processor
 
 Usage statistics are processed by [Mixpanel](https://mixpanel.com). Mixpanel's privacy policy is available at [https://mixpanel.com/legal/privacy-policy/](https://mixpanel.com/legal/privacy-policy/).
 
-## How to opt out
+## How to opt in
 
-Telemetry is enabled by default and can be disabled at any time by passing `telemetry: false`:
+Telemetry is disabled by default. Enable it explicitly per hook or provider with `telemetry: true`:
 
 ```tsx
-// Disable for a specific channel
-useBroadcastChannel('my-channel', { telemetry: false });
+// Enable for a specific channel
+useBroadcastChannel('my-channel', { telemetry: true });
 
-// Disable via BroadcastProvider
-<BroadcastProvider channelName="my-channel" options={{ telemetry: false }}>
+// Enable via BroadcastProvider
+<BroadcastProvider channelName="my-channel" options={{ telemetry: true }}>
   <App />
 </BroadcastProvider>;
 ```
 
-There is no penalty, degraded functionality, or behaviour change when opting out.
+There is no penalty or degraded functionality when leaving telemetry off. Upgrading from a version where telemetry was enabled by default? No option is needed to keep it off; use `telemetry: true` only if you want to opt in.
 
 ## Contact
 

@@ -42,18 +42,16 @@ export interface BroadcastOptions {
   onMessage?: MessageCallback | OnMessageMap;
 
   /**
-   * Allow the package to collect anonymous usage statistics (default: true).
+   * Allow the package to collect anonymous usage statistics (default: false).
    *
-   * When true, structural signals are sent to the maintainer on channel mount:
-   * which options are in use, which methods are called, and whether the hook
-   * or provider entry point is used. No channel names, source names, message
-   * content, user identifiers, or any personally identifiable information is
-   * ever collected. The session ID is randomly generated on every page load
-   * and is never persisted to storage.
+   * Telemetry is off unless explicitly enabled. When enabled, structural
+   * signals are sent to the maintainer: which options are in use, which
+   * methods are called, and whether the hook or provider entry point is used.
+   * No channel names, source names, or message content are sent.
    *
-   * Set to `false` to opt out:
+   * Set to `true` to opt in:
    * ```tsx
-   * useBroadcastChannel('my-channel', { telemetry: false });
+   * useBroadcastChannel('my-channel', { telemetry: true });
    * ```
    *
    * See TELEMETRY.md in the package repository for full details.
