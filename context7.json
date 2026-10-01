@@ -10,7 +10,7 @@
     "Do not give two tabs the same sourceName: a tab ignores messages from its own sourceName.",
     "keepLatestMessage keeps a single latest message across all types, not one per type.",
     "Keep cleanupDebounceMs smaller than cleaningInterval, otherwise cleanup can be postponed indefinitely.",
-    "Anonymous telemetry is on by default; pass telemetry: false to disable it.",
+    "Telemetry is off by default in 2.0.0; pass telemetry: true only to opt in. No option is needed to keep it off.",
     "messages is a log of received messages, not current state. To sync state, update local state and call postMessage in the same handler, and apply incoming messages with onMessage. Never call postMessage from a useEffect on state that is also set from incoming messages: it creates a ping-pong loop.",
     "Messages are not replayed to tabs opened later, and keepLatestMessage does not change that. For initial state, have the new tab post a 'state-request' message and let an existing tab reply with the current state."
   ]
