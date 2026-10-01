@@ -601,7 +601,7 @@ useBroadcastChannel('my-channel', { telemetry: true });
 <BroadcastProvider channelName="my-channel" options={{ telemetry: true }} />;
 ```
 
-Changing from a version where telemetry was enabled by default? Omit the option or pass `false` to keep it off.
+**Upgrading to 2.0.0 from 1.x:** telemetry is now off by default. Omit the option or leave `telemetry: false` to keep it off; pass `telemetry: true` only if you want to opt in. This default change is breaking.
 
 Events are batched and flushed in a single request when the tab is hidden or after 30 seconds. A failed request is silently discarded and never surfaces to your application.
 
@@ -914,7 +914,7 @@ We're actively improving `react-broadcast-sync`! Here are some features and enha
   Real browser cross-tab tests using Playwright that go beyond what jsdom mocks can cover.
 
 - **Anonymous Usage Telemetry**  
-  ✅ Released — the package collects anonymous structural signals (options used, methods called, hook vs. provider). No user data. No message content.
+  ✅ Released — off by default in 2.0.0. Only with `telemetry: true` does the package send structural signals (options used, methods called, hook vs. provider). No message content or application user identifiers in the event payload; Mixpanel may process request metadata such as IP addresses.
 
 We're committed to keeping this package lightweight, flexible, and production-ready.  
 Your feedback and contributions are welcome — feel free to [open an issue](https://github.com/IdanShalem/react-broadcast-sync/issues)!
