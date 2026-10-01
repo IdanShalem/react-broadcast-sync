@@ -66,7 +66,7 @@ export const useBroadcastChannel = (
     batchingDelayMs = 20,
     excludedBatchMessageTypes = [],
     onMessage,
-    telemetry = true,
+    telemetry = false,
   } = options;
 
   // State
