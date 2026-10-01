@@ -258,6 +258,63 @@ All fields in `BroadcastOptions` (see the table in the [API Reference](#broadcas
 </BroadcastProvider>
 ```
 
+## Syncing Shared State (filters, settings)
+
+`messages` is an event log of what other tabs sent, not the current state. To keep a piece of state
+(for example dashboard filters) in sync, update local state and send one message from the handler,
+and apply incoming messages with `onMessage`:
+
+```tsx
+function Dashboard() {
+  const [filters, setFilters] = useState({ status: 'all' });
+
+  const { postMessage } = useBroadcastChannel('dashboard', {
+    sourceName: `tab-${crypto.randomUUID()}`, // must be unique per tab
+    onMessage: {
+      'filters-update': msg => setFilters(msg.message),
+    },
+  });
+
+  const updateFilters = (next: typeof filters) => {
+    setFilters(next);
+    postMessage('filters-update', next);
+  };
+
+  return <FilterBar value={filters} onChange={updateFilters} />;
+}
+```
+
+Do not call `postMessage` from a `useEffect` on state that you also set from incoming messages.
+Each tab re-broadcasts what it receives, the tabs ping-pong, and they can end up with different
+values. Deduplication is by message ID, so it does not stop this.
+
+### New tabs do not receive past messages
+
+Messages are not replayed. A tab opened later only sees messages sent after it opened, and
+`keepLatestMessage` and `getLatestMessage` do not change that. To give a new tab the current state,
+let it ask for it and let an existing tab answer:
+
+```tsx
+const { postMessage } = useBroadcastChannel('dashboard', {
+  sourceName: sourceName, // unique per tab
+  onMessage: {
+    'filters-update': msg => setFilters(msg.message),
+    'state-request': () => postMessage('filters-update', filtersRef.current),
+  },
+});
+
+// Ask once when this tab mounts
+useEffect(() => {
+  postMessage('state-request', null);
+}, []);
+```
+
+Keep the current value in a ref (`filtersRef.current = filters`) so the `state-request` handler
+always answers with the latest state. If no other tab is open, nothing answers and the tab keeps its
+default state.
+
+---
+
 ---
 
 ## API Reference
@@ -280,7 +337,7 @@ const {
 
 ```typescript
 interface BroadcastOptions {
-  sourceName?: string; // Custom name for the message source
+  sourceName?: string; // Custom name for the message source. Must be unique per tab: a tab ignores messages from its own sourceName
   cleaningInterval?: number; // Interval in ms for cleaning expired messages (default: 1000)
   keepLatestMessage?: boolean; // Keep only the latest message (default: false)
   registeredTypes?: string[]; // List of allowed message types
