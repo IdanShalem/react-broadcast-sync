@@ -20,7 +20,7 @@ export interface BroadcastOptions {
   /** TTL for deduplication in milliseconds (default: 5 minutes) */
   deduplicationTTL?: number;
 
-  /** Debounce time for messages cleanup in milliseconds (default: 1000) */
+  /** Debounce time for messages cleanup in milliseconds (default: 0, no debounce) */
   cleanupDebounceMs?: number;
 
   /** Delay in milliseconds for batching messages (default: 20) */

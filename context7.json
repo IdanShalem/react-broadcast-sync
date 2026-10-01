@@ -1,0 +1,15 @@
+{
+  "$schema": "https://context7.com/schema/context7.json",
+  "projectTitle": "react-broadcast-sync",
+  "description": "React hook and provider for syncing state and events across browser tabs using the BroadcastChannel API.",
+  "excludeFolders": ["demo", "integration", "assets", "scripts"],
+  "excludeFiles": ["CHANGELOG.md", "TELEMETRY.md"],
+  "rules": [
+    "Import useBroadcastChannel (or BroadcastProvider) from 'react-broadcast-sync'; it is for same-origin browser tabs only, not server or cross-device sync.",
+    "Message deduplication is by message ID, not content. deduplicationTTL defaults to 5 minutes; cleanupDebounceMs defaults to 0.",
+    "Do not give two tabs the same sourceName: a tab ignores messages from its own sourceName.",
+    "keepLatestMessage keeps a single latest message across all types, not one per type.",
+    "Keep cleanupDebounceMs smaller than cleaningInterval, otherwise cleanup can be postponed indefinitely.",
+    "Anonymous telemetry is on by default; pass telemetry: false to disable it."
+  ]
+}

@@ -34,6 +34,17 @@
 
 Easily sync UI state or user events across browser tabs in React apps — notifications, presence, forms, and more. This package provides a clean and type-safe abstraction over the native API, enabling efficient, scoped, and reliable cross-tab messaging.
 
+**When to use it:** React apps that need to share ephemeral state or events between browser tabs of the same origin (logout, notifications, presence, draft sync). It wraps the browser `BroadcastChannel` API in a hook (`useBroadcastChannel`) and an optional `BroadcastProvider`.
+
+**When not to use it:** syncing to a server or other devices, persisting data across reloads (use `localStorage`/IndexedDB), or messaging across different origins.
+
+```tsx
+import { useBroadcastChannel } from 'react-broadcast-sync';
+
+const { messages, postMessage } = useBroadcastChannel('my-channel');
+postMessage('logout', { at: Date.now() }); // other tabs receive it in `messages`
+```
+
 <p align="center">
   <img src="https://raw.githubusercontent.com/IdanShalem/react-broadcast-sync/main/demo/react-broadcast-sync-demo/public/assets/react-broadcast-sync-demo-video.gif" alt="React Broadcast Sync Demo" width="600" />
 </p>
@@ -48,6 +59,7 @@ Easily sync UI state or user events across browser tabs in React apps — notifi
 - [Advanced Usage](#️advanced-usage)
 - [BroadcastProvider](#using-broadcastprovider)
 - [API Reference](#api-reference)
+- [Gotchas](#gotchas)
 - [Best Practices](#best-practices)
 - [Common Use Cases](#common-use-cases)
 - [Performance Considerations](#performance-considerations)
@@ -532,6 +544,15 @@ See [TELEMETRY.md](./TELEMETRY.md) for the full legal notice.
 
 ---
 
+## Gotchas
+
+- **Duplicate `sourceName`:** a tab ignores any message whose `source` equals its own `sourceName`. If two tabs use the same `sourceName`, they will not receive each other's messages. Leave it unset (a unique name is generated) unless you need a stable name, and keep it unique per tab.
+- **`keepLatestMessage` is one slot:** with `keepLatestMessage: true`, `messages` holds only the single most recent message across all types, so a `"b"` message replaces a prior `"a"`. Use `registeredTypes` or separate channels/namespaces if you need the latest message per type.
+- **`cleanupDebounceMs` vs `cleaningInterval`:** cleanup is debounced. If `cleanupDebounceMs` is longer than `cleaningInterval`, each interval tick restarts the debounce and expired messages may never be removed. Keep `cleanupDebounceMs` smaller than `cleaningInterval`.
+- **Deduplication is by message ID**, not content (see [Message Deduplication](#message-deduplication)).
+- **Same origin only:** `BroadcastChannel` does not cross origins, and a tab does not receive its own messages.
+- **Telemetry is on by default:** pass `telemetry: false` to opt out (see [Telemetry](#telemetry)).
+
 ## Best Practices
 
 - **Use `namespace`** to isolate functionality between different app modules.
@@ -655,11 +676,10 @@ postMessage('alert', { message: 'Something happened!' });
 
 ### Message Deduplication
 
-The `deduplicationTTL` option creates a time window (in milliseconds) during which messages with the same content and type from the same source are considered duplicates and will be ignored. This is particularly useful for:
+The `deduplicationTTL` option creates a time window (in milliseconds) during which a received message with an already-seen **message ID** is ignored. Deduplication is by ID, not by content: two separate `postMessage` calls with identical type and payload get different IDs and are both delivered. This is particularly useful for:
 
 - **Preventing Message Loops**: Avoids infinite message echo between tabs when they broadcast the same message back and forth
-- **Reducing Redundancy**: Filters out identical messages sent in rapid succession, preventing unnecessary processing
-- **Natural Debouncing**: Provides built-in debouncing behavior for broadcast events without additional code
+- **Reducing Redundancy**: Drops the same message if it is delivered to a tab more than once within the window
 
 Recommended TTL values based on use case:
 
