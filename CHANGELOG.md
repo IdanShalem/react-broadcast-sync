@@ -1,3 +1,14 @@
+# [2.0.0](https://github.com/IdanShalem/react-broadcast-sync/compare/v1.11.2...v2.0.0) (2026-10-01)
+
+
+* fix!: make usage telemetry opt-in by default ([2ef905f](https://github.com/IdanShalem/react-broadcast-sync/commit/2ef905fbff326f527fea087d49d0fcf08700d6fb))
+
+
+### BREAKING CHANGES
+
+* usage telemetry is now off by default. Pass
+`telemetry: true` on the hook or provider to opt in.
+
 ## [1.11.2](https://github.com/IdanShalem/react-broadcast-sync/compare/v1.11.1...v1.11.2) (2026-09-24)
 
 
