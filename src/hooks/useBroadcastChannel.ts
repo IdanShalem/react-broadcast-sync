@@ -40,7 +40,25 @@ if (process.env.NODE_ENV === 'test') {
 }
 
 /**
- * useBroadcastChannel hook
+ * Opens a BroadcastChannel and returns its state and actions. Scoped to one component: each
+ * call has its own connection and state.
+ *
+ * Behavior to know:
+ * - Self-filtering: messages sent by this tab (same `sourceName`) are ignored. They never appear
+ *   in `messages` or trigger `onMessage`; they are listed in `sentMessages`. Two tabs that share a
+ *   `sourceName` will not receive each other's messages.
+ * - `messages` is an event log of what other tabs sent, not current state.
+ * - No replay: a tab opened later only receives messages sent after it opened.
+ * - `keepLatestMessage` keeps only the most recent received message in `messages`. It does not
+ *   affect `sentMessages` and does not replay anything to new tabs.
+ * - Batching: with `batchingDelayMs > 0` (default 20 ms) outgoing messages are grouped and sent
+ *   together. Types in `excludedBatchMessageTypes` are sent immediately. Set it to 0 to disable.
+ * - Defaults: `cleaningInterval` 1000 ms, `deduplicationTTL` 5 minutes (300000 ms),
+ *   `cleanupDebounceMs` 0, `batchingDelayMs` 20 ms, `telemetry` false. Duplicates are dropped by
+ *   message ID.
+ * - Errors are reported through the `error` string (it clears itself after 3 seconds); the hook
+ *   does not throw for channel errors. `useBroadcastProvider` (not this hook) throws when used
+ *   outside a `BroadcastProvider`.
  *
  * Note: When batching is enabled (batchingDelayMs > 0), messages sent over the channel may be received as either:
  *   - a single BroadcastMessage (object), or

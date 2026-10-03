@@ -269,7 +269,8 @@ function Dashboard() {
   const [filters, setFilters] = useState({ status: 'all' });
 
   const { postMessage } = useBroadcastChannel('dashboard', {
-    sourceName: `tab-${crypto.randomUUID()}`, // must be unique per tab
+    // sourceName is optional: a unique one is generated for each tab.
+    // Do not build it inline with crypto.randomUUID(): it would change on every render.
     onMessage: {
       'filters-update': msg => setFilters(msg.message),
     },
@@ -820,17 +821,24 @@ This will log:
 import { renderHook, act } from '@testing-library/react-hooks';
 import { useBroadcastChannel } from 'react-broadcast-sync';
 
-test('should send and receive messages', () => {
+test('postMessage records the message in sentMessages', () => {
   const { result } = renderHook(() => useBroadcastChannel('test-channel'));
 
   act(() => {
     result.current.postMessage('test', { data: 'hello' });
   });
 
-  expect(result.current.messages).toHaveLength(1);
-  expect(result.current.messages[0].message.data).toBe('hello');
+  // The hook does not echo your own messages back into `messages`.
+  // `messages` only holds messages sent by other tabs or hook instances.
+  expect(result.current.messages).toHaveLength(0);
+  expect(result.current.sentMessages).toHaveLength(1);
+  expect(result.current.sentMessages[0].message.data).toBe('hello');
 });
 ```
+
+To test receiving, render two hooks with different `sourceName` values on the same channel name
+(this needs a `BroadcastChannel` implementation in the test environment, such as a mock that
+delivers to other instances). The message sent by one appears in the other's `messages`.
 
 ### Integration Testing
 
