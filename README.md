@@ -59,6 +59,7 @@ postMessage('logout', { at: Date.now() }); // other tabs receive it in `messages
 - [Advanced Usage](#️advanced-usage)
 - [BroadcastProvider](#using-broadcastprovider)
 - [API Reference](#api-reference)
+- [Agent Skill](#agent-skill-optional)
 - [Gotchas](#gotchas)
 - [Best Practices](#best-practices)
 - [Common Use Cases](#common-use-cases)
@@ -609,6 +610,17 @@ Events are batched and flushed in a single request when the tab is hidden or aft
 See [TELEMETRY.md](./TELEMETRY.md) for the full legal notice.
 
 ---
+
+## Agent Skill (optional)
+
+The package ships an agent skill at `skills/react-broadcast-sync/SKILL.md` (the [agentskills.io](https://agentskills.io) format) with safe recipes for coding agents. Nothing is installed automatically: there is no postinstall script and your agent settings are never modified. To use it, copy it into your project yourself:
+
+```bash
+mkdir -p .agents/skills
+cp -r node_modules/react-broadcast-sync/skills/react-broadcast-sync .agents/skills/
+```
+
+Tools such as `skills-npm` can also extract it for you. Check your agent's docs for where it reads skills from.
 
 ## Gotchas
 

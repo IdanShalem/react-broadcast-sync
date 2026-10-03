@@ -10,6 +10,7 @@
   "files": [
     "dist",
     "llms.txt",
+    "skills",
     "README.md",
     "LICENSE",
     "TELEMETRY.md"
