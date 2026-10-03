@@ -1,3 +1,10 @@
+# [2.1.0](https://github.com/IdanShalem/react-broadcast-sync/compare/v2.0.0...v2.1.0) (2026-10-03)
+
+
+### Features
+
+* add consumer agent skill and ship it in the package ([ef0d8c3](https://github.com/IdanShalem/react-broadcast-sync/commit/ef0d8c38ea135ae54ec3870e01540d13b5abe0b5))
+
 # [2.0.0](https://github.com/IdanShalem/react-broadcast-sync/compare/v1.11.2...v2.0.0) (2026-10-01)
 
 
