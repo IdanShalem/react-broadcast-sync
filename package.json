@@ -9,6 +9,7 @@
   "type": "module",
   "files": [
     "dist",
+    "llms.txt",
     "README.md",
     "LICENSE",
     "TELEMETRY.md"
@@ -31,6 +32,8 @@
     "release": "semantic-release",
     "lint-staged": "lint-staged",
     "prepack": "npm run build",
+    "generate:llms": "node scripts/generate-llms-txt.mjs",
+    "check:llms": "node scripts/generate-llms-txt.mjs --check",
     "verify:telemetry": "node scripts/verify-telemetry-token.mjs",
     "dev:integration": "vite integration/app --port 5199 --strictPort",
     "test:integration": "playwright test"

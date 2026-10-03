@@ -1,0 +1,367 @@
+# react-broadcast-sync
+
+> React hook and provider for cross-tab messaging over BroadcastChannel, with helpers for manually syncing state between tabs (no automatic state replication).
+
+Version 2.0.0. Install: `npm install react-broadcast-sync`. Same origin only. Generated from README.md by scripts/generate-llms-txt.mjs; do not edit by hand.
+
+## Syncing Shared State (filters, settings)
+
+`messages` is an event log of what other tabs sent, not the current state. To keep a piece of state
+(for example dashboard filters) in sync, update local state and send one message from the handler,
+and apply incoming messages with `onMessage`:
+
+```tsx
+function Dashboard() {
+  const [filters, setFilters] = useState({ status: 'all' });
+
+  const { postMessage } = useBroadcastChannel('dashboard', {
+    // sourceName is optional: a unique one is generated for each tab.
+    // Do not build it inline with crypto.randomUUID(): it would change on every render.
+    onMessage: {
+      'filters-update': msg => setFilters(msg.message),
+    },
+  });
+
+  const updateFilters = (next: typeof filters) => {
+    setFilters(next);
+    postMessage('filters-update', next);
+  };
+
+  return <FilterBar value={filters} onChange={updateFilters} />;
+}
+```
+
+Do not call `postMessage` from a `useEffect` on state that you also set from incoming messages.
+Each tab re-broadcasts what it receives, the tabs ping-pong, and they can end up with different
+values. Deduplication is by message ID, so it does not stop this.
+
+### New tabs do not receive past messages
+
+Messages are not replayed. A tab opened later only sees messages sent after it opened, and
+`keepLatestMessage` and `getLatestMessage` do not change that. To give a new tab the current state,
+let it ask for it and let an existing tab answer:
+
+```tsx
+const { postMessage } = useBroadcastChannel('dashboard', {
+  sourceName: sourceName, // unique per tab
+  onMessage: {
+    'filters-update': msg => setFilters(msg.message),
+    'state-request': () => postMessage('filters-update', filtersRef.current),
+  },
+});
+
+// Ask once when this tab mounts
+useEffect(() => {
+  postMessage('state-request', null);
+}, []);
+```
+
+Keep the current value in a ref (`filtersRef.current = filters`) so the `state-request` handler
+always answers with the latest state. If no other tab is open, nothing answers and the tab keeps its
+default state.
+
+---
+
+## API Reference
+
+### `useBroadcastChannel` Hook
+
+```typescript
+const {
+  channelName,
+  messages,
+  sentMessages,
+  postMessage,
+  clearReceivedMessages,
+  clearSentMessages,
+  error,
+} = useBroadcastChannel(channelName, options);
+```
+
+#### Options
+
+```typescript
+interface BroadcastOptions {
+  sourceName?: string; // Custom name for the message source. Must be unique per tab: a tab ignores messages from its own sourceName
+  cleaningInterval?: number; // Interval in ms for cleaning expired messages (default: 1000)
+  keepLatestMessage?: boolean; // Keep only the latest message (default: false)
+  registeredTypes?: string[]; // List of allowed message types
+  namespace?: string; // Channel namespace for isolation
+  deduplicationTTL?: number; // Time in ms to keep message IDs for deduplication (default: 5 minutes)
+  cleanupDebounceMs?: number; // Debounce time in ms for cleanup operations (default: 0)
+  batchingDelayMs?: number; // Delay in ms to batch outgoing messages (default: 20). If > 0, messages are batched and sent together.
+  excludedBatchMessageTypes?: string[]; // Message types to always send immediately, never batched (default: []).
+  onMessage?: MessageCallback | OnMessageMap; // Callback(s) fired when a received message passes all filters (default: undefined).
+  telemetry?: boolean; // Privacy-first: off by default. Pass true to opt in.
+}
+```
+
+#### Default Values
+
+| Option                      | Default Value | Description                                  |
+| --------------------------- | ------------- | -------------------------------------------- |
+| `sourceName`                | `undefined`   | Auto-generated if not provided               |
+| `cleaningInterval`          | `1000`        | 1 second between cleanup runs                |
+| `keepLatestMessage`         | `false`       | Keep all messages by default                 |
+| `registeredTypes`           | `[]`          | Accept all message types by default          |
+| `namespace`                 | `''`          | No namespace by default                      |
+| `deduplicationTTL`          | `300000`      | 5 minutes (5 × 60 × 1000 ms)                 |
+| `cleanupDebounceMs`         | `0`           | No debounce by default                       |
+| `batchingDelayMs`           | `20`          | Batch delay in ms (0 = off)                  |
+| `excludedBatchMessageTypes` | `[]`          | Types never batched                          |
+| `onMessage`                 | `undefined`   | Callback(s) for received messages            |
+| `telemetry`                 | `false`       | Anonymous usage stats. Pass `true` to opt in |
+
+#### Return Value
+
+```typescript
+interface BroadcastActions {
+  channelName: string; // The resolved channel name (includes namespace)
+  messages: BroadcastMessage[]; // Received messages
+  sentMessages: BroadcastMessage[]; // Messages sent by this instance
+  postMessage: (type: string, content: any, options?: SendMessageOptions) => void;
+  clearReceivedMessages: (opts?: { ids?: string[]; types?: string[]; sources?: string[] }) => void;
+  clearSentMessages: (opts?: { ids?: string[]; types?: string[]; sync?: boolean }) => void;
+  getLatestMessage: (opts?: { type?: string; source?: string }) => BroadcastMessage | null;
+  closeChannel: () => void;
+  error: string | null; // Current error state
+}
+```
+
+### `useBroadcastChannel(channelName, options?)`
+
+Returns an object with:
+
+| Property                  | Type                 | Description                                                                                                                                                                                  |
+| ------------------------- | -------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `channelName`             | `string`             | The resolved channel name (includes namespace)                                                                                                                                               |
+| `messages`                | `BroadcastMessage[]` | All received messages from other tabs                                                                                                                                                        |
+| `sentMessages`            | `BroadcastMessage[]` | Messages sent from this tab                                                                                                                                                                  |
+| `postMessage()`           | `function`           | Send a message to all tabs                                                                                                                                                                   |
+| `clearReceivedMessages()` | `function`           | Clear received messages. No filters ⇒ clear all. With filters, a message is deleted only if it matches **every** provided filter (`ids`, `types`, `sources`). Empty arrays act as wildcards. |
+| `clearSentMessages()`     | `function`           | Clear messages this tab sent (same matching rules). Pass `sync: true` to broadcast the clear to other tabs.                                                                                  |
+| `getLatestMessage()`      | `function`           | Get the latest message matching optional filters (`type`, `source`). Returns the most recent message that matches, or `null` if none.                                                        |
+| `ping(timeoutMs?)`        | `function`           | Ping other tabs on the channel and collect their source names. `timeoutMs` (default: 300ms) controls how long to wait for responses before resolving. Returns a Promise of string array.     |
+| `isPingInProgress`        | `boolean`            | `true` while a ping is active, otherwise `false`.                                                                                                                                            |
+| `closeChannel()`          | `function`           | Explicitly closes the broadcast channel and removes event listeners. Safe to call multiple times.                                                                                            |
+| `error`                   | `string \| null`     | Any runtime error from the channel                                                                                                                                                           |
+
+#### Clearing examples
+
+```tsx
+// Clear everything we've received
+clearReceivedMessages();
+
+// Clear all messages we sent and broadcast the clear to other tabs
+clearSentMessages({ sync: true });
+
+// Clear by id or by type (OR inside each array)
+clearReceivedMessages({ ids: ['123'] }); // id match
+clearReceivedMessages({ types: ['alert', 'chat'] }); // type match
+
+// Combine filters (logical AND between filters)
+// Removes messages whose id is '123' AND type is 'alert'
+clearSentMessages({ ids: ['123'], types: ['alert'] });
+```
+
+#### Send Options:
+
+```ts
+interface SendMessageOptions {
+  expirationDuration?: number; // TTL in ms
+  expirationDate?: number; // Exact expiry timestamp
+}
+```
+
+#### Message Format:
+
+```ts
+interface BroadcastMessage {
+  id: string;
+  type: string;
+  message: any;
+  timestamp: number;
+  source: string;
+  expirationDate?: number;
+}
+```
+
+#### Getting the Latest Message
+
+You can use `getLatestMessage` to retrieve the most recent message received, optionally filtered by `type` and/or `source`. If no options are provided, it returns the latest message of any kind. If no message matches, it returns `null`.
+
+**Signature:**
+
+```ts
+getLatestMessage(options?: { type?: string; source?: string }): BroadcastMessage | null
+```
+
+**Examples:**
+
+```tsx
+// Get the latest message of any type/source
+const latest = getLatestMessage();
+
+// Get the latest message of a specific type
+const latestAlert = getLatestMessage({ type: 'alert' });
+
+// Get the latest message from a specific source
+const latestFromTab = getLatestMessage({ source: 'tab-123' });
+
+// Get the latest message of a specific type from a specific source
+const latestInfoFromTab = getLatestMessage({ type: 'info', source: 'tab-123' });
+
+// Check if there are any messages of a type
+if (getLatestMessage({ type: 'notification' })) {
+  // ...
+}
+```
+
+**Behavior:**
+
+- If no messages are present, returns `null`.
+- If no message matches the filter, returns `null`.
+- If multiple messages match, returns the most recently received one.
+
+#### Ping & Active Source Detection
+
+`useBroadcastChannel` provides a `ping` method and an `isPingInProgress` state for discovering active sources (tabs) on the same channel.
+
+- **`ping(timeoutMs?: number): Promise<string[]>`**: Broadcasts a ping and collects responses from other tabs within the timeout. Returns an array of source names (excluding your own).
+- **`isPingInProgress: boolean`**: Indicates if a ping is currently in progress.
+
+**Example:**
+
+```tsx
+const { ping, isPingInProgress } = useBroadcastChannel('my-channel', {
+  sourceName: 'my-tab',
+});
+
+// To discover other active sources:
+const activeSources = await ping(300); // e.g., ['tab-2', 'tab-3']
+
+// To show loading state:
+if (isPingInProgress) {
+  // Show spinner or status
+}
+```
+
+#### Closing the Channel Explicitly
+
+You can use `closeChannel` to explicitly close the underlying BroadcastChannel and remove all event listeners. This is useful if you want to clean up resources before the component unmounts, or to stop all cross-tab communication on demand. Note that the channel will automatically close and all event listeners will be removed when the component unmounts, so this method is mainly useful for manual cleanup.
+
+**Signature:**
+
+```ts
+closeChannel(): void
+```
+
+**Example:**
+
+```tsx
+const { closeChannel } = useBroadcastChannel('my-channel');
+
+// ... later, when you want to stop all communication:
+closeChannel();
+```
+
+**Notes:**
+
+- After calling `closeChannel`, the channel is closed and will not send or receive any more messages.
+- It is safe to call `closeChannel` multiple times (idempotent).
+- You do not need to call this for normal React unmounting; the hook will clean up automatically. Use it for explicit/manual cleanup only.
+
+#### `onMessage` Callbacks
+
+`onMessage` lets you react to incoming messages imperatively — without polling `messages` state or using `useEffect`. The callback fires after the message is added to state and only for messages that pass all active filters (`registeredTypes`, expiry, deduplication, self-filter). Internal protocol messages (PING, PONG, CLEAR_SENT_MESSAGES) never trigger it.
+
+**Two supported shapes:**
+
+```ts
+// 1. A single catch-all function — fires for every accepted message type
+type MessageCallback = (msg: BroadcastMessage) => void;
+
+// 2. A map from message type → one handler function
+type OnMessageMap = { [type: string]: (msg: BroadcastMessage) => void };
+```
+
+**Catch-all example:**
+
+```tsx
+const { postMessage } = useBroadcastChannel('my-channel', {
+  onMessage: msg => {
+    console.log('received', msg.type, msg.message);
+  },
+});
+```
+
+**Per-type map example:**
+
+```tsx
+useBroadcastChannel('my-channel', {
+  onMessage: {
+    error: msg => showToast(`Error: ${msg.message.text}`),
+    success: msg => celebrate(),
+    log: msg => console.log('[log]', msg.message),
+  },
+});
+```
+
+**Behavior:**
+
+- Fires for messages from **other** tabs only — self-messages are always ignored before this point.
+- Fires **after** `messages` state is updated — both the callback argument and `messages[messages.length - 1]` will be the same object.
+- A type not listed in the map causes no error — it is silently skipped.
+- If the callback throws, the error is caught and debug-logged. Message state is **not** affected.
+- Changing `onMessage` between renders is safe — the latest callback is always used with no stale closure risk.
+- Works with batched messages: each message in a batch triggers its own callback call.
+
+---
+
+#### `telemetry` Option
+
+**Privacy-first: telemetry is off by default.** Nothing is sent to Mixpanel unless you explicitly set `telemetry: true` on the hook or provider. When enabled, `react-broadcast-sync` collects structural usage signals to help the maintainer understand how the library is used.
+
+**What is collected:**
+
+- Which `BroadcastOptions` keys are present (not their values)
+- The shape of `onMessage` (`none` / `function` / `map`)
+- Whether batching is enabled
+- Whether `BroadcastChannel` is supported in the browser
+- Which action methods (`postMessage`, `ping`, etc.) are called at least once per session
+- Hook vs. provider entry point
+
+**What is never collected:**
+
+- Channel names, source names, message content, or message types
+- Any application user identifiers in the event payload (Mixpanel may process IP addresses from request metadata)
+
+Telemetry is **off by default**. Pass `telemetry: true` to opt in for a channel:
+
+```tsx
+useBroadcastChannel('my-channel', { telemetry: true });
+// or
+<BroadcastProvider channelName="my-channel" options={{ telemetry: true }} />;
+```
+
+**Upgrading to 2.0.0 from 1.x:** telemetry is now off by default. Omit the option or leave `telemetry: false` to keep it off; pass `telemetry: true` only if you want to opt in. This default change is breaking.
+
+Events are batched and flushed in a single request when the tab is hidden or after 30 seconds. A failed request is silently discarded and never surfaces to your application.
+
+See [TELEMETRY.md](./TELEMETRY.md) for the full legal notice.
+
+---
+
+## Gotchas
+
+- **Duplicate `sourceName`:** a tab ignores any message whose `source` equals its own `sourceName`. If two tabs use the same `sourceName`, they will not receive each other's messages. Leave it unset (a unique name is generated) unless you need a stable name, and keep it unique per tab.
+- **`keepLatestMessage` is one slot:** with `keepLatestMessage: true`, `messages` holds only the single most recent message across all types, so a `"b"` message replaces a prior `"a"`. Use `registeredTypes` or separate channels/namespaces if you need the latest message per type.
+- **`cleanupDebounceMs` vs `cleaningInterval`:** cleanup is debounced. If `cleanupDebounceMs` is longer than `cleaningInterval`, each interval tick restarts the debounce and expired messages may never be removed. Keep `cleanupDebounceMs` smaller than `cleaningInterval`.
+- **Deduplication is by message ID**, not content (see [Message Deduplication](#message-deduplication)).
+- **Same origin only:** `BroadcastChannel` does not cross origins, and a tab does not receive its own messages.
+- **Telemetry is off by default:** pass `telemetry: true` to opt in (see [Telemetry](#telemetry)).
+
+## Links
+
+- [README](https://github.com/IdanShalem/react-broadcast-sync#readme)
+- [Telemetry notice](https://github.com/IdanShalem/react-broadcast-sync/blob/main/TELEMETRY.md)
