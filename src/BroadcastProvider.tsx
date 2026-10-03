@@ -4,12 +4,27 @@ import { BroadcastActions, BroadcastOptions } from './types/types';
 
 const BroadcastChannelContext = createContext<BroadcastActions | undefined>(undefined);
 
-interface BroadcastProviderProps {
+export interface BroadcastProviderProps {
+  /** Name of the BroadcastChannel. Combined with `options.namespace` when one is set. */
   channelName: string;
+  /** Same options as `useBroadcastChannel`. */
   options?: BroadcastOptions;
   children: React.ReactNode;
 }
 
+/**
+ * Opens one BroadcastChannel (by calling `useBroadcastChannel` once) and shares it with all
+ * descendants through context. Read it with `useBroadcastProvider()`.
+ *
+ * Same rules as the hook: the tab ignores its own messages, `messages` is an event log (not
+ * current state), and a tab opened later does not receive earlier messages.
+ *
+ * ```tsx
+ * <BroadcastProvider channelName="app" options={{ namespace: 'v1' }}>
+ *   <App />
+ * </BroadcastProvider>
+ * ```
+ */
 export const BroadcastProvider: React.FC<BroadcastProviderProps> = ({
   children,
   channelName,
@@ -24,6 +39,11 @@ export const BroadcastProvider: React.FC<BroadcastProviderProps> = ({
   );
 };
 
+/**
+ * Returns the channel actions shared by the nearest `BroadcastProvider`.
+ *
+ * @throws Error if called outside a `BroadcastProvider`.
+ */
 export const useBroadcastProvider = (): BroadcastActions => {
   const context = useContext(BroadcastChannelContext);
   if (!context) {
