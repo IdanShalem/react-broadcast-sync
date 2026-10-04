@@ -26,6 +26,11 @@ jobs:
       - name: Run Prettier check
         run: npm run format:check
 
+      - name: Check generated agent docs
+        run: |
+          npm run check:llms
+          node --test scripts/generate-llms-txt.test.mjs
+
       - name: Run type checks
         run: npm run typecheck
 
