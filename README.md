@@ -21,8 +21,8 @@
   <a href="https://www.npmjs.com/package/react-broadcast-sync">
     <img alt="NPM Downloads" src="https://img.shields.io/npm/dm/react-broadcast-sync.svg" />
   </a>
-  <a href="https://bundlephobia.com/result?p=react-broadcast-sync">
-    <img alt="Bundlephobia" src="https://badgen.net/bundlephobia/minzip/react-broadcast-sync" />
+  <a href="https://bundlejs.com/?q=react-broadcast-sync">
+    <img alt="Bundle size" src="https://deno.bundlejs.com/badge?q=react-broadcast-sync" />
   </a>
   <a href="https://opensource.org/licenses/MIT">
     <img alt="License: MIT" src="https://img.shields.io/badge/License-MIT-blue.svg" />
