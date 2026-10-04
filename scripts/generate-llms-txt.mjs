@@ -1,4 +1,5 @@
 // Generates llms.txt from README.md so it never drifts from the canonical docs.
+// The header is version-independent: semantic-release bumps package.json after CI.
 // Usage: node scripts/generate-llms-txt.mjs [--check]
 import { readFileSync, writeFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
@@ -38,7 +39,7 @@ const out = [
   '',
   `> ${pkg.description}`,
   '',
-  `Version ${pkg.version}. Install: \`npm install ${pkg.name}\`. Same origin only. Generated from README.md by scripts/generate-llms-txt.mjs; do not edit by hand.`,
+  `Install: \`npm install ${pkg.name}\`. Same origin only. Generated from README.md by scripts/generate-llms-txt.mjs; do not edit by hand.`,
   '',
   '## Syncing Shared State (filters, settings)',
   '',
