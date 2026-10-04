@@ -1,3 +1,10 @@
+## [2.1.1](https://github.com/IdanShalem/react-broadcast-sync/compare/v2.1.0...v2.1.1) (2026-10-04)
+
+
+### Bug Fixes
+
+* complete late-tab counter recipe and explain consistency limits ([e67486e](https://github.com/IdanShalem/react-broadcast-sync/commit/e67486eee7b2a0740d2046c7568053792f90f633))
+
 # [2.1.0](https://github.com/IdanShalem/react-broadcast-sync/compare/v2.0.0...v2.1.0) (2026-10-03)
 
 
