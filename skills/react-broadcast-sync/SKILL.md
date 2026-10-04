@@ -52,25 +52,55 @@ Do NOT call `postMessage` from a `useEffect` that watches state which incoming m
 
 ## Recipe 2: give a late-opened tab the current state
 
-Because there is no replay, a new tab must ask and an existing tab must answer. Keep the current value in a ref so the handler does not read stale state.
+Because there is no replay, a new tab must ask and an existing tab must answer. This complete counter component starts at zero if nobody answers. Open it in two tabs on the same origin, increment in one, then open another tab to see it request the current value.
 
 ```tsx
-const filtersRef = useRef(filters);
-filtersRef.current = filters;
+import { useEffect, useRef, useState } from 'react';
+import { useBroadcastChannel } from 'react-broadcast-sync';
 
-const { postMessage } = useBroadcastChannel('dashboard', {
-  onMessage: {
-    'filters-update': msg => setFilters(msg.message),
-    'state-request': () => postMessage('filters-update', filtersRef.current),
-  },
-});
+// Keep this list stable so postMessage stays stable across renders.
+const immediateMessageTypes = ['count-update', 'state-request'];
 
-useEffect(() => {
-  postMessage('state-request', null);
-}, []);
+export default function Counter() {
+  const [count, setCount] = useState(0);
+  const countRef = useRef(count);
+
+  const applyCount = (next: number) => {
+    countRef.current = next;
+    setCount(next);
+  };
+
+  const { postMessage } = useBroadcastChannel('counter', {
+    excludedBatchMessageTypes: immediateMessageTypes,
+    onMessage: {
+      'count-update': msg => applyCount(msg.message),
+      'state-request': () => postMessage('count-update', countRef.current),
+    },
+  });
+
+  useEffect(() => {
+    postMessage('state-request', null);
+  }, [postMessage]);
+
+  const increment = () => {
+    const next = countRef.current + 1;
+    applyCount(next);
+    postMessage('count-update', next);
+  };
+
+  return (
+    <button type="button" onClick={increment}>
+      Count: {count}
+    </button>
+  );
+}
 ```
 
-If no other tab is open, nobody answers. Start from sensible defaults.
+The ref holds the latest applied value for replies and successive clicks, including before React renders again. Updates and requests are sent immediately in this demo. Incoming updates only apply state; they do not re-broadcast it.
+
+**Consistency boundary:** this is an absolute-value demo for sequential edits, not an atomic multi-tab counter. Two tabs can both increment the same old value and overwrite each other's changes. The simple, unversioned request/response also has no stale-response or multi-responder handling: a delayed reply can overwrite a newer local edit, and several tabs can answer with different values. The last value received by each tab is applied; global ordering or convergence is not guaranteed. When that matters, design an application protocol with a `requestId`, a targeted reply (receiver checks the intended target), and revision/conflict rules. For atomic increments, use an authority that serializes operations or a suitable conflict-safe counter protocol; the hook does not provide one.
+
+In development, React StrictMode re-runs mount effects, so two initialization requests and duplicate replies are expected. They are not a bug or a re-broadcast loop. In this example, applying the same count again is harmless, but duplicate initialization does not solve the consistency limits above.
 
 ## Recipe 3: latest value only
 

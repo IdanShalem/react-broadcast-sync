@@ -2,7 +2,7 @@
 
 > React hook and provider for cross-tab messaging over BroadcastChannel, with helpers for manually syncing state between tabs (no automatic state replication).
 
-Version 2.0.0. Install: `npm install react-broadcast-sync`. Same origin only. Generated from README.md by scripts/generate-llms-txt.mjs; do not edit by hand.
+Version 2.1.0. Install: `npm install react-broadcast-sync`. Same origin only. Generated from README.md by scripts/generate-llms-txt.mjs; do not edit by hand.
 
 ## Syncing Shared State (filters, settings)
 
