@@ -879,13 +879,14 @@ The repository has two test suites:
 # Unit tests (Jest + jsdom)
 npm test
 
-# Cross-tab integration tests (Playwright + real Chromium tabs)
-npx playwright install chromium   # one-time browser install
+# Cross-tab integration tests (Playwright + Chromium, Firefox, and WebKit)
+npx playwright install --with-deps chromium firefox webkit   # one-time browser install
 npm run test:integration
 ```
 
-The integration suite serves a small React app from `integration/app` and drives two
-real browser tabs through the public hook API: message delivery between tabs,
+The integration suite runs each test in Chromium, Firefox, and WebKit. It serves a
+small React app from `integration/app` and drives real browser tabs through the public
+hook API: message delivery between tabs,
 self-filtering, namespace isolation, `registeredTypes` filtering, `ping` source
 discovery, synced `clearSentMessages`, local `clearReceivedMessages`, and message
 expiration.
