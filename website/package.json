@@ -5,9 +5,10 @@
   "scripts": {
     "dev": "astro dev",
     "start": "astro dev",
-    "build": "astro build",
+    "build": "npm run build:demos && astro build",
     "preview": "astro preview",
-    "astro": "astro"
+    "astro": "astro",
+    "build:demos": "npm --prefix ../demos/hook ci && npm --prefix ../demos/provider ci && ln -sfn ../hook/node_modules ../demos/shared/node_modules && npm --prefix ../demos/hook run build && ln -sfn ../provider/node_modules ../demos/shared/node_modules && npm --prefix ../demos/provider run build"
   },
   "dependencies": {
     "@astrojs/starlight": "^0.42.5",
