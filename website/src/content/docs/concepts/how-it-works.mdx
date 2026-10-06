@@ -1,0 +1,31 @@
+---
+title: How It Works
+description: What react-broadcast-sync builds on, and what that means for your app.
+---
+
+`react-broadcast-sync` is a React layer over the native [BroadcastChannel API](https://developer.mozilla.org/en-US/docs/Web/API/BroadcastChannel). Understanding the underlying API explains most of the library's behavior.
+
+## The BroadcastChannel basics
+
+- A channel is identified by a **name**. Every tab (window, iframe, or worker) of the **same origin** that opens a channel with the same name hears every other tab on it.
+- Communication is **live only**. There is no history: a message reaches the tabs that are open at that moment. A tab opened later does not receive earlier messages.
+- A tab **never receives its own messages**. The library leans on this: incoming messages are always from _other_ tabs.
+- Messages can be **any serializable value** (structured clone): objects, arrays, strings, numbers. Not functions, DOM nodes, or circular structures.
+
+## What the library adds
+
+The raw API leaves you with an event listener and a `postMessage` call. `react-broadcast-sync` adds the parts a React app needs:
+
+- A **hook** (`useBroadcastChannel`) and a **provider** (`BroadcastProvider`) with React state for received and sent messages.
+- **Message types** and optional type filtering (`registeredTypes`).
+- **Tab identity**: every instance gets a `sourceName` (generated, or set by you), and `ping()` discovers which tabs are currently on the channel.
+- **Lifecycle handling**: message expiration, deduplication, batching of rapid sends, and selective clearing.
+- Full **TypeScript types**.
+
+## Same origin only
+
+Channels do not cross origins. `https://app.example.com` cannot talk to `https://other.example.com`, and `localhost:3000` cannot talk to `localhost:3001`. If two of your tabs stay silent, a mismatched origin (including the port) is the first thing to check.
+
+## Ephemeral by design
+
+Messages are not persisted. A refresh wipes the log, and there is no built-in replay. If you need state to survive reloads, pair the library with storage (for example, persist in `localStorage` and use the channel to announce changes). See [Why not localStorage?](/concepts/why-not-localstorage/) for the trade-offs.

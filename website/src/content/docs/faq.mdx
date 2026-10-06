@@ -1,0 +1,28 @@
+---
+title: FAQ
+description: Quick answers to common questions.
+---
+
+**Does it work across different browsers or devices?**
+No. `BroadcastChannel` is same-browser, same-origin. For cross-device sync you need a server round-trip.
+
+**Does a tab receive its own messages?**
+No. The self-filter is built into the platform: incoming messages are always from other tabs. Your own sends are in `sentMessages`.
+
+**Do messages survive a refresh?**
+No. The log is ephemeral. Persist what must survive in storage and announce changes over the channel.
+
+**A new tab opened and shows nothing. Why?**
+Messages are not replayed. Use the request/answer pattern in [Late-joining tabs](/recipes/late-tabs/).
+
+**Can I send objects?**
+Yes, anything the structured clone algorithm handles: plain objects, arrays, dates, maps. Not functions, DOM nodes, or circular structures.
+
+**How do I know which tab sent a message?**
+Every message carries `source`, the sender's `sourceName`. Set friendly names to show "who did it" in the UI.
+
+**How do I list the open tabs?**
+`const sources = await ping()` returns the source names of the other tabs on the channel. See [Tab presence](/recipes/tab-presence/).
+
+**Is anything tracked?**
+Nothing by default. `telemetry: true` opts in to anonymous, structural usage stats; see [Telemetry](/guides/telemetry/).

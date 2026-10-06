@@ -1,0 +1,103 @@
+---
+import config from 'virtual:starlight/user-config';
+
+import LanguageSelect from 'virtual:starlight/components/LanguageSelect';
+import Search from 'virtual:starlight/components/Search';
+import SiteTitle from 'virtual:starlight/components/SiteTitle';
+import SocialIcons from 'virtual:starlight/components/SocialIcons';
+import ThemeSelect from 'virtual:starlight/components/ThemeSelect';
+
+const shouldRenderSearch =
+	config.pagefind || config.components.Search !== '@astrojs/starlight/components/Search.astro';
+
+const links = [
+	{ label: 'Docs', href: '/getting-started/', match: '/getting-started' },
+	{ label: 'Guides', href: '/guides/use-the-hook/', match: '/guides' },
+	{ label: 'API', href: '/api/use-broadcast-channel/', match: '/api' },
+	{ label: 'Recipes', href: '/recipes/notifications/', match: '/recipes' },
+	{ label: 'Tutorial', href: '/tutorial/build-the-counter-demo/', match: '/tutorial' },
+	{ label: 'Demos', href: '/demos/hook/', match: '/demos' },
+];
+
+const currentPath = Astro.url.pathname;
+const isActive = (match: string) => currentPath.startsWith(match);
+---
+
+<div class="header">
+	<div class="title-wrapper sl-flex">
+		<SiteTitle />
+	</div>
+	<nav class="top-nav sl-hidden lg:sl-flex" aria-label="Main">
+		{
+			links.map(({ label, href, match }) => (
+				<a href={href} aria-current={isActive(match) ? 'page' : undefined}>
+					{label}
+				</a>
+			))
+		}
+	</nav>
+	<div class="sl-flex print:hidden search-wrapper">
+		{shouldRenderSearch && <Search />}
+	</div>
+	<div class="sl-hidden md:sl-flex print:hidden right-group">
+		<div class="sl-flex social-icons">
+			<SocialIcons />
+		</div>
+		<ThemeSelect />
+		<LanguageSelect />
+	</div>
+</div>
+
+<style>
+	@layer starlight.core {
+		.header {
+			display: flex;
+			gap: var(--sl-nav-gap);
+			justify-content: space-between;
+			align-items: center;
+			height: 100%;
+		}
+
+		.title-wrapper {
+			overflow: clip;
+			padding: 0.25rem;
+			margin: -0.25rem;
+			min-width: 0;
+		}
+
+		.top-nav {
+			gap: 1.25rem;
+			align-items: center;
+		}
+		.top-nav a {
+			color: var(--sl-color-gray-2);
+			font-size: var(--sl-text-sm);
+			font-weight: 500;
+			text-decoration: none;
+			white-space: nowrap;
+		}
+		.top-nav a:hover {
+			color: var(--sl-color-white);
+		}
+		.top-nav a[aria-current='page'] {
+			color: var(--sl-color-accent);
+		}
+
+		.search-wrapper {
+			flex: 1;
+			justify-content: flex-end;
+			min-width: 0;
+		}
+
+		.right-group,
+		.social-icons {
+			gap: 1rem;
+			align-items: center;
+		}
+		.social-icons::after {
+			content: '';
+			height: 2rem;
+			border-inline-end: 1px solid var(--sl-color-gray-5);
+		}
+	}
+</style>

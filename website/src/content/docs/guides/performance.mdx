@@ -1,0 +1,39 @@
+---
+title: Performance
+description: Batching, cleanup tuning, and keeping messages light.
+---
+
+## Message size
+
+Keep messages small and serializable. Avoid large objects and circular references. If the data is big, store it somewhere shared and send an ID that references it.
+
+## Message frequency
+
+For high-frequency updates (typing, dragging, live cursors):
+
+- Use `keepLatestMessage: true` when only the newest value matters.
+- Debounce at the source: send on a throttle, not on every keystroke.
+- Give short-lived messages an `expirationDuration` so the log does not grow.
+
+## Batching
+
+Outgoing messages are batched by default: calls to `postMessage` within a short window are grouped and sent as one array over the channel. This reduces cross-tab events during bursts (fast typing, bulk updates) and prevents message storms.
+
+- `batchingDelayMs` (default 20) - the collection window. Set to `0` to disable batching and send every message immediately.
+- `excludedBatchMessageTypes` (default `[]`) - message types that always send immediately, even with batching on. Use it for urgent traffic like `'alert'`.
+
+```tsx
+const { postMessage } = useBroadcastChannel('editor', {
+  batchingDelayMs: 50,
+  excludedBatchMessageTypes: ['alert'],
+});
+```
+
+Notes:
+
+- Receivers handle single messages and batches automatically. If you also listen on the raw channel yourself, check `Array.isArray(event.data)`.
+- When the tab unmounts or the channel closes, unsent batched messages are flushed immediately.
+
+## Cleanup tuning
+
+`cleaningInterval` and `cleanupDebounceMs` control how aggressively expired messages are swept. Under heavy load a modest `cleanupDebounceMs` batches sweeps; just keep it below `cleaningInterval` or expired messages may never be removed (details in [Message lifecycle](/guides/message-lifecycle/)).

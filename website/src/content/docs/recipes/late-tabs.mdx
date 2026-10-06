@@ -1,0 +1,48 @@
+---
+title: Late-joining Tabs
+description: Bring a freshly opened tab up to date with request and answer.
+---
+
+Messages are not replayed: a tab that opens late sees only what is sent after it opened. `keepLatestMessage` and `getLatestMessage` read the local log, so they cannot help. The fix is a request/answer exchange:
+
+1. The new tab posts a `state-request` once, when it mounts.
+2. Every existing tab that holds the state answers with the current value.
+3. The new tab applies the first (or latest) answer.
+
+```tsx
+function Counter() {
+  const [count, setCount] = useState(0);
+  const countRef = useRef(count);
+  countRef.current = count;
+
+  const { postMessage } = useBroadcastChannel('counter', {
+    onMessage: {
+      set: msg => setCount(msg.message),
+      'state-request': () => postMessage('set', countRef.current),
+    },
+  });
+
+  // Ask once, on mount only
+  useEffect(() => {
+    postMessage('state-request', null);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  const update = (next: number) => {
+    setCount(next);
+    postMessage('set', next);
+  };
+
+  return <button onClick={() => update(count + 1)}>Count: {count}</button>;
+}
+```
+
+Why the ref: the `state-request` handler must answer with the _current_ value, not the value captured when the channel opened. Keep a ref synced (`countRef.current = count`) so the answer is always fresh.
+
+Edge cases:
+
+- **No other tab open**: nothing answers, the tab keeps its default state. That is usually fine.
+- **Several tabs answer**: they should agree; applying the last answer is safe when every tab derives state the same way.
+- **Do not answer a request with a rebroadcast of every message**: one message with the current value is enough.
+
+This pattern has limits. Under rapid concurrent edits, tabs can disagree briefly; for strict consistency you need an authority (a server, or a designated tab) rather than peer broadcast.

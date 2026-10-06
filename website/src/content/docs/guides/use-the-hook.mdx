@@ -1,0 +1,61 @@
+---
+title: Use the Hook
+description: Working with useBroadcastChannel day to day.
+---
+
+`useBroadcastChannel(channelName, options?)` opens one channel inside your component and returns its state and actions. Call it once per channel you need.
+
+```tsx
+import { useBroadcastChannel } from 'react-broadcast-sync';
+
+const { messages, sentMessages, postMessage, ping, isPingInProgress, error } = useBroadcastChannel(
+  'counter',
+  { namespace: 'demo' }
+);
+```
+
+## One hook call per channel
+
+Each call opens its own channel. Calling the hook twice with the same name in the same component opens two connections that both receive everything. Prefer separate names for separate concerns:
+
+```tsx
+const counter = useBroadcastChannel('counter');
+const chat = useBroadcastChannel('chat');
+```
+
+If several components need the _same_ channel, open it once with the [provider](/guides/use-the-provider/) instead of repeating the hook.
+
+## Sending
+
+```tsx
+postMessage('increment', { by: 1 });
+// with an expiry: receivers drop the message after 5 minutes
+postMessage('invite', { to: 'tab-2' }, { expirationDuration: 5 * 60 * 1000 });
+```
+
+`sentMessages` mirrors everything your tab sent, which is useful for rendering your own activity next to the received log.
+
+## Receiving
+
+Render from `messages` (the log), or react imperatively with `onMessage`:
+
+```tsx
+const { postMessage } = useBroadcastChannel('dashboard', {
+  onMessage: {
+    'filters-update': msg => setFilters(msg.message),
+    announce: msg => toast(msg.message),
+  },
+});
+```
+
+`onMessage` fires exactly once per accepted message, after it is added to state, and only for messages that pass all filters (`registeredTypes`, expiry, deduplication, self-filter). Pass a single function to handle all types, or a type-keyed map as above. Use it for side effects (toasts, analytics, applying state) rather than a `useEffect` over `messages`.
+
+## Errors
+
+If the browser does not support `BroadcastChannel` or the channel fails, `error` is set. Surface it in the UI or logs so silent sync failures are visible.
+
+## Cleanup
+
+The channel closes automatically when the component unmounts. Call `closeChannel()` only for manual cleanup; it is idempotent, and after it the channel sends and receives nothing.
+
+Full option and action details: [useBroadcastChannel API](/api/use-broadcast-channel/).

@@ -1,0 +1,58 @@
+---
+title: Messages and Channels
+description: Channel names, namespaces, message types, and the shape of a BroadcastMessage.
+---
+
+## Channels
+
+A channel is identified by its name. Tabs that open a channel with the same name (and same origin) hear each other. Open as many channels as you need; one hook call opens one channel.
+
+```tsx
+const counter = useBroadcastChannel('counter');
+const notifications = useBroadcastChannel('notifications');
+```
+
+### Namespaces
+
+A `namespace` prefixes the channel name, isolating modules or environments that would otherwise collide:
+
+```tsx
+// Real channel name: admin-dashboard
+useBroadcastChannel('dashboard', { namespace: 'admin' });
+```
+
+The resolved name is available as `channelName` in the returned actions.
+
+## Messages
+
+Every message, received or sent, has this shape:
+
+```ts
+interface BroadcastMessage {
+  id: string; // unique message identifier
+  type: string; // label you pass to postMessage
+  message: any; // your payload
+  timestamp: number; // creation time (ms)
+  source: string; // sourceName of the sending tab
+  expirationDate?: number; // set when you send with an expiry
+}
+```
+
+### Types
+
+`postMessage(type, content)` takes a type label you choose. Types let one channel carry several kinds of traffic (`'notification'` and `'reaction'` on one `live-feed` channel, for example). Restrict what you accept with `registeredTypes`:
+
+```tsx
+useBroadcastChannel('live-feed', { registeredTypes: ['notification', 'reaction'] });
+```
+
+Messages with other types are dropped before they reach your state or callbacks.
+
+## The log is not state
+
+`messages` is an **event log** of what other tabs sent, newest arrivals appended. It is not the current value of anything. Two consequences:
+
+- Derive UI state from the log (count events, take the latest value), or use `keepLatestMessage: true` to hold only the single most recent message.
+- A tab that opens late has an empty log. See [Late-joining tabs](/recipes/late-tabs/) for the request/answer pattern.
+
+With `keepLatestMessage: true`, the log holds one slot across **all** types: a `"b"` message replaces a prior `"a"`. Use `registeredTypes` or separate channels if you need the latest per type.
