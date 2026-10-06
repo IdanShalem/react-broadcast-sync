@@ -21,6 +21,9 @@
   <a href="https://www.npmjs.com/package/react-broadcast-sync">
     <img alt="NPM Downloads" src="https://img.shields.io/npm/dm/react-broadcast-sync.svg" />
   </a>
+  <a href="https://react-broadcast-sync-docs.vercel.app">
+    <img alt="Documentation" src="https://img.shields.io/badge/docs-react--broadcast--sync--docs-5EC13D" />
+  </a>
   <a href="https://bundlejs.com/?q=react-broadcast-sync">
     <img alt="Bundle size" src="https://deno.bundlejs.com/badge?q=react-broadcast-sync" />
   </a>
@@ -51,6 +54,7 @@ postMessage('logout', { at: Date.now() }); // other tabs receive it in `messages
 
 ## Table of Contents
 
+- [Documentation](#documentation)
 - [Features](#features)
 - [Why Not localStorage?](#why-not-localstorage)
 - [Demo App](#demo-app)
@@ -106,6 +110,17 @@ A few honest notes:
 - **If you need persistence across reloads**, use a storage-based tool (`atomWithStorage`, plain `localStorage`). Messages in `react-broadcast-sync` are ephemeral - they notify and sync live tabs, they don't survive a refresh.
 - **If you need old-browser, WebWorker, or Node support**, [`broadcast-channel`](https://github.com/pubkey/broadcast-channel) is the right low-level primitive. `react-broadcast-sync` builds on the native `BroadcastChannel` API and gives you the React layer on top: hooks, typed messages, and lifecycle handling out of the box.
 - **If your app already lives in Zustand or Jotai**, their sync utilities may be enough. `react-broadcast-sync` is state-manager agnostic - it works next to any of them, or with plain `useState`.
+
+## Documentation
+
+Full documentation lives at **[react-broadcast-sync-docs.vercel.app](https://react-broadcast-sync-docs.vercel.app)**: a step-by-step getting started guide, concepts, per-feature guides, the complete API reference, recipes, a tutorial, FAQ, and troubleshooting.
+
+Two live demos are hosted on the docs site:
+
+- **[Hook demo](https://react-broadcast-sync-docs.vercel.app/demos/hook/)** - `useBroadcastChannel` syncing a counter, text, and a todo list across tabs.
+- **[Provider demo](https://react-broadcast-sync-docs.vercel.app/demos/provider/)** - `BroadcastProvider` + `useBroadcastProvider` sharing one channel through context.
+
+The original demo app is still available at [react-broadcast-sync-3w3m.vercel.app](https://react-broadcast-sync-3w3m.vercel.app/).
 
 ## Demo App
 
