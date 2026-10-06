@@ -1,3 +1,10 @@
+## [2.1.2](https://github.com/IdanShalem/react-broadcast-sync/compare/v2.1.1...v2.1.2) (2026-10-06)
+
+
+### Bug Fixes
+
+* support non-Latin-1 source names in message ID generation ([a65e434](https://github.com/IdanShalem/react-broadcast-sync/commit/a65e434c4449e1955e82b5b56dfb4bcebafae16d))
+
 ## [2.1.1](https://github.com/IdanShalem/react-broadcast-sync/compare/v2.1.0...v2.1.1) (2026-10-04)
 
 
