@@ -1,0 +1,63 @@
+---
+title: Getting Started
+description: Install react-broadcast-sync and sync your first message between tabs.
+---
+
+`react-broadcast-sync` syncs UI state and user events between browser tabs of the same origin in React apps. It wraps the native [BroadcastChannel API](https://developer.mozilla.org/en-US/docs/Web/API/BroadcastChannel) in a hook and an optional provider.
+
+## Installation
+
+```bash
+npm install react-broadcast-sync
+```
+
+React 18 or 19 is required. The package ships ESM, CJS, and TypeScript types.
+
+## Your first synced counter (hook)
+
+```tsx
+import { useBroadcastChannel } from 'react-broadcast-sync';
+
+function Counter() {
+  const { messages, postMessage } = useBroadcastChannel('counter');
+
+  const count = messages.filter(m => m.type === 'increment').length;
+
+  return <button onClick={() => postMessage('increment', {})}>Count: {count}</button>;
+}
+```
+
+Open the page in two tabs and click the button: every other tab receives the message. A tab never receives its own messages.
+
+## Sharing one channel (provider)
+
+When several components need the same channel, wrap them in `BroadcastProvider` so the connection is opened once and shared through context:
+
+```tsx
+import { BroadcastProvider, useBroadcastProvider } from 'react-broadcast-sync';
+
+function App() {
+  return (
+    <BroadcastProvider channelName="app" options={{ namespace: 'v1' }}>
+      <Notifications />
+      <PresenceIndicator />
+    </BroadcastProvider>
+  );
+}
+
+function PresenceIndicator() {
+  const { ping } = useBroadcastProvider();
+  // ...
+}
+```
+
+## When not to use it
+
+- Syncing to a server or other devices - BroadcastChannel is same-origin, same-browser only.
+- Persisting data across reloads - use `localStorage` or IndexedDB.
+- Messaging across different origins.
+
+## Next steps
+
+- Try the [live demo](https://react-broadcast-sync-3w3m.vercel.app/) in two tabs.
+- Guides and the full API reference are on the way.
