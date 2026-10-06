@@ -35,6 +35,8 @@
   </a>
 </p>
 
+**Guide:** [Using react-broadcast-sync in a real app: dashboard filters across tabs](https://dev.to/idanshalem/using-react-broadcast-sync-in-a-real-app-dashboard-filters-across-tabs-38cb) - install, usage patterns, gotchas and recipes.
+
 Easily sync UI state or user events across browser tabs in React apps — notifications, presence, forms, and more. This package provides a clean and type-safe abstraction over the native API, enabling efficient, scoped, and reliable cross-tab messaging.
 
 **When to use it:** React apps that need to share ephemeral state or events between browser tabs of the same origin (logout, notifications, presence, draft sync). It wraps the browser `BroadcastChannel` API in a hook (`useBroadcastChannel`) and an optional `BroadcastProvider`.
