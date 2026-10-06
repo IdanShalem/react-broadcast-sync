@@ -1,0 +1,121 @@
+---
+title: 'Tutorial: Build the Counter Demo'
+description: Step by step from an empty Vite app to a working cross-tab counter with an open-tabs panel.
+---
+
+This tutorial builds a small but complete demo app: a counter that syncs across tabs, a message log, and a panel that lists the other open tabs. The finished app is a compact version of the [hook demo](/demos/hook/), so when you are done you can compare yours with the real thing.
+
+## 1. Scaffold the app
+
+```bash
+npm create vite@latest counter-demo -- --template react-ts
+cd counter-demo
+npm install react-broadcast-sync
+npm run dev
+```
+
+Open the printed URL in two tabs side by side. Everything below assumes both are open.
+
+## 2. Open a channel
+
+Replace `App.tsx` with:
+
+```tsx
+import { useBroadcastChannel } from 'react-broadcast-sync';
+
+export default function App() {
+  const counter = useBroadcastChannel('counter', { namespace: 'tutorial' });
+  return <main>Open tabs: check the console</main>;
+}
+```
+
+Nothing visible yet. The `namespace` keeps the tutorial's traffic away from any other `counter` channel on the same origin.
+
+## 3. Add the counter
+
+Keep the count locally, send every change, and apply what arrives:
+
+```tsx
+import { useEffect, useState } from 'react';
+import { useBroadcastChannel } from 'react-broadcast-sync';
+
+export default function App() {
+  const [count, setCount] = useState(0);
+  const { messages, postMessage } = useBroadcastChannel('counter', {
+    namespace: 'tutorial',
+    keepLatestMessage: true, // only the newest value matters
+  });
+
+  useEffect(() => {
+    const latest = messages[messages.length - 1];
+    if (latest && typeof latest.message === 'number') setCount(latest.message);
+  }, [messages]);
+
+  const update = (next: number) => {
+    setCount(next);
+    postMessage('set', next);
+  };
+
+  return (
+    <main>
+      <button onClick={() => update(count - 1)}>-</button>
+      <strong>{count}</strong>
+      <button onClick={() => update(count + 1)}>+</button>
+    </main>
+  );
+}
+```
+
+Click `+` in one tab: the other jumps to the same number. Note where `postMessage` is called: in the click handler, not in the effect. Sending from the effect would rebroadcast every received value (see [Sync shared state](/guides/sync-shared-state/)).
+
+## 4. Show who is around
+
+Give the tab a name and add a ping button:
+
+```tsx
+const { ping, isPingInProgress } = useBroadcastChannel('counter', {
+  namespace: 'tutorial',
+  keepLatestMessage: true,
+  sourceName: 'Tutorial tab',
+});
+```
+
+```tsx
+const [others, setOthers] = useState<string[]>([]);
+
+<button disabled={isPingInProgress} onClick={async () => setOthers(await ping(300))}>
+  {isPingInProgress ? 'Pinging...' : 'Find open tabs'}
+</button>
+<ul>{others.map(name => <li key={name}>{name}</li>)}</ul>
+```
+
+In a real app each tab needs a _different_ name; hardcoding one name in both tabs makes them ignore each other (see [Tabs and identity](/concepts/tabs-and-identity/)).
+
+## 5. Bring late tabs up to date
+
+Open a third tab: its counter starts at 0 while the others show a higher number. Add the request/answer pattern from [Late-joining tabs](/recipes/late-tabs/):
+
+Add `onMessage` to the options of the hook call from step 4 (one hook call per channel, so extend the existing one):
+
+```tsx
+const countRef = useRef(count);
+countRef.current = count;
+
+const { messages, postMessage, ping, isPingInProgress } = useBroadcastChannel('counter', {
+  namespace: 'tutorial',
+  keepLatestMessage: true,
+  sourceName: 'Tutorial tab',
+  onMessage: { 'state-request': () => postMessage('set', countRef.current) },
+});
+
+useEffect(() => {
+  postMessage('state-request', null);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+}, []);
+```
+
+Refresh the third tab: it asks, an older tab answers, and the counts match.
+
+## 6. Compare with the real demo
+
+The full [hook demo](/demos/hook/) adds three channels (counter, text, todo), per-tab generated names, and a message log, all built from the same pieces you just used. Its source is in the [repository](https://github.com/IdanShalem/react-broadcast-sync/tree/main/demos/hook) if you want to keep going.

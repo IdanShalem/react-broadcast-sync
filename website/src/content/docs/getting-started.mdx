@@ -1,11 +1,13 @@
 ---
 title: Getting Started
-description: Install react-broadcast-sync and sync your first message between tabs.
+description: Install react-broadcast-sync and sync your first message between browser tabs.
 ---
 
 `react-broadcast-sync` syncs UI state and user events between browser tabs of the same origin in React apps. It wraps the native [BroadcastChannel API](https://developer.mozilla.org/en-US/docs/Web/API/BroadcastChannel) in a hook and an optional provider.
 
-## Installation
+This guide walks you from an empty file to two tabs staying in sync, step by step.
+
+## 1. Install
 
 ```bash
 npm install react-broadcast-sync
@@ -13,11 +15,41 @@ npm install react-broadcast-sync
 
 React 18 or 19 is required. The package ships ESM, CJS, and TypeScript types.
 
-## Your first synced counter (hook)
+## 2. Pick your entry point
+
+There are two ways to open a channel. Pick one per app (or per part of an app):
+
+- **The hook** - `useBroadcastChannel(name, options)` opens a channel inside one component. Call it once per channel. Best for most apps.
+- **The provider** - `<BroadcastProvider>` opens one channel at the top of a subtree and shares it through context with `useBroadcastProvider()`. Best when many components share one channel.
+
+Both return the same actions (`messages`, `postMessage`, `ping`, and friends). The steps below use the hook; the provider version is covered in [Use the provider](/guides/use-the-provider/).
+
+## 3. Open a channel
 
 ```tsx
 import { useBroadcastChannel } from 'react-broadcast-sync';
 
+function Counter() {
+  const counter = useBroadcastChannel('counter');
+  // ...
+}
+```
+
+Every tab that opens a channel with the same name hears the others. A tab never receives its own messages.
+
+## 4. Send a message
+
+`postMessage(type, content)` sends to every other tab with the channel open. `type` is a label you choose; `content` is anything serializable.
+
+```tsx
+counter.postMessage('increment', { by: 1 });
+```
+
+## 5. Receive and render
+
+Incoming messages land in `messages`, an event log of `BroadcastMessage` objects (newest arrivals appended). Render from it like any state:
+
+```tsx
 function Counter() {
   const { messages, postMessage } = useBroadcastChannel('counter');
 
@@ -27,37 +59,18 @@ function Counter() {
 }
 ```
 
-Open the page in two tabs and click the button: every other tab receives the message. A tab never receives its own messages.
+Two things to keep in mind:
 
-## Sharing one channel (provider)
+- `messages` is a log, not current state. Derive state from it, or pass `keepLatestMessage: true` in the options to keep only the newest message.
+- A tab that opens late does not receive messages from before it opened.
 
-When several components need the same channel, wrap them in `BroadcastProvider` so the connection is opened once and shared through context:
+## 6. See it sync
 
-```tsx
-import { BroadcastProvider, useBroadcastProvider } from 'react-broadcast-sync';
+Open the page in a second tab (same browser, same origin) and click the button. Both tabs count every click, no matter which tab made it.
 
-function App() {
-  return (
-    <BroadcastProvider channelName="app" options={{ namespace: 'v1' }}>
-      <Notifications />
-      <PresenceIndicator />
-    </BroadcastProvider>
-  );
-}
+## 7. Next steps
 
-function PresenceIndicator() {
-  const { ping } = useBroadcastProvider();
-  // ...
-}
-```
-
-## When not to use it
-
-- Syncing to a server or other devices - BroadcastChannel is same-origin, same-browser only.
-- Persisting data across reloads - use `localStorage` or IndexedDB.
-- Messaging across different origins.
-
-## Next steps
-
-- Try the [live demo](https://react-broadcast-sync-3w3m.vercel.app/) in two tabs.
-- Guides and the full API reference are on the way.
+- [Use the hook](/guides/use-the-hook/) - options, patterns, and multiple channels
+- [Use the provider](/guides/use-the-provider/) - share one channel through context
+- [Tutorial: build the counter demo](/tutorial/build-the-counter-demo/) - a full walkthrough that ends in a working demo app
+- Try the live demos: [hook demo](/demos/hook/) and [provider demo](/demos/provider/)

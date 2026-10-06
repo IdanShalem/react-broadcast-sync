@@ -1,0 +1,31 @@
+---
+title: Real-time Notifications
+description: Broadcast alerts and toasts to every open tab.
+---
+
+Use one `notifications` channel, restrict the types you accept, and react with `onMessage` so each alert fires exactly once:
+
+```tsx
+function NotificationSystem() {
+  const [toasts, setToasts] = useState<Toast[]>([]);
+
+  const { postMessage } = useBroadcastChannel('notifications', {
+    registeredTypes: ['alert', 'info', 'warning'],
+    deduplicationTTL: 60_000,
+    onMessage: {
+      alert: msg => showToast('error', msg.message),
+      info: msg => showToast('info', msg.message),
+      warning: msg => showToast('warning', msg.message),
+    },
+  });
+
+  const announce = (text: string) => postMessage('info', text);
+  // ...
+}
+```
+
+Tips:
+
+- `onMessage` is the right tool here: it fires once per accepted message, with no `useEffect` over the log.
+- Give notifications an `expirationDuration` if stale alerts should disappear from the log.
+- The [provider demo](/demos/provider/) ships a working version of this pattern.

@@ -1,0 +1,28 @@
+---
+title: BroadcastProvider
+description: Props for the provider and the useBroadcastProvider hook.
+---
+
+```tsx
+<BroadcastProvider channelName="app" options={{ namespace: 'v1' }}>
+  <App />
+</BroadcastProvider>
+```
+
+## Props
+
+| Prop          | Type               | Required | Description                                                                                                                              |
+| ------------- | ------------------ | -------- | ---------------------------------------------------------------------------------------------------------------------------------------- |
+| `channelName` | `string`           | yes      | Channel name. Combined with `options.namespace` when one is set.                                                                         |
+| `options`     | `BroadcastOptions` | no       | Identical to the hook's [options](/api/use-broadcast-channel/), including `sourceName`, `registeredTypes`, `onMessage`, and `telemetry`. |
+| `children`    | `ReactNode`        | yes      | Subtree that shares the channel.                                                                                                         |
+
+## useBroadcastProvider
+
+```ts
+const actions = useBroadcastProvider();
+```
+
+Returns the [`BroadcastActions`](/api/broadcast-actions/) shared by the nearest `BroadcastProvider`. Throws when called outside one.
+
+The same rules as the hook apply: the tab ignores its own messages, `messages` is an event log (not current state), and a tab opened later does not receive earlier messages.

@@ -1,0 +1,40 @@
+---
+title: Tab Presence
+description: Show which tabs are open and announce status changes.
+---
+
+## Discover open tabs
+
+Give each tab a friendly `sourceName` and let users (or your UI) ask who is around:
+
+```tsx
+const { ping, isPingInProgress } = useBroadcastChannel('presence', {
+  sourceName: 'Editor tab',
+});
+
+const [others, setOthers] = useState<string[]>([]);
+const refresh = async () => setOthers(await ping(300));
+```
+
+The result is a snapshot: ping again on demand or on an interval to refresh.
+
+## Announce status
+
+Pair ping with status messages so tabs hear about changes between pings:
+
+```tsx
+function TabStatus() {
+  const { postMessage } = useBroadcastChannel('tab-status', {
+    keepLatestMessage: true,
+  });
+
+  useEffect(() => {
+    postMessage('tab-active', { timestamp: Date.now() });
+    return () => postMessage('tab-inactive', { timestamp: Date.now() });
+  }, []);
+
+  return null;
+}
+```
+
+Both demos include a working "open tabs" panel built on `ping`: try the [hook demo](/demos/hook/).

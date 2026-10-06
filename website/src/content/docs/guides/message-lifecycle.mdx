@@ -1,0 +1,49 @@
+---
+title: Message Lifecycle
+description: Expiration, deduplication, and clearing messages.
+---
+
+## Expiration
+
+Send a message with an expiry when it only matters for a while:
+
+```tsx
+postMessage('invite', { to: 'tab-2' }, { expirationDuration: 5 * 60 * 1000 }); // 5 minutes
+// or an absolute moment:
+postMessage('invite', { to: 'tab-2' }, { expirationDate: Date.now() + 60_000 });
+```
+
+Expired messages are removed from state on a cleanup pass. Two options control the cadence:
+
+- `cleaningInterval` (default 1000 ms) - how often cleanup runs.
+- `cleanupDebounceMs` (default 0) - debounce applied to cleanup, useful under rapid updates.
+
+Keep `cleanupDebounceMs` **smaller** than `cleaningInterval`. If the debounce is longer, every interval tick restarts it and expired messages may never be removed.
+
+## Deduplication
+
+A received message is dropped if its **message ID** was seen within `deduplicationTTL` (default 5 minutes). Deduplication is by ID, not content: sending the same payload twice produces two distinct messages, and it does not protect you from rebroadcast loops (see [Sync shared state](/guides/sync-shared-state/)).
+
+Tune `deduplicationTTL` to your message frequency: lower it for high-volume channels where IDs should be forgotten sooner, raise it when redelivery within minutes is likely and must be ignored.
+
+## keepLatestMessage
+
+With `keepLatestMessage: true`, `messages` holds only the single most recent message across all types. Good for "current status" channels; the wrong tool when you need the latest _per type_ (use `registeredTypes` or separate channels instead).
+
+## Clearing
+
+Remove messages selectively or in bulk:
+
+```tsx
+// Received log
+clearReceivedMessages(); // everything
+clearReceivedMessages({ types: ['alert'] }); // by type
+clearReceivedMessages({ sources: ['tab-2'] }); // by source
+clearReceivedMessages({ ids: [id] }); // by message id
+
+// Sent log
+clearSentMessages();
+clearSentMessages({ sync: true }); // also tells other tabs to clear their received copies
+```
+
+`clearSentMessages({ sync: true })` broadcasts an internal clear message so the other tabs drop their received copies of what you sent. Internal clear messages never appear in `messages` and never trigger `onMessage`.

@@ -1,0 +1,47 @@
+---
+title: useBroadcastChannel
+description: Options and defaults for the hook.
+---
+
+```ts
+const actions = useBroadcastChannel(channelName, options?);
+```
+
+| Parameter     | Type               | Required | Description                                               |
+| ------------- | ------------------ | -------- | --------------------------------------------------------- |
+| `channelName` | `string`           | yes      | Channel name. Combined with `options.namespace` when set. |
+| `options`     | `BroadcastOptions` | no       | See below.                                                |
+
+## Options
+
+| Option                      | Type                              | Default    | Description                                                                                                                        |
+| --------------------------- | --------------------------------- | ---------- | ---------------------------------------------------------------------------------------------------------------------------------- |
+| `sourceName`                | `string`                          | generated  | Name attached to every message this tab sends. Keep it unique per tab; a tab ignores messages whose `source` matches its own name. |
+| `namespace`                 | `string`                          | none       | Prefixes the channel name to isolate modules or environments.                                                                      |
+| `registeredTypes`           | `string[]`                        | `[]` (all) | Message types to accept. Others are dropped before state and callbacks.                                                            |
+| `keepLatestMessage`         | `boolean`                         | `false`    | Keep only the single most recent message (one slot across all types).                                                              |
+| `onMessage`                 | `MessageCallback \| OnMessageMap` | none       | Callback(s) fired once per accepted incoming message. A single function, or a type-keyed map.                                      |
+| `cleaningInterval`          | `number` (ms)                     | `1000`     | How often expired messages are swept.                                                                                              |
+| `cleanupDebounceMs`         | `number` (ms)                     | `0`        | Debounce for cleanup. Keep below `cleaningInterval`.                                                                               |
+| `deduplicationTTL`          | `number` (ms)                     | 5 minutes  | How long a seen message ID blocks redelivery.                                                                                      |
+| `batchingDelayMs`           | `number` (ms)                     | `20`       | Window for batching outgoing messages. `0` disables batching.                                                                      |
+| `excludedBatchMessageTypes` | `string[]`                        | `[]`       | Types that always send immediately.                                                                                                |
+| `telemetry`                 | `boolean`                         | `false`    | Opt in to anonymous usage statistics ([details](/guides/telemetry/)).                                                              |
+
+## Returns
+
+A [`BroadcastActions`](/api/broadcast-actions/) object: `messages`, `sentMessages`, `postMessage`, `ping`, `isPingInProgress`, `getLatestMessage`, `clearReceivedMessages`, `clearSentMessages`, `closeChannel`, `channelName`, and `error`.
+
+## Example
+
+```tsx
+const { messages, postMessage, error } = useBroadcastChannel('notifications', {
+  namespace: 'admin',
+  registeredTypes: ['alert', 'info'],
+  keepLatestMessage: false,
+  deduplicationTTL: 60_000,
+  batchingDelayMs: 50,
+  excludedBatchMessageTypes: ['alert'],
+  onMessage: { alert: msg => toast(msg.message) },
+});
+```

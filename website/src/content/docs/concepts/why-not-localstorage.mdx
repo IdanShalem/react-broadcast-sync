@@ -1,0 +1,21 @@
+---
+title: Why Not localStorage?
+description: How react-broadcast-sync compares to storage events and state-manager sync utilities.
+---
+
+The first instinct for sharing state between tabs is often `localStorage` plus the `storage` event. It works for simple cases, but it was designed for persistence, not messaging. Here is how `react-broadcast-sync` compares to the common alternatives:
+
+|                    | react-broadcast-sync                            | localStorage + `storage` events    | jotai `atomWithStorage`       | broadcast-channel                    | zustand-sync-tabs       |
+| ------------------ | ----------------------------------------------- | ---------------------------------- | ----------------------------- | ------------------------------------ | ----------------------- |
+| What it syncs      | Typed messages on named channels                | Raw key-value strings              | A single persisted atom       | Messages on a channel                | A Zustand store's state |
+| React integration  | First-class hook + provider                     | Manual event listeners             | Requires Jotai                | None, framework agnostic             | Requires Zustand        |
+| Payloads           | Any serializable value                          | Strings only (manual JSON)         | JSON-serializable value       | Any serializable value               | Store state             |
+| Message lifecycle  | Expiration, deduplication, batching, clearing   | None                               | None                          | None                                 | Latest state only       |
+| Tab awareness      | Source naming, ping and active-source detection | None (no event in the writing tab) | None                          | Leader election                      | None                    |
+| Extra environments | Browsers (same origin)                          | Browsers (same origin)             | React Native via AsyncStorage | Old browsers, WebWorkers, Node, Deno | Browsers (same origin)  |
+
+A few honest notes:
+
+- **If you need persistence across reloads**, use a storage-based tool. Messages in `react-broadcast-sync` are ephemeral: they notify and sync live tabs, they do not survive a refresh.
+- **If you need old-browser, WebWorker, or Node support**, [`broadcast-channel`](https://github.com/pubkey/broadcast-channel) is the right low-level primitive. `react-broadcast-sync` builds on the native `BroadcastChannel` API and gives you the React layer on top.
+- **If your app already lives in Zustand or Jotai**, their sync utilities may be enough. `react-broadcast-sync` is state-manager agnostic: it works next to any of them, or with plain `useState`.

@@ -1,0 +1,14 @@
+---
+title: Telemetry
+description: Anonymous usage statistics, off by default.
+---
+
+Telemetry is **off unless you opt in**. Nothing is collected or sent by default.
+
+```tsx
+useBroadcastChannel('my-channel', { telemetry: true });
+```
+
+When enabled, the package sends structural signals to the maintainer: which options are in use, which methods are called, and whether the hook or provider entry point is used. It does **not** send channel names, source names, message content, or anything identifying your users.
+
+The full list of collected signals and where they go lives in [TELEMETRY.md](https://github.com/IdanShalem/react-broadcast-sync/blob/main/TELEMETRY.md) in the repository.

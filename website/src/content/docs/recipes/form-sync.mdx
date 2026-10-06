@@ -1,0 +1,31 @@
+---
+title: Multi-tab Form Sync
+description: Keep a form identical across tabs while the user edits in any of them.
+---
+
+Send a `field-update` message from the change handler, apply incoming updates with `onMessage`, and give updates an expiry so old edits do not linger:
+
+```tsx
+function FormSync() {
+  const [values, setValues] = useState({ name: '', email: '' });
+
+  const { postMessage } = useBroadcastChannel('form-sync', {
+    namespace: 'signup',
+    onMessage: {
+      'field-update': msg => setValues(v => ({ ...v, [msg.message.field]: msg.message.value })),
+    },
+  });
+
+  const handleChange = (field: string, value: string) => {
+    setValues(v => ({ ...v, [field]: value }));
+    postMessage('field-update', { field, value }, { expirationDuration: 300_000 });
+  };
+
+  return <Form values={values} onChange={handleChange} />;
+}
+```
+
+Two things to watch:
+
+- Send from the handler, never from a `useEffect` on `values`: that rebroadcasts every received update and the tabs ping-pong (see [Sync shared state](/guides/sync-shared-state/)).
+- Typing sends a lot of messages. The default batching smooths this out; see [Performance](/guides/performance/).
