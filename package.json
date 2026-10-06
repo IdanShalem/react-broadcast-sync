@@ -99,7 +99,7 @@
   "bugs": {
     "url": "https://github.com/IdanShalem/react-broadcast-sync/issues"
   },
-  "homepage": "https://github.com/IdanShalem/react-broadcast-sync#readme",
+  "homepage": "https://react-broadcast-sync-docs.vercel.app",
   "peerDependencies": {
     "react": ">=16.8.0",
     "react-dom": ">=16.8.0"
