@@ -12,7 +12,12 @@ export const generateSourceName = () => `tab-${generateRandomPart()}`;
 // Generate a unique message ID
 export const generateMessageId = (source: string, timestamp: number) => {
   const raw = `${generateRandomPart()}-${source}-${timestamp}`;
-  return btoa(raw).replace(/=+$/, '');
+  // btoa only accepts Latin-1, so percent-encode to UTF-8 bytes first: source
+  // names may contain any user-provided characters (e.g. non-Latin-1 tab names).
+  const binary = encodeURIComponent(raw).replace(/%([0-9A-F]{2})/g, (_match, hex) =>
+    String.fromCharCode(parseInt(hex, 16))
+  );
+  return btoa(binary).replace(/=+$/, '');
 };
 
 // Check if a message is valid
