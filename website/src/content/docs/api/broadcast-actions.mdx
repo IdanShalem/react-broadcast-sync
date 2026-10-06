@@ -1,0 +1,34 @@
+---
+title: BroadcastActions
+description: Everything the hook returns and the provider shares.
+---
+
+`useBroadcastChannel` returns this object; `useBroadcastProvider` reads the same shape from context.
+
+| Member                  | Type                                                                         | Description                                                                          |
+| ----------------------- | ---------------------------------------------------------------------------- | ------------------------------------------------------------------------------------ |
+| `channelName`           | `string`                                                                     | Resolved channel name, including the namespace.                                      |
+| `messages`              | `BroadcastMessage[]`                                                         | Received messages (the log). Empty in a late-joining tab until something arrives.    |
+| `sentMessages`          | `BroadcastMessage[]`                                                         | Messages this tab sent.                                                              |
+| `isPingInProgress`      | `boolean`                                                                    | `true` while a `ping()` is collecting answers.                                       |
+| `error`                 | `string \| null`                                                             | Set when the browser lacks `BroadcastChannel` or the channel fails.                  |
+| `postMessage`           | `(type: string, content: any, options?: SendMessageOptions) => void`         | Send to every other tab on the channel.                                              |
+| `ping`                  | `(timeoutMs?: number) => Promise<string[]>`                                  | Discover other tabs on the channel; resolves to their source names (yours excluded). |
+| `getLatestMessage`      | `(options?: { type?: string; source?: string }) => BroadcastMessage \| null` | Most recent received message, optionally filtered. `null` when nothing matches.      |
+| `clearReceivedMessages` | `(options?: ClearReceivedMessagesOptions) => void`                           | Clear the received log, optionally by `types`, `sources`, or `ids`.                  |
+| `clearSentMessages`     | `(options?: ClearSentMessagesOptions) => void`                               | Clear the sent log. `sync: true` also clears the other tabs' received copies.        |
+| `closeChannel`          | `() => void`                                                                 | Close the channel and remove listeners. Idempotent; automatic on unmount.            |
+
+## getLatestMessage
+
+```tsx
+const latest = getLatestMessage();
+const latestAlert = getLatestMessage({ type: 'alert' });
+const latestFromTab2 = getLatestMessage({ type: 'info', source: 'tab-2' });
+```
+
+Returns the most recently received matching message, or `null`. Note that in a late-joining tab the log starts empty, so this is `null` until something arrives.
+
+## closeChannel
+
+Use for manual cleanup only: after it, the channel sends and receives nothing. Safe to call repeatedly. You do not need it for normal unmounting.

@@ -1,0 +1,64 @@
+---
+title: Types
+description: The exported TypeScript types.
+---
+
+## BroadcastMessage
+
+```ts
+interface BroadcastMessage {
+  id: string; // unique message identifier
+  type: string; // the label passed to postMessage
+  message: any; // your payload
+  timestamp: number; // creation time (ms)
+  source: string; // sourceName of the sending tab
+  expirationDate?: number; // set when sent with an expiry
+}
+```
+
+## SendMessageOptions
+
+```ts
+interface SendMessageOptions {
+  expirationDuration?: number; // ms until the message expires
+  expirationDate?: number; // absolute expiry timestamp
+}
+```
+
+## ClearReceivedMessagesOptions
+
+```ts
+interface ClearReceivedMessagesOptions {
+  ids?: string[]; // clear specific messages
+  types?: string[]; // clear by message type
+  sources?: string[]; // clear by source name
+}
+```
+
+## ClearSentMessagesOptions
+
+```ts
+interface ClearSentMessagesOptions {
+  ids?: string[];
+  types?: string[];
+  sync?: boolean; // also clear other tabs' received copies
+}
+```
+
+## GetLatestMessageOptions
+
+```ts
+interface GetLatestMessageOptions {
+  type?: string;
+  source?: string;
+}
+```
+
+## MessageCallback and OnMessageMap
+
+```ts
+type MessageCallback = (msg: BroadcastMessage) => void;
+type OnMessageMap = { [type: string]: MessageCallback };
+```
+
+`onMessage` accepts either a single callback for all incoming messages or a type-keyed map. It fires after the message is added to state and only for messages passing every filter. Internal messages (`PING`, `PONG`, `CLEAR_SENT_MESSAGES`) never trigger it.

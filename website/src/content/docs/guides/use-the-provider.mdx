@@ -1,0 +1,41 @@
+---
+title: Use the Provider
+description: Share one channel across a component tree with BroadcastProvider.
+---
+
+When several components need the same channel, opening it once at the top of the tree beats repeating the hook. `<BroadcastProvider>` calls `useBroadcastChannel` internally and shares the result through context; descendants read it with `useBroadcastProvider()`.
+
+```tsx
+import { BroadcastProvider, useBroadcastProvider } from 'react-broadcast-sync';
+
+function App() {
+  return (
+    <BroadcastProvider channelName="app" options={{ namespace: 'v1' }}>
+      <Notifications />
+      <PresenceIndicator />
+    </BroadcastProvider>
+  );
+}
+
+function PresenceIndicator() {
+  const { ping, isPingInProgress } = useBroadcastProvider();
+  // same actions as the hook
+}
+```
+
+## Props
+
+| Prop          | Type               | Required | Description                                             |
+| ------------- | ------------------ | -------- | ------------------------------------------------------- |
+| `channelName` | `string`           | yes      | Channel name. Combined with `options.namespace` if set. |
+| `options`     | `BroadcastOptions` | no       | The same options object the hook takes.                 |
+| `children`    | `ReactNode`        | yes      | The subtree that shares the channel.                    |
+
+## Rules
+
+- Everything inside the provider shares **one** connection. Components can still send different message types over it (`registeredTypes` helps keep that tidy).
+- `useBroadcastProvider()` throws if no `BroadcastProvider` is above it in the tree.
+- The provider accepts the full options object, including `sourceName`, `registeredTypes`, `onMessage`, and `telemetry`. `onMessage` set here fires for the whole subtree's incoming traffic.
+- Components that need a _different_ channel can still call `useBroadcastChannel` directly, inside or outside the provider.
+
+See [Hook or provider?](/guides/hook-or-provider/) for help choosing, and the [provider demo](/demos/provider/) for a working app.

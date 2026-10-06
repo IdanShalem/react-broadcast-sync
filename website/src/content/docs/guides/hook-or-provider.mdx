@@ -1,0 +1,17 @@
+---
+title: Hook or Provider?
+description: Choosing the right entry point for each part of your app.
+---
+
+Both entry points return the same `BroadcastActions`. The difference is _where the channel is opened_ and _who can reach it_.
+
+| Situation                                                           | Use                                     |
+| ------------------------------------------------------------------- | --------------------------------------- |
+| One component (or a few unrelated ones) each need their own channel | `useBroadcastChannel`                   |
+| Many components in a subtree share one channel                      | `BroadcastProvider`                     |
+| Several independent channels in one component                       | `useBroadcastChannel`, once per channel |
+| A design-system-level "app bus"                                     | `BroadcastProvider` near the root       |
+
+Ask: _if I add a second consumer, would I copy-paste the same hook call?_ If yes, lift the channel into a provider and let consumers call `useBroadcastProvider()`.
+
+Mixing is fine: a provider can carry the shared `app` channel while an isolated widget opens its own `widget-settings` channel with the hook.

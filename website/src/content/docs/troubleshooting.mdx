@@ -1,0 +1,33 @@
+---
+title: Troubleshooting
+description: The usual causes when tabs do not sync.
+---
+
+## Tabs do not receive each other's messages
+
+- **Same `sourceName` in two tabs.** A tab ignores messages whose `source` equals its own `sourceName`. Leave it unset (a unique one is generated) or keep it unique per tab.
+- **Different origins.** Ports count: `localhost:3000` and `localhost:5173` are different origins. So are `http` and `https`.
+- **Different channel names or namespaces.** The resolved `channelName` (returned by the hook) must match exactly.
+- **`registeredTypes` dropping your type.** If you set it, every type you send must be listed.
+
+## State looks stale or duplicated
+
+- **`messages` is a log, not state.** Derive current values from it or use `keepLatestMessage`. See [Messages and channels](/concepts/messages-and-channels/).
+- **`keepLatestMessage` holds one slot across all types.** A `"b"` message replaces a prior `"a"`. Use `registeredTypes` or separate channels for latest-per-type.
+- **Rebroadcast loop.** Sending from a `useEffect` on state you also set from incoming messages makes tabs ping-pong. Send from event handlers instead.
+
+## Expired messages never disappear
+
+`cleanupDebounceMs` longer than `cleaningInterval` restarts the debounce on every tick, so cleanup never runs. Keep the debounce below the interval.
+
+## Duplicate deliveries
+
+Deduplication blocks a repeated **message ID** for `deduplicationTTL` (5 minutes by default). It does not collapse identical payloads sent twice, and it does not stop rebroadcast loops.
+
+## Everything fails with an error
+
+Check the `error` field: it is set when the browser lacks `BroadcastChannel` (very old browsers) or channel setup fails. Surface it in the UI during development instead of failing silently.
+
+## Weird characters in `sourceName` break sending
+
+Stick to Latin-1 characters (plain ASCII is safest) in `sourceName`. Emoji or non-Latin text there can currently throw while the message ID is generated.

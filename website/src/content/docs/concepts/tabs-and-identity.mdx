@@ -1,0 +1,37 @@
+---
+title: Tabs and Identity
+description: sourceName, the self-filter, and discovering open tabs with ping.
+---
+
+## Every tab has a name
+
+Each hook or provider instance gets a `sourceName`. It is attached to every message that tab sends, so other tabs can show _who_ did something ("Deploy finished, from Tab Owl"). If you do not set one, a unique name is generated per tab.
+
+```tsx
+useBroadcastChannel('app', { sourceName: 'settings-tab' });
+```
+
+Two rules:
+
+- **Keep it unique per tab.** A tab ignores any message whose `source` equals its own `sourceName`. Two tabs sharing a name never receive each other's messages.
+- **Do not build it inline with `crypto.randomUUID()`** on every render: the name would change constantly and break the self-filter. Generate once (in state, a ref, or outside the component) or set a stable label.
+
+## Ping: who else is here?
+
+`ping()` broadcasts a probe and collects answers from the other tabs currently on the channel:
+
+```tsx
+const { ping, isPingInProgress } = useBroadcastChannel('app', { sourceName: 'Tab A' });
+
+const sources = await ping(300); // e.g. ['Tab B', 'Tab C']
+```
+
+- Returns the **source names of other tabs only** (your own tab is excluded).
+- Tabs that joined the channel after your ping, or that closed, simply do not answer. The result is a snapshot, not a live subscription: ping again to refresh.
+- `isPingInProgress` is `true` while a ping is collecting answers, handy for a spinner.
+
+Ping answers come from tabs with the same channel name **and** namespace. Internal `PING`/`PONG` messages never appear in `messages` and never trigger `onMessage`.
+
+## Late-joining tabs
+
+Identity does not bring history. A tab that opens later sees only messages sent after it opened, whatever `keepLatestMessage` or `getLatestMessage` say. To bring a new tab up to date, let it ask and let an existing tab answer: see [Late-joining tabs](/recipes/late-tabs/).
