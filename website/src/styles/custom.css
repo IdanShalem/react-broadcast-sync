@@ -1,0 +1,24 @@
+/* Dark-green theme matching the react-broadcast-sync demo app. */
+
+/* Dark mode (default) */
+:root {
+  --sl-color-accent-low: #1d3a16;
+  --sl-color-accent: #5ec13d;
+  --sl-color-accent-high: #c9ecb8;
+  --sl-color-white: #ffffff;
+  --sl-color-gray-1: #eceff2;
+  --sl-color-gray-2: #c0c7cd;
+  --sl-color-gray-3: #8b959e;
+  --sl-color-gray-4: #5c666e;
+  --sl-color-gray-5: #3a434b;
+  --sl-color-gray-6: #21262d;
+  --sl-color-gray-7: #161b22;
+  --sl-color-black: #0d1117;
+}
+
+/* Light mode */
+:root[data-theme='light'] {
+  --sl-color-accent: #3fad3a;
+  --sl-color-accent-high: #1d3a16;
+  --sl-color-accent-low: #c9ecb8;
+}

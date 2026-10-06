@@ -1,0 +1,40 @@
+---
+title: react-broadcast-sync
+description: Sync UI state and events across browser tabs in React apps.
+template: splash
+hero:
+  tagline: Sync UI state and user events across browser tabs in React apps - notifications, presence, forms, and more. A clean, type-safe abstraction over the native BroadcastChannel API.
+  image:
+    file: ../../assets/logo.png
+    alt: react-broadcast-sync logo
+  actions:
+    - text: Get started
+      link: /getting-started/
+      icon: right-arrow
+    - text: Try the live demo
+      link: https://react-broadcast-sync-3w3m.vercel.app/
+      icon: external
+      variant: minimal
+---
+
+import { Card, CardGrid } from '@astrojs/starlight/components';
+
+## Why react-broadcast-sync?
+
+<CardGrid stagger>
+  <Card title="Hook or provider" icon="rocket">
+    Use `useBroadcastChannel` for a channel local to one component, or `BroadcastProvider` to share
+    one channel with your whole tree through context.
+  </Card>
+  <Card title="See who is online" icon="magnifier">
+    Ping the channel to discover active tabs, and give each tab its own identity with `sourceName`.
+  </Card>
+  <Card title="Control the traffic" icon="setting">
+    Filter by message type, isolate channels with namespaces, expire stale messages, and keep only
+    the latest message when that is all you need.
+  </Card>
+  <Card title="Type-safe and tested" icon="approve-check">
+    Written in TypeScript with full type inference, covered by unit and cross-browser cross-tab
+    tests.
+  </Card>
+</CardGrid>
