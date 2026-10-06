@@ -4,7 +4,8 @@ import starlight from '@astrojs/starlight';
 
 // https://astro.build/config
 export default defineConfig({
-  site: 'https://react-broadcast-sync.vercel.app',
+  // Canonical origin for the docs site. Flip to the custom domain when it is set up.
+  site: 'https://react-broadcast-sync-docs.vercel.app',
   integrations: [
     starlight({
       title: 'react-broadcast-sync',
