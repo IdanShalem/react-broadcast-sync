@@ -36,3 +36,6 @@ demo/react-broadcast-sync-demo/dist/
 # Playwright
 playwright-report/
 test-results/
+
+# Built demo apps served by the docs site
+website/public/demos/
