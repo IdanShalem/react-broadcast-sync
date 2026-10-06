@@ -1,0 +1,4 @@
+User-agent: *
+Allow: /
+
+Sitemap: https://react-broadcast-sync-docs.vercel.app/sitemap-index.xml

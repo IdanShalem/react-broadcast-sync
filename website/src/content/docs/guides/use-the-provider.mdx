@@ -1,6 +1,15 @@
 ---
 title: Use the Provider
 description: Share one channel across a component tree with BroadcastProvider.
+head:
+  - tag: script
+    attrs:
+      type: application/ld+json
+    content: '{"@context": "https://schema.org", "@type": "TechArticle", "headline": "Use the Provider", "description": "Share one channel across a component tree with BroadcastProvider.", "url": "https://react-broadcast-sync-docs.vercel.app/guides/use-the-provider/", "author": {"@type": "Person", "name": "Idan Shalem"}, "isPartOf": {"@type": "WebSite", "name": "react-broadcast-sync documentation", "url": "https://react-broadcast-sync-docs.vercel.app"}}'
+  - tag: script
+    attrs:
+      type: application/ld+json
+    content: '{"@context": "https://schema.org", "@type": "BreadcrumbList", "itemListElement": [{"@type": "ListItem", "position": 1, "name": "Docs", "item": "https://react-broadcast-sync-docs.vercel.app/"}, {"@type": "ListItem", "position": 2, "name": "Guides"}, {"@type": "ListItem", "position": 3, "name": "Use the Provider", "item": "https://react-broadcast-sync-docs.vercel.app/guides/use-the-provider/"}]}'
 ---
 
 When several components need the same channel, opening it once at the top of the tree beats repeating the hook. `<BroadcastProvider>` calls `useBroadcastChannel` internally and shares the result through context; descendants read it with `useBroadcastProvider()`.

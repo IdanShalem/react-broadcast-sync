@@ -1,6 +1,15 @@
 ---
 title: BroadcastActions
 description: Everything the hook returns and the provider shares.
+head:
+  - tag: script
+    attrs:
+      type: application/ld+json
+    content: '{"@context": "https://schema.org", "@type": "TechArticle", "headline": "BroadcastActions", "description": "Everything the hook returns and the provider shares.", "url": "https://react-broadcast-sync-docs.vercel.app/api/broadcast-actions/", "author": {"@type": "Person", "name": "Idan Shalem"}, "isPartOf": {"@type": "WebSite", "name": "react-broadcast-sync documentation", "url": "https://react-broadcast-sync-docs.vercel.app"}}'
+  - tag: script
+    attrs:
+      type: application/ld+json
+    content: '{"@context": "https://schema.org", "@type": "BreadcrumbList", "itemListElement": [{"@type": "ListItem", "position": 1, "name": "Docs", "item": "https://react-broadcast-sync-docs.vercel.app/"}, {"@type": "ListItem", "position": 2, "name": "API Reference"}, {"@type": "ListItem", "position": 3, "name": "BroadcastActions", "item": "https://react-broadcast-sync-docs.vercel.app/api/broadcast-actions/"}]}'
 ---
 
 `useBroadcastChannel` returns this object; `useBroadcastProvider` reads the same shape from context.

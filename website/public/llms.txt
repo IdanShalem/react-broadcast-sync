@@ -1,0 +1,52 @@
+# react-broadcast-sync documentation
+
+> react-broadcast-sync is a React hook and provider for syncing UI state and user events across browser tabs, built as a type-safe abstraction over the native BroadcastChannel API. These docs cover installation, concepts, per-feature guides, the full API, recipes, and a step-by-step tutorial.
+
+The library is published on npm as `react-broadcast-sync`. Same-origin tabs only.
+
+## Getting started
+
+- [Getting Started](https://react-broadcast-sync-docs.vercel.app/getting-started/): install and sync your first message between tabs
+- [Tutorial: Build the Counter Demo](https://react-broadcast-sync-docs.vercel.app/tutorial/build-the-counter-demo/): a complete small app, step by step
+
+## Concepts
+
+- [How It Works](https://react-broadcast-sync-docs.vercel.app/concepts/how-it-works/): channels, messages, and the tab lifecycle
+- [Messages and Channels](https://react-broadcast-sync-docs.vercel.app/concepts/messages-and-channels/): message shape and channel naming
+- [Tabs and Identity](https://react-broadcast-sync-docs.vercel.app/concepts/tabs-and-identity/): sourceName, tab identity, and presence
+- [Why Not localStorage?](https://react-broadcast-sync-docs.vercel.app/concepts/why-not-localstorage/): comparison with storage-event hacks
+
+## Guides
+
+- [Use the Hook](https://react-broadcast-sync-docs.vercel.app/guides/use-the-hook/): useBroadcastChannel usage and options
+- [Use the Provider](https://react-broadcast-sync-docs.vercel.app/guides/use-the-provider/): BroadcastProvider usage and props
+- [Hook or Provider?](https://react-broadcast-sync-docs.vercel.app/guides/hook-or-provider/): how to choose
+- [Sync Shared State](https://react-broadcast-sync-docs.vercel.app/guides/sync-shared-state/): keep filters, settings, and other state in sync
+- [Message Lifecycle](https://react-broadcast-sync-docs.vercel.app/guides/message-lifecycle/): expiration, dedup, and cleanup
+- [Performance](https://react-broadcast-sync-docs.vercel.app/guides/performance/): costs and how to keep them low
+- [Telemetry](https://react-broadcast-sync-docs.vercel.app/guides/telemetry/): what is collected and how to opt out
+
+## API Reference
+
+- [useBroadcastChannel](https://react-broadcast-sync-docs.vercel.app/api/use-broadcast-channel/)
+- [BroadcastActions](https://react-broadcast-sync-docs.vercel.app/api/broadcast-actions/)
+- [BroadcastProvider](https://react-broadcast-sync-docs.vercel.app/api/broadcast-provider/)
+- [Types](https://react-broadcast-sync-docs.vercel.app/api/types/)
+
+## Recipes
+
+- [Real-time Notifications](https://react-broadcast-sync-docs.vercel.app/recipes/notifications/)
+- [Multi-tab Form Sync](https://react-broadcast-sync-docs.vercel.app/recipes/form-sync/)
+- [Tab Presence](https://react-broadcast-sync-docs.vercel.app/recipes/tab-presence/)
+- [Late-joining Tabs](https://react-broadcast-sync-docs.vercel.app/recipes/late-tabs/)
+
+## Reference
+
+- [FAQ](https://react-broadcast-sync-docs.vercel.app/faq/)
+- [Troubleshooting](https://react-broadcast-sync-docs.vercel.app/troubleshooting/)
+- [Migration and Changelog](https://react-broadcast-sync-docs.vercel.app/changelog/)
+
+## Live demos
+
+- [Hook demo](https://react-broadcast-sync-docs.vercel.app/demos/hook/)
+- [Provider demo](https://react-broadcast-sync-docs.vercel.app/demos/provider/)

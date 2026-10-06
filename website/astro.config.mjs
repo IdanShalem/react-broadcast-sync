@@ -3,11 +3,51 @@ import { defineConfig } from 'astro/config';
 import starlight from '@astrojs/starlight';
 
 // https://astro.build/config
+// Canonical origin for the docs site. Flip to the custom domain when it is set up.
+const SITE = 'https://react-broadcast-sync-docs.vercel.app';
+const OG_IMAGE = `${SITE}/og-image.png`;
+
+const softwareSourceCodeJsonLd = JSON.stringify({
+  '@context': 'https://schema.org',
+  '@type': 'SoftwareSourceCode',
+  name: 'react-broadcast-sync',
+  description:
+    'Sync UI state and user events across browser tabs in React apps - a type-safe abstraction over the native BroadcastChannel API.',
+  codeRepository: 'https://github.com/IdanShalem/react-broadcast-sync',
+  programmingLanguage: ['TypeScript', 'JavaScript'],
+  runtimePlatform: 'React',
+  license: 'https://github.com/IdanShalem/react-broadcast-sync/blob/main/LICENSE',
+  author: { '@type': 'Person', name: 'Idan Shalem' },
+});
+
+const websiteJsonLd = JSON.stringify({
+  '@context': 'https://schema.org',
+  '@type': 'WebSite',
+  name: 'react-broadcast-sync documentation',
+  url: SITE,
+});
+
 export default defineConfig({
-  site: 'https://react-broadcast-sync.vercel.app',
+  site: SITE,
   integrations: [
     starlight({
       title: 'react-broadcast-sync',
+      head: [
+        { tag: 'meta', attrs: { property: 'og:image', content: OG_IMAGE } },
+        { tag: 'meta', attrs: { property: 'og:image:width', content: '1200' } },
+        { tag: 'meta', attrs: { property: 'og:image:height', content: '630' } },
+        {
+          tag: 'meta',
+          attrs: { property: 'og:image:alt', content: 'react-broadcast-sync logo and tagline' },
+        },
+        { tag: 'meta', attrs: { name: 'twitter:image', content: OG_IMAGE } },
+        {
+          tag: 'script',
+          attrs: { type: 'application/ld+json' },
+          content: softwareSourceCodeJsonLd,
+        },
+        { tag: 'script', attrs: { type: 'application/ld+json' }, content: websiteJsonLd },
+      ],
       logo: {
         src: './src/assets/logo.png',
         alt: 'react-broadcast-sync logo',
