@@ -34,6 +34,16 @@ describe('messageUtils', () => {
     expect(typeof id).toBe('string');
     expect(id).toMatch(/^[A-Za-z0-9+/]+={0,2}$/);
   });
+  it('generateMessageId supports non-Latin-1 source names', () => {
+    const hebrewSource = 'טאב-שלום';
+    expect(() => generateMessageId(hebrewSource, Date.now())).not.toThrow();
+    const id = generateMessageId(hebrewSource, Date.now());
+    expect(typeof id).toBe('string');
+    expect(id.length).toBeGreaterThan(0);
+    expect(id).toMatch(/^[A-Za-z0-9+/]+$/);
+    // IDs stay unique per call even with the same source and timestamp
+    expect(generateMessageId(hebrewSource, 1)).not.toBe(generateMessageId(hebrewSource, 1));
+  });
 
   describe('isValidMessage', () => {
     it('returns true for a fully valid message', () => {
