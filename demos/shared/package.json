@@ -1,0 +1,14 @@
+{
+  "name": "@rbs-demos/shared",
+  "private": true,
+  "version": "0.0.0",
+  "type": "module",
+  "main": "src/index.ts",
+  "peerDependencies": {
+    "@mui/icons-material": "^5.15.10",
+    "@mui/material": "^5.15.10",
+    "react": "^18.2.0",
+    "react-broadcast-sync": "^2.1.1",
+    "react-dom": "^18.2.0"
+  }
+}
