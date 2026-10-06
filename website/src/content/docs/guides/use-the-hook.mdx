@@ -1,6 +1,15 @@
 ---
 title: Use the Hook
 description: Working with useBroadcastChannel day to day.
+head:
+  - tag: script
+    attrs:
+      type: application/ld+json
+    content: '{"@context": "https://schema.org", "@type": "TechArticle", "headline": "Use the Hook", "description": "Working with useBroadcastChannel day to day.", "url": "https://react-broadcast-sync-docs.vercel.app/guides/use-the-hook/", "author": {"@type": "Person", "name": "Idan Shalem"}, "isPartOf": {"@type": "WebSite", "name": "react-broadcast-sync documentation", "url": "https://react-broadcast-sync-docs.vercel.app"}}'
+  - tag: script
+    attrs:
+      type: application/ld+json
+    content: '{"@context": "https://schema.org", "@type": "BreadcrumbList", "itemListElement": [{"@type": "ListItem", "position": 1, "name": "Docs", "item": "https://react-broadcast-sync-docs.vercel.app/"}, {"@type": "ListItem", "position": 2, "name": "Guides"}, {"@type": "ListItem", "position": 3, "name": "Use the Hook", "item": "https://react-broadcast-sync-docs.vercel.app/guides/use-the-hook/"}]}'
 ---
 
 `useBroadcastChannel(channelName, options?)` opens one channel inside your component and returns its state and actions. Call it once per channel you need.
