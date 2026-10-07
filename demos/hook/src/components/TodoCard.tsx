@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { Box, Checkbox, IconButton, List, ListItem, ListItemText, TextField } from '@mui/material';
 import DeleteOutlineIcon from '@mui/icons-material/DeleteOutline';
 import type { BroadcastActions } from 'react-broadcast-sync';
-import { DemoCard } from '@rbs-demos/shared';
+import { DemoCard, track } from '@rbs-demos/shared';
 
 type ChannelSlice = Pick<BroadcastActions, 'messages' | 'postMessage'>;
 
@@ -46,6 +46,13 @@ export const TodoCard = ({ messages, postMessage }: ChannelSlice) => {
   const add = () => {
     const text = draft.trim();
     if (!text) return;
+    track('demo_action', {
+      card: 'todo',
+      action: 'add_todo',
+      method: 'postMessage',
+      message_type: 'todos',
+      length: text.length,
+    });
     publish([...todos, { id: crypto.randomUUID(), text, done: false }]);
     setDraft('');
   };
@@ -73,7 +80,15 @@ export const TodoCard = ({ messages, postMessage }: ChannelSlice) => {
                 edge="end"
                 size="small"
                 aria-label={`Delete ${todo.text}`}
-                onClick={() => publish(todos.filter(t => t.id !== todo.id))}
+                onClick={() => {
+                  track('demo_action', {
+                    card: 'todo',
+                    action: 'delete_todo',
+                    method: 'postMessage',
+                    message_type: 'todos',
+                  });
+                  publish(todos.filter(t => t.id !== todo.id));
+                }}
               >
                 <DeleteOutlineIcon fontSize="small" />
               </IconButton>
@@ -82,9 +97,15 @@ export const TodoCard = ({ messages, postMessage }: ChannelSlice) => {
             <Checkbox
               size="small"
               checked={todo.done}
-              onChange={() =>
-                publish(todos.map(t => (t.id === todo.id ? { ...t, done: !t.done } : t)))
-              }
+              onChange={() => {
+                track('demo_action', {
+                  card: 'todo',
+                  action: todo.done ? 'mark_undone' : 'mark_done',
+                  method: 'postMessage',
+                  message_type: 'todos',
+                });
+                publish(todos.map(t => (t.id === todo.id ? { ...t, done: !t.done } : t)));
+              }}
               inputProps={{ 'aria-label': `Mark ${todo.text} as done` }}
             />
             <ListItemText

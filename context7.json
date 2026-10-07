@@ -3,14 +3,14 @@
   "projectTitle": "react-broadcast-sync",
   "description": "React hook and provider for syncing state and events across browser tabs using the BroadcastChannel API.",
   "excludeFolders": ["demo", "integration", "assets", "scripts"],
-  "excludeFiles": ["CHANGELOG.md", "TELEMETRY.md"],
+  "excludeFiles": ["CHANGELOG.md"],
   "rules": [
     "Import useBroadcastChannel (or BroadcastProvider) from 'react-broadcast-sync'; it is for same-origin browser tabs only, not server or cross-device sync.",
     "Message deduplication is by message ID, not content. deduplicationTTL defaults to 5 minutes; cleanupDebounceMs defaults to 0.",
     "Do not give two tabs the same sourceName: a tab ignores messages from its own sourceName.",
     "keepLatestMessage keeps a single latest message across all types, not one per type.",
     "Keep cleanupDebounceMs smaller than cleaningInterval, otherwise cleanup can be postponed indefinitely.",
-    "Telemetry is off by default in 2.0.0; pass telemetry: true only to opt in. No option is needed to keep it off.",
+    "The package collects no telemetry; the telemetry option is a deprecated no-op.",
     "messages is a log of received messages, not current state. To sync state, update local state and call postMessage in the same handler, and apply incoming messages with onMessage.",
     "Never call postMessage from a useEffect on state that is also set from incoming messages: it creates a ping-pong loop.",
     "Messages are not replayed to tabs opened later, and keepLatestMessage does not change that. For initial state, have the new tab post a 'state-request' message and let an existing tab reply with the current state."

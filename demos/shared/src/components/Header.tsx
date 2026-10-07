@@ -1,6 +1,7 @@
 import { Box, Button, IconButton, Tooltip, Typography } from '@mui/material';
 import GitHubIcon from '@mui/icons-material/GitHub';
 import OpenInNewIcon from '@mui/icons-material/OpenInNew';
+import { track } from '../analytics';
 import { TabBadge } from './TabBadge';
 
 interface HeaderProps {
@@ -47,7 +48,10 @@ export const Header = ({ title, subtitle, tabName }: HeaderProps) => (
         variant="contained"
         size="small"
         endIcon={<OpenInNewIcon />}
-        onClick={() => window.open(window.location.href, '_blank', 'noopener')}
+        onClick={() => {
+          track('demo_action', { card: 'header', action: 'open_new_tab' });
+          window.open(window.location.href, '_blank', 'noopener');
+        }}
         aria-label="Open this demo in a new tab to see cross-tab sync"
       >
         Open in a new tab

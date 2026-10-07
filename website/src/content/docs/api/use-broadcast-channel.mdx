@@ -35,7 +35,7 @@ const actions = useBroadcastChannel(channelName, options?);
 | `deduplicationTTL`          | `number` (ms)                     | 5 minutes  | How long a seen message ID blocks redelivery.                                                                                      |
 | `batchingDelayMs`           | `number` (ms)                     | `20`       | Window for batching outgoing messages. `0` disables batching.                                                                      |
 | `excludedBatchMessageTypes` | `string[]`                        | `[]`       | Types that always send immediately.                                                                                                |
-| `telemetry`                 | `boolean`                         | `false`    | Opt in to anonymous usage statistics ([details](/guides/telemetry/)).                                                              |
+| `telemetry`                 | `boolean`                         | `false`    | Deprecated no-op. The library collects no telemetry ([details](/guides/telemetry/)).                                               |
 
 ## Returns
 

@@ -44,7 +44,7 @@ function PresenceIndicator() {
 
 - Everything inside the provider shares **one** connection. Components can still send different message types over it (`registeredTypes` helps keep that tidy).
 - `useBroadcastProvider()` throws if no `BroadcastProvider` is above it in the tree.
-- The provider accepts the full options object, including `sourceName`, `registeredTypes`, `onMessage`, and `telemetry`. `onMessage` set here fires for the whole subtree's incoming traffic.
+- The provider accepts the full options object, including `sourceName`, `registeredTypes`, and `onMessage`. `onMessage` set here fires for the whole subtree's incoming traffic.
 - Components that need a _different_ channel can still call `useBroadcastChannel` directly, inside or outside the provider.
 
 See [Hook or provider?](/guides/hook-or-provider/) for help choosing, and the [provider demo](/demos/provider/) for a working app.

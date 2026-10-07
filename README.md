@@ -366,25 +366,25 @@ interface BroadcastOptions {
   batchingDelayMs?: number; // Delay in ms to batch outgoing messages (default: 20). If > 0, messages are batched and sent together.
   excludedBatchMessageTypes?: string[]; // Message types to always send immediately, never batched (default: []).
   onMessage?: MessageCallback | OnMessageMap; // Callback(s) fired when a received message passes all filters (default: undefined).
-  telemetry?: boolean; // Privacy-first: off by default. Pass true to opt in.
+  telemetry?: boolean; // Deprecated no-op.
 }
 ```
 
 #### Default Values
 
-| Option                      | Default Value | Description                                  |
-| --------------------------- | ------------- | -------------------------------------------- |
-| `sourceName`                | `undefined`   | Auto-generated if not provided               |
-| `cleaningInterval`          | `1000`        | 1 second between cleanup runs                |
-| `keepLatestMessage`         | `false`       | Keep all messages by default                 |
-| `registeredTypes`           | `[]`          | Accept all message types by default          |
-| `namespace`                 | `''`          | No namespace by default                      |
-| `deduplicationTTL`          | `300000`      | 5 minutes (5 × 60 × 1000 ms)                 |
-| `cleanupDebounceMs`         | `0`           | No debounce by default                       |
-| `batchingDelayMs`           | `20`          | Batch delay in ms (0 = off)                  |
-| `excludedBatchMessageTypes` | `[]`          | Types never batched                          |
-| `onMessage`                 | `undefined`   | Callback(s) for received messages            |
-| `telemetry`                 | `false`       | Anonymous usage stats. Pass `true` to opt in |
+| Option                      | Default Value | Description                                 |
+| --------------------------- | ------------- | ------------------------------------------- |
+| `sourceName`                | `undefined`   | Auto-generated if not provided              |
+| `cleaningInterval`          | `1000`        | 1 second between cleanup runs               |
+| `keepLatestMessage`         | `false`       | Keep all messages by default                |
+| `registeredTypes`           | `[]`          | Accept all message types by default         |
+| `namespace`                 | `''`          | No namespace by default                     |
+| `deduplicationTTL`          | `300000`      | 5 minutes (5 × 60 × 1000 ms)                |
+| `cleanupDebounceMs`         | `0`           | No debounce by default                      |
+| `batchingDelayMs`           | `20`          | Batch delay in ms (0 = off)                 |
+| `excludedBatchMessageTypes` | `[]`          | Types never batched                         |
+| `onMessage`                 | `undefined`   | Callback(s) for received messages           |
+| `telemetry`                 | `false`       | Deprecated no-op. No telemetry is collected |
 
 #### Return Value
 
@@ -594,37 +594,9 @@ useBroadcastChannel('my-channel', {
 
 ---
 
-#### `telemetry` Option
+#### `telemetry` Option (deprecated)
 
-**Privacy-first: telemetry is off by default.** Nothing is sent to Mixpanel unless you explicitly set `telemetry: true` on the hook or provider. When enabled, `react-broadcast-sync` collects structural usage signals to help the maintainer understand how the library is used.
-
-**What is collected:**
-
-- Which `BroadcastOptions` keys are present (not their values)
-- The shape of `onMessage` (`none` / `function` / `map`)
-- Whether batching is enabled
-- Whether `BroadcastChannel` is supported in the browser
-- Which action methods (`postMessage`, `ping`, etc.) are called at least once per session
-- Hook vs. provider entry point
-
-**What is never collected:**
-
-- Channel names, source names, message content, or message types
-- Any application user identifiers in the event payload (Mixpanel may process IP addresses from request metadata)
-
-Telemetry is **off by default**. Pass `telemetry: true` to opt in for a channel:
-
-```tsx
-useBroadcastChannel('my-channel', { telemetry: true });
-// or
-<BroadcastProvider channelName="my-channel" options={{ telemetry: true }} />;
-```
-
-**Upgrading to 2.0.0 from 1.x:** telemetry is now off by default. Omit the option or leave `telemetry: false` to keep it off; pass `telemetry: true` only if you want to opt in. This default change is breaking.
-
-Events are batched and flushed in a single request when the tab is hidden or after 30 seconds. A failed request is silently discarded and never surfaces to your application.
-
-See [TELEMETRY.md](./TELEMETRY.md) for the full legal notice.
+The package no longer collects any telemetry. The `telemetry` option is still accepted as a deprecated no-op so existing code keeps compiling; it will be removed in the next major version.
 
 ---
 
@@ -646,7 +618,7 @@ Tools such as `skills-npm` can also extract it for you. Check your agent's docs 
 - **`cleanupDebounceMs` vs `cleaningInterval`:** cleanup is debounced. If `cleanupDebounceMs` is longer than `cleaningInterval`, each interval tick restarts the debounce and expired messages may never be removed. Keep `cleanupDebounceMs` smaller than `cleaningInterval`.
 - **Deduplication is by message ID**, not content (see [Message Deduplication](#message-deduplication)).
 - **Same origin only:** `BroadcastChannel` does not cross origins, and a tab does not receive its own messages.
-- **Telemetry is off by default:** pass `telemetry: true` to opt in (see [Telemetry](#telemetry)).
+- **No telemetry:** the `telemetry` option is a deprecated no-op (see [Telemetry](#telemetry)).
 
 ## Best Practices
 
@@ -922,19 +894,7 @@ Relies on [BroadcastChannel API](https://developer.mozilla.org/en-US/docs/Web/AP
 
 ## Telemetry
 
-**Privacy-first: telemetry is off by default.** Only when you explicitly pass `telemetry: true` does `react-broadcast-sync` send structural usage statistics to Mixpanel. No channel names, source names, message content, or application user identifiers are included in the event payload. Mixpanel may process request metadata, including IP addresses; see TELEMETRY.md.
-
-If telemetry is enabled, a random session ID is generated per page load and not persisted by this package. Mixpanel may still process request metadata such as IP addresses.
-
-**To opt in**, pass `telemetry: true`:
-
-```tsx
-useBroadcastChannel('my-channel', { telemetry: true });
-// or
-<BroadcastProvider channelName="my-channel" options={{ telemetry: true }} />;
-```
-
-See [TELEMETRY.md](./TELEMETRY.md) for full details, legal basis, and the complete list of signals collected.
+The package no longer collects any telemetry. The `telemetry` option is still accepted as a deprecated no-op so existing code keeps compiling; it will be removed in the next major version.
 
 ---
 
@@ -952,7 +912,7 @@ We're actively improving `react-broadcast-sync`! Here are some features and enha
   Real browser cross-tab tests using Playwright that go beyond what jsdom mocks can cover.
 
 - **Anonymous Usage Telemetry**  
-  ✅ Released — off by default in 2.0.0. Only with `telemetry: true` does the package send structural signals (options used, methods called, hook vs. provider). No message content or application user identifiers in the event payload; Mixpanel may process request metadata such as IP addresses.
+  Removed. The `telemetry` option remains as a deprecated no-op.
 
 We're committed to keeping this package lightweight, flexible, and production-ready.  
 Your feedback and contributions are welcome — feel free to [open an issue](https://github.com/IdanShalem/react-broadcast-sync/issues)!

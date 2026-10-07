@@ -24,7 +24,7 @@ The library is published on npm as `react-broadcast-sync`. Same-origin tabs only
 - [Sync Shared State](https://react-broadcast-sync-docs.vercel.app/guides/sync-shared-state/): keep filters, settings, and other state in sync
 - [Message Lifecycle](https://react-broadcast-sync-docs.vercel.app/guides/message-lifecycle/): expiration, dedup, and cleanup
 - [Performance](https://react-broadcast-sync-docs.vercel.app/guides/performance/): costs and how to keep them low
-- [Telemetry](https://react-broadcast-sync-docs.vercel.app/guides/telemetry/): what is collected and how to opt out
+- [Telemetry](https://react-broadcast-sync-docs.vercel.app/guides/telemetry/): the library collects none; site analytics notice
 
 ## API Reference
 

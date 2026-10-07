@@ -1,7 +1,7 @@
 import { useMemo } from 'react';
 import { Box, Chip, IconButton, Tooltip, Typography } from '@mui/material';
 import { useBroadcastProvider } from 'react-broadcast-sync';
-import { DemoCard } from '@rbs-demos/shared';
+import { DemoCard, track } from '@rbs-demos/shared';
 
 const REACTIONS = ['👍', '🎉', '❤️', '🚀'] as const;
 
@@ -42,7 +42,16 @@ export const ReactionCard = () => {
           <Box key={emoji} sx={{ textAlign: 'center' }}>
             <Tooltip title={`Send ${emoji} to every tab`}>
               <IconButton
-                onClick={() => postMessage('reaction', emoji)}
+                onClick={() => {
+                  track('demo_action', {
+                    card: 'reactions',
+                    action: 'send_reaction',
+                    method: 'postMessage',
+                    message_type: 'reaction',
+                    emoji,
+                  });
+                  postMessage('reaction', emoji);
+                }}
                 aria-label={`Send reaction ${emoji}`}
                 sx={{
                   fontSize: '1.8rem',

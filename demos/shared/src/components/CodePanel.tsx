@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { track } from '../analytics';
 import { Box, Collapse, IconButton, Tooltip, Typography } from '@mui/material';
 import CodeIcon from '@mui/icons-material/Code';
 import ContentCopyIcon from '@mui/icons-material/ContentCopy';
@@ -15,6 +16,7 @@ export const CodePanel = ({ code }: CodePanelProps) => {
   const [copied, setCopied] = useState(false);
 
   const copy = async () => {
+    track('demo_action', { action: 'copy_code' });
     await navigator.clipboard.writeText(code);
     setCopied(true);
     setTimeout(() => setCopied(false), 1500);
@@ -33,7 +35,10 @@ export const CodePanel = ({ code }: CodePanelProps) => {
         <Tooltip title={open ? 'Hide code' : 'Show code'}>
           <IconButton
             size="small"
-            onClick={() => setOpen(o => !o)}
+            onClick={() => {
+              track('demo_action', { action: open ? 'hide_code' : 'show_code' });
+              setOpen(o => !o);
+            }}
             aria-label={open ? 'Hide code snippet' : 'Show code snippet'}
             aria-expanded={open}
           >

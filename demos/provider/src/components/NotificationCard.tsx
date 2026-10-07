@@ -2,7 +2,7 @@ import { useMemo, useState } from 'react';
 import { Alert, Box, Button, MenuItem, Stack, TextField } from '@mui/material';
 import SendIcon from '@mui/icons-material/Send';
 import { useBroadcastProvider } from 'react-broadcast-sync';
-import { DemoCard } from '@rbs-demos/shared';
+import { DemoCard, track } from '@rbs-demos/shared';
 
 type Severity = 'success' | 'info' | 'warning' | 'error';
 
@@ -36,6 +36,14 @@ export const NotificationCard = () => {
   const send = () => {
     const trimmed = text.trim();
     if (!trimmed) return;
+    track('demo_action', {
+      card: 'notifications',
+      action: 'send_notification',
+      method: 'postMessage',
+      message_type: 'notification',
+      severity,
+      length: trimmed.length,
+    });
     postMessage('notification', { text: trimmed, severity } satisfies NotificationPayload);
     setText('');
   };
@@ -57,7 +65,14 @@ export const NotificationCard = () => {
             size="small"
             label="Severity"
             value={severity}
-            onChange={e => setSeverity(e.target.value as Severity)}
+            onChange={e => {
+              track('demo_action', {
+                card: 'notifications',
+                action: 'change_severity',
+                severity: e.target.value,
+              });
+              setSeverity(e.target.value as Severity);
+            }}
             sx={{ minWidth: 120 }}
           >
             {(['success', 'info', 'warning', 'error'] as const).map(s => (

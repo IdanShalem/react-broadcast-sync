@@ -14,7 +14,7 @@ Cross-tab messaging for React over the browser `BroadcastChannel` API. Version 2
 - Messages are not replayed. A tab opened later sees only messages sent after it opened.
 - Deduplication is by message ID, not content.
 - There is no automatic state replication. You send messages and apply them yourself.
-- Telemetry is off by default (since 2.0.0). Do not add `telemetry: true` unless the user asks for it.
+- The package collects no telemetry; the `telemetry` option is a deprecated no-op. Do not add it.
 
 ## Install
 
@@ -125,7 +125,7 @@ Use one channel per topic (or `namespace`) so each listener only gets its own me
 - Using the same `sourceName` in every tab.
 - `cleanupDebounceMs` larger than `cleaningInterval`, which can stop expired messages from being removed.
 - Expecting cross-origin delivery. `BroadcastChannel` is same origin only.
-- Enabling telemetry without being asked.
+- Passing the deprecated `telemetry` option.
 
 ## More
 

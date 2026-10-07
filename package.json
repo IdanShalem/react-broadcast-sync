@@ -12,8 +12,7 @@
     "llms.txt",
     "skills",
     "README.md",
-    "LICENSE",
-    "TELEMETRY.md"
+    "LICENSE"
   ],
   "exports": {
     ".": {
@@ -35,7 +34,6 @@
     "prepack": "npm run build",
     "generate:llms": "node scripts/generate-llms-txt.mjs",
     "check:llms": "node scripts/generate-llms-txt.mjs --check",
-    "verify:telemetry": "node scripts/verify-telemetry-token.mjs",
     "dev:integration": "vite integration/app --port 5199 --strictPort",
     "test:integration": "playwright test"
   },

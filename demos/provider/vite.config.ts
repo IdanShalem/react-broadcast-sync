@@ -3,6 +3,8 @@ import react from '@vitejs/plugin-react';
 
 export default defineConfig(({ command }) => ({
   plugins: [react()],
+  // Inline MIXPANEL_TOKEN (build-time env, public by design) for the shared analytics module.
+  define: { __MIXPANEL_TOKEN__: JSON.stringify(process.env.MIXPANEL_TOKEN ?? '') },
   // Built assets are served by the docs site under /demos/provider/.
   base: command === 'build' ? '/demos/provider/' : '/',
   build: {

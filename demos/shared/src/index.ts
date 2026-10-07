@@ -8,3 +8,4 @@ export { DemoCard } from './components/DemoCard';
 export { Header } from './components/Header';
 export { TopNav } from './components/TopNav';
 export { Footer } from './components/Footer';
+export { initAnalytics, track, trackDebounced } from './analytics';

@@ -3,7 +3,7 @@ import { Box, IconButton, Typography } from '@mui/material';
 import AddIcon from '@mui/icons-material/Add';
 import RemoveIcon from '@mui/icons-material/Remove';
 import type { BroadcastActions } from 'react-broadcast-sync';
-import { DemoCard } from '@rbs-demos/shared';
+import { DemoCard, track } from '@rbs-demos/shared';
 
 type ChannelSlice = Pick<BroadcastActions, 'messages' | 'postMessage'>;
 
@@ -32,6 +32,13 @@ export const CounterCard = ({ messages, postMessage }: ChannelSlice) => {
   }, [messages]);
 
   const update = (next: number) => {
+    track('demo_action', {
+      card: 'counter',
+      action: next > count ? 'increment' : 'decrement',
+      method: 'postMessage',
+      message_type: 'set',
+      value: next,
+    });
     setCount(next);
     postMessage('set', next);
   };
