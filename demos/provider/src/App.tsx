@@ -8,6 +8,7 @@ import {
   MessageLog,
   TopNav,
   useTabName,
+  useTabSourceName,
 } from '@rbs-demos/shared';
 import { NotificationCard } from './components/NotificationCard';
 import { ReactionCard } from './components/ReactionCard';
@@ -54,6 +55,9 @@ const DemoBody = ({ tabName }: { tabName: string }) => {
 
 const App = () => {
   const tabName = useTabName();
+  // Channel identity must be unique per tab instance; the friendly tabName
+  // is not (two tabs can share it), so it is only used for display.
+  const tabSourceName = useTabSourceName(tabName);
 
   return (
     <Box
@@ -78,7 +82,7 @@ const App = () => {
         channelName="live-feed"
         options={{
           namespace: 'provider-demo',
-          sourceName: tabName,
+          sourceName: tabSourceName,
           registeredTypes: ['notification', 'reaction'],
         }}
       >
@@ -94,6 +98,6 @@ const App = () => {
 const PING_CODE = `const { ping, isPingInProgress } = useBroadcastProvider();
 
 // Ask every tab with this provider's channel open to identify itself
-const sources = await ping(); // e.g. ['Tab 🦊 Fox', 'Tab 🦉 Owl']`;
+const sources = await ping(); // e.g. ['Tab Fox #1a2b3c4d', 'Tab Owl #5e6f7890']`;
 
 export default App;

@@ -8,6 +8,7 @@ import {
   MessageLog,
   TopNav,
   useTabName,
+  useTabSourceName,
 } from '@rbs-demos/shared';
 import { CounterCard } from './components/CounterCard';
 import { TextSyncCard } from './components/TextSyncCard';
@@ -16,16 +17,18 @@ import { TodoCard } from './components/TodoCard';
 const OPTIONS = { namespace: 'hook-demo' } as const;
 
 const App = () => {
-  // One hook call per channel. Each tab identifies itself with a friendly
-  // per-tab sourceName (2.x) so the log and ping results show WHO sent what.
+  // One hook call per channel. Each tab identifies itself with a per-instance
+  // sourceName (2.x) so the log and ping results show WHO sent what. The
+  // friendly tabName is only for display; it is not unique across tabs.
   const tabName = useTabName();
+  const tabSourceName = useTabSourceName(tabName);
   const counter = useBroadcastChannel('counter', {
     ...OPTIONS,
     keepLatestMessage: true,
-    sourceName: tabName,
+    sourceName: tabSourceName,
   });
-  const text = useBroadcastChannel('text-sync', { ...OPTIONS, sourceName: tabName });
-  const todo = useBroadcastChannel('todo', { ...OPTIONS, sourceName: tabName });
+  const text = useBroadcastChannel('text-sync', { ...OPTIONS, sourceName: tabSourceName });
+  const todo = useBroadcastChannel('todo', { ...OPTIONS, sourceName: tabSourceName });
 
   return (
     <Box
@@ -88,10 +91,10 @@ const App = () => {
 
 const PING_CODE = `const { ping, isPingInProgress } = useBroadcastChannel('counter', {
   namespace: 'hook-demo',
-  sourceName: tabName, // shown to other tabs
+  sourceName: tabSourceName, // unique per tab instance, shown to other tabs
 });
 
 // Ask every tab with this channel open to identify itself
-const sources = await ping(); // e.g. ['Tab 🦊 Fox', 'Tab 🦉 Owl']`;
+const sources = await ping(); // e.g. ['Tab Fox #1a2b3c4d', 'Tab Owl #5e6f7890']`;
 
 export default App;
