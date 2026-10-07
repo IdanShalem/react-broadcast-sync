@@ -9,10 +9,19 @@ export default defineConfig(({ command }) => ({
     outDir: '../../website/public/demos/provider',
     emptyOutDir: true,
   },
-  // Keep the @rbs-demos/shared symlink unresolved so its peer imports
-  // (@mui, react, react-broadcast-sync) resolve from this app's node_modules.
+  // Single-copy guarantees for the linked @rbs-demos/shared package:
+  // without dedupe its peer imports (@mui, react) bundle a second copy and
+  // MUI components render with the default (light) theme.
   resolve: {
-    preserveSymlinks: true,
+    dedupe: [
+      'react',
+      'react-dom',
+      'react-broadcast-sync',
+      '@mui/material',
+      '@mui/icons-material',
+      '@emotion/react',
+      '@emotion/styled',
+    ],
   },
   server: {
     port: 4200,

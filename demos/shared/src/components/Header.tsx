@@ -22,7 +22,7 @@ export const Header = ({ title, subtitle, tabName }: HeaderProps) => (
     }}
   >
     <img
-      src="/assets/react-broadcast-sync-logo.png"
+      src={`${import.meta.env.BASE_URL}assets/react-broadcast-sync-logo.png`}
       alt="react-broadcast-sync logo"
       width={96}
       height="auto"

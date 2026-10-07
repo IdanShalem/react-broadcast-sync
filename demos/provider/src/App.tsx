@@ -1,6 +1,14 @@
 import { Box, Container, Grid } from '@mui/material';
 import { BroadcastProvider, useBroadcastProvider } from 'react-broadcast-sync';
-import { ConnectedTabs, DemoCard, Footer, Header, MessageLog, useTabName } from '@rbs-demos/shared';
+import {
+  ConnectedTabs,
+  DemoCard,
+  Footer,
+  Header,
+  MessageLog,
+  TopNav,
+  useTabName,
+} from '@rbs-demos/shared';
 import { NotificationCard } from './components/NotificationCard';
 import { ReactionCard } from './components/ReactionCard';
 
@@ -65,6 +73,7 @@ const App = () => {
         },
       }}
     >
+      <TopNav />
       <BroadcastProvider
         channelName="live-feed"
         options={{
