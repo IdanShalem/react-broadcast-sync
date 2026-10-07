@@ -1,6 +1,14 @@
 import { Box, Container, Grid } from '@mui/material';
 import { useBroadcastChannel } from 'react-broadcast-sync';
-import { ConnectedTabs, DemoCard, Footer, Header, MessageLog, useTabName } from '@rbs-demos/shared';
+import {
+  ConnectedTabs,
+  DemoCard,
+  Footer,
+  Header,
+  MessageLog,
+  TopNav,
+  useTabName,
+} from '@rbs-demos/shared';
 import { CounterCard } from './components/CounterCard';
 import { TextSyncCard } from './components/TextSyncCard';
 import { TodoCard } from './components/TodoCard';
@@ -37,6 +45,7 @@ const App = () => {
         },
       }}
     >
+      <TopNav />
       <Container maxWidth="lg" sx={{ py: 3, position: 'relative', zIndex: 1 }}>
         <Header
           title="useBroadcastChannel demo"

@@ -12,7 +12,7 @@ export const Footer = () => (
       borderTop: '1px solid #21262d',
     }}
   >
-    <Link href="https://react-broadcast-sync.vercel.app" underline="hover" color="text.secondary">
+    <Link href="/getting-started/" underline="hover" color="text.secondary">
       Docs
     </Link>
     <Link

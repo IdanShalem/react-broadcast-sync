@@ -6,4 +6,5 @@ export { MessageLog } from './components/MessageLog';
 export { CodePanel } from './components/CodePanel';
 export { DemoCard } from './components/DemoCard';
 export { Header } from './components/Header';
+export { TopNav } from './components/TopNav';
 export { Footer } from './components/Footer';
