@@ -1,5 +1,5 @@
 export { theme } from './theme';
-export { useTabName } from './useTabName';
+export { useTabName, useTabSourceName } from './useTabName';
 export { TabBadge } from './components/TabBadge';
 export { ConnectedTabs } from './components/ConnectedTabs';
 export { MessageLog } from './components/MessageLog';
