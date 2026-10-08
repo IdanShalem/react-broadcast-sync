@@ -1,3 +1,10 @@
+## [2.1.3](https://github.com/IdanShalem/react-broadcast-sync/compare/v2.1.2...v2.1.3) (2026-10-08)
+
+
+### Bug Fixes
+
+* remove library telemetry; add docs and demo analytics ([#46](https://github.com/IdanShalem/react-broadcast-sync/issues/46)) ([4ac9fde](https://github.com/IdanShalem/react-broadcast-sync/commit/4ac9fde548cd082209a1ce2428123f1f9b0e3f6e))
+
 ## [2.1.2](https://github.com/IdanShalem/react-broadcast-sync/compare/v2.1.1...v2.1.2) (2026-10-06)
 
 
