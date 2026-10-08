@@ -18,10 +18,17 @@
     try {
       fetch('https://api-eu.mixpanel.com/track?ip=0', {
         method: 'POST',
-        headers: { 'Content-Type': 'text/plain' },
-        body: JSON.stringify([{ event: event, properties: p }]),
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+        body: 'data=' + encodeURIComponent(JSON.stringify([{ event: event, properties: p }])),
         keepalive: true,
-      }).catch(function () {});
+      })
+        .then(function (r) {
+          return r.text();
+        })
+        .then(function (t) {
+          if (t.indexOf('"error"') !== -1 && window.console) console.warn('[analytics]', t);
+        })
+        .catch(function () {});
     } catch (e) {}
   }
   var trunc = function (s) {
