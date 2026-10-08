@@ -1,6 +1,6 @@
 // Docs-site analytics (not part of the npm package). Plain fetch to Mixpanel EU:
 // no cookies, no localStorage, random per-page-load ID, IP geolocation off.
-// __TOKEN__ is replaced at build time from PUBLIC_MIXPANEL_TOKEN; if empty, nothing is sent.
+// The token placeholder below is replaced at build time from MIXPANEL_TOKEN; if empty, nothing is sent.
 (function () {
   var TOKEN = '__TOKEN__';
   if (!TOKEN) return;
