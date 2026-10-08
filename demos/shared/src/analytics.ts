@@ -47,8 +47,8 @@ export function track(event: string, props: Record<string, unknown> = {}): void 
     body: 'data=' + encodeURIComponent(body),
     keepalive: true,
   })
-    .then((r) => r.text())
-    .then((t) => {
+    .then(r => r.text())
+    .then(t => {
       if (t.includes('"error"')) console.warn('[analytics]', t);
     })
     .catch(() => {});
