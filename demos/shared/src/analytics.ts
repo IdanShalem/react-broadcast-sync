@@ -40,13 +40,18 @@ export function track(event: string, props: Record<string, unknown> = {}): void 
       },
     },
   ]);
-  // text/plain keeps this a simple CORS request (no preflight).
+  // Mixpanel /track expects form-encoded `data`; this is also a simple CORS request (no preflight).
   fetch(ENDPOINT, {
     method: 'POST',
-    headers: { 'Content-Type': 'text/plain' },
-    body,
+    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+    body: 'data=' + encodeURIComponent(body),
     keepalive: true,
-  }).catch(() => {});
+  })
+    .then((r) => r.text())
+    .then((t) => {
+      if (t.includes('"error"')) console.warn('[analytics]', t);
+    })
+    .catch(() => {});
 }
 
 /** Debounce for noisy inputs: fires once after the user stops typing. */
