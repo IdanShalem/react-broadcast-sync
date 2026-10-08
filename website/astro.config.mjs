@@ -11,7 +11,7 @@ const SITE = 'https://react-broadcast-sync-docs.vercel.app';
 const siteAnalyticsScript = readFileSync(
   new URL('./src/scripts/site-analytics.js', import.meta.url),
   'utf8'
-).replace('__TOKEN__', process.env.MIXPANEL_TOKEN ?? '');
+).replaceAll('__TOKEN__', process.env.MIXPANEL_TOKEN ?? '');
 const OG_IMAGE = `${SITE}/og-image.png`;
 
 const softwareSourceCodeJsonLd = JSON.stringify({
