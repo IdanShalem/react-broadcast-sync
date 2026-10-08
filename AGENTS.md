@@ -15,4 +15,4 @@ React hook library (`react-broadcast-sync`) for cross-tab messaging via Broadcas
 - Conventional Commits (`fix:`, `feat:`, `docs:`). Releases are automated by semantic-release in CI; never bump versions or publish manually.
 - Source is in `src/`; hook logic is in `src/hooks/useBroadcastChannel.ts`.
 - When changing option names or defaults, update `src/types/types.ts`, the README options table and `context7.json` rules together.
-- Do not enable telemetry in tests; do not commit tokens.
+- The package has no telemetry; do not commit tokens.

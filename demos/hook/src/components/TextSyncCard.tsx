@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { TextField, Typography } from '@mui/material';
 import type { BroadcastActions } from 'react-broadcast-sync';
-import { DemoCard } from '@rbs-demos/shared';
+import { DemoCard, trackDebounced } from '@rbs-demos/shared';
 
 type ChannelSlice = Pick<BroadcastActions, 'messages' | 'postMessage'>;
 
@@ -42,6 +42,13 @@ export const TextSyncCard = ({ messages, postMessage }: ChannelSlice) => {
         placeholder="Type here, then watch the other tab..."
         value={value}
         onChange={e => {
+          trackDebounced('text-sync', 1000, 'demo_action', {
+            card: 'text-sync',
+            action: 'edit_text',
+            method: 'postMessage',
+            message_type: 'text',
+            length: e.target.value.length,
+          });
           setValue(e.target.value);
           postMessage('text', e.target.value);
         }}

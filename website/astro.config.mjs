@@ -2,9 +2,16 @@
 import { defineConfig } from 'astro/config';
 import starlight from '@astrojs/starlight';
 
+import { readFileSync } from 'node:fs';
+
 // https://astro.build/config
 // Canonical origin for the docs site. Flip to the custom domain when it is set up.
 const SITE = 'https://react-broadcast-sync-docs.vercel.app';
+// Mixpanel project token (public by design). Set MIXPANEL_TOKEN on the docs deployment; unset = no analytics.
+const siteAnalyticsScript = readFileSync(
+  new URL('./src/scripts/site-analytics.js', import.meta.url),
+  'utf8'
+).replace('__TOKEN__', process.env.MIXPANEL_TOKEN ?? '');
 const OG_IMAGE = `${SITE}/og-image.png`;
 
 const softwareSourceCodeJsonLd = JSON.stringify({
@@ -47,6 +54,7 @@ export default defineConfig({
           content: softwareSourceCodeJsonLd,
         },
         { tag: 'script', attrs: { type: 'application/ld+json' }, content: websiteJsonLd },
+        { tag: 'script', content: siteAnalyticsScript },
       ],
       logo: {
         src: './src/assets/logo.png',
@@ -90,6 +98,7 @@ export default defineConfig({
             { label: 'Message Lifecycle', slug: 'guides/message-lifecycle' },
             { label: 'Performance', slug: 'guides/performance' },
             { label: 'Telemetry', slug: 'guides/telemetry' },
+            { label: 'Site analytics', slug: 'guides/site-analytics' },
           ],
         },
         {

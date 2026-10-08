@@ -42,19 +42,9 @@ export interface BroadcastOptions {
   onMessage?: MessageCallback | OnMessageMap;
 
   /**
-   * Allow the package to collect anonymous usage statistics (default: false).
-   *
-   * Telemetry is off unless explicitly enabled. When enabled, structural
-   * signals are sent to the maintainer: which options are in use, which
-   * methods are called, and whether the hook or provider entry point is used.
-   * No channel names, source names, or message content are sent.
-   *
-   * Set to `true` to opt in:
-   * ```tsx
-   * useBroadcastChannel('my-channel', { telemetry: true });
-   * ```
-   *
-   * See TELEMETRY.md in the package repository for full details.
+   * @deprecated No-op. The package no longer collects telemetry. The option is still
+   * accepted so existing code that passes `telemetry` keeps compiling; it will be removed
+   * in the next major version.
    */
   telemetry?: boolean;
 }

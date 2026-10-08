@@ -1,3 +1,4 @@
+import { track } from '../analytics';
 import { useState } from 'react';
 import { Box, Button, Chip, Typography } from '@mui/material';
 import WifiTetheringIcon from '@mui/icons-material/WifiTethering';
@@ -17,6 +18,12 @@ export const ConnectedTabs = ({ ping, isPingInProgress, selfName }: ConnectedTab
 
   const handlePing = async () => {
     const result = await ping();
+    track('demo_action', {
+      card: 'open-tabs',
+      action: 'ping',
+      method: 'ping',
+      tabs_found: result.length,
+    });
     setSources(result);
   };
 

@@ -38,7 +38,6 @@ function App() {
     namespace: params.namespace,
     registeredTypes: params.types,
     cleaningInterval: params.cleaningInterval,
-    telemetry: false,
   });
 
   const [messageType, setMessageType] = useState('chat');

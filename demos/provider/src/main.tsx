@@ -1,8 +1,10 @@
 import React from 'react';
 import ReactDOM from 'react-dom/client';
 import { ThemeProvider, CssBaseline } from '@mui/material';
-import { theme } from '@rbs-demos/shared';
+import { initAnalytics, theme } from '@rbs-demos/shared';
 import App from './App';
+
+initAnalytics('provider');
 
 ReactDOM.createRoot(document.getElementById('root')!).render(
   <React.StrictMode>

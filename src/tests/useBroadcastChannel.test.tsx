@@ -1,7 +1,6 @@
 import { renderHook, act, waitFor } from '@testing-library/react';
 import { useBroadcastChannel } from '../hooks/useBroadcastChannel';
 import { getInternalMessageType } from '../utils/messageUtils';
-import * as telemetryModule from '../utils/telemetry';
 
 let mockChannels: any[] = [];
 
@@ -103,32 +102,17 @@ afterAll(() => {
 });
 
 describe('useBroadcastChannel', () => {
-  describe('telemetry consent', () => {
-    it('does not track mount or methods without an explicit opt-in', async () => {
-      const init = jest.spyOn(telemetryModule, 'trackChannelInit');
-      const method = jest.spyOn(telemetryModule, 'trackMethodCalled');
-      const { result } = renderHook(() => useBroadcastChannel('private-channel'));
-      await waitForChannel();
-      act(() => result.current.postMessage('test', 'message'));
-      expect(init).not.toHaveBeenCalled();
-      expect(method).not.toHaveBeenCalled();
-      init.mockRestore();
-      method.mockRestore();
-    });
-
-    it('tracks mount and methods with telemetry: true', async () => {
-      const init = jest.spyOn(telemetryModule, 'trackChannelInit');
-      const method = jest.spyOn(telemetryModule, 'trackMethodCalled');
+  describe('deprecated telemetry option', () => {
+    it('is accepted and has no effect', async () => {
+      const fetchSpy = jest.fn();
+      (global as any).fetch = fetchSpy;
       const { result } = renderHook(() =>
-        useBroadcastChannel('opt-in-channel', { telemetry: true })
+        useBroadcastChannel('legacy-channel', { telemetry: true })
       );
       await waitForChannel();
       act(() => result.current.postMessage('test', 'message'));
-      expect(init).toHaveBeenCalledTimes(1);
-      expect(method).toHaveBeenCalledWith('postMessage');
-      init.mockRestore();
-      method.mockRestore();
-      telemetryModule._resetForTesting();
+      expect(fetchSpy).not.toHaveBeenCalled();
+      delete (global as any).fetch;
     });
   });
 

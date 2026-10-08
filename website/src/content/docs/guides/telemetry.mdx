@@ -1,23 +1,17 @@
 ---
 title: Telemetry
-description: Anonymous usage statistics, off by default.
+description: The library collects no telemetry.
 head:
   - tag: script
     attrs:
       type: application/ld+json
-    content: '{"@context": "https://schema.org", "@type": "TechArticle", "headline": "Telemetry", "description": "Anonymous usage statistics, off by default.", "url": "https://react-broadcast-sync-docs.vercel.app/guides/telemetry/", "author": {"@type": "Person", "name": "Idan Shalem"}, "isPartOf": {"@type": "WebSite", "name": "react-broadcast-sync documentation", "url": "https://react-broadcast-sync-docs.vercel.app"}}'
+    content: '{"@context": "https://schema.org", "@type": "TechArticle", "headline": "Telemetry", "description": "The library collects no telemetry.", "url": "https://react-broadcast-sync-docs.vercel.app/guides/telemetry/", "author": {"@type": "Person", "name": "Idan Shalem"}, "isPartOf": {"@type": "WebSite", "name": "react-broadcast-sync documentation", "url": "https://react-broadcast-sync-docs.vercel.app"}}'
   - tag: script
     attrs:
       type: application/ld+json
     content: '{"@context": "https://schema.org", "@type": "BreadcrumbList", "itemListElement": [{"@type": "ListItem", "position": 1, "name": "Docs", "item": "https://react-broadcast-sync-docs.vercel.app/"}, {"@type": "ListItem", "position": 2, "name": "Guides"}, {"@type": "ListItem", "position": 3, "name": "Telemetry", "item": "https://react-broadcast-sync-docs.vercel.app/guides/telemetry/"}]}'
 ---
 
-Telemetry is **off unless you opt in**. Nothing is collected or sent by default.
+The library collects **no telemetry**. The `telemetry` option is a deprecated no-op kept so existing code compiles; it will be removed in the next major version.
 
-```tsx
-useBroadcastChannel('my-channel', { telemetry: true });
-```
-
-When enabled, the package sends structural signals to the maintainer: which options are in use, which methods are called, and whether the hook or provider entry point is used. It does **not** send channel names, source names, message content, or anything identifying your users.
-
-The full list of collected signals and where they go lives in [TELEMETRY.md](https://github.com/IdanShalem/react-broadcast-sync/blob/main/TELEMETRY.md) in the repository.
+This documentation site and the live demos do record anonymous usage analytics. See [Site analytics](/guides/site-analytics/).

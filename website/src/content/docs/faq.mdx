@@ -34,4 +34,4 @@ Every message carries `source`, the sender's `sourceName`. Set friendly names to
 `const sources = await ping()` returns the source names of the other tabs on the channel. See [Tab presence](/recipes/tab-presence/).
 
 **Is anything tracked?**
-Nothing by default. `telemetry: true` opts in to anonymous, structural usage stats; see [Telemetry](/guides/telemetry/).
+Nothing. The library collects no telemetry; the `telemetry` option is a deprecated no-op. See [Telemetry](/guides/telemetry/).

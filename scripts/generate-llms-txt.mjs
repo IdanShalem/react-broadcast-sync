@@ -56,7 +56,6 @@ const out = [
   '## Links',
   '',
   `- [README](${base}#readme)`,
-  `- [Telemetry notice](${base}/blob/main/TELEMETRY.md)`,
   '',
 ].join('\n');
 

@@ -4,7 +4,6 @@ import commonjs from '@rollup/plugin-commonjs';
 import typescript from '@rollup/plugin-typescript';
 import peerDepsExternal from 'rollup-plugin-peer-deps-external';
 import terser from '@rollup/plugin-terser';
-import replace from '@rollup/plugin-replace';
 import { readFileSync } from 'fs';
 
 // Load .env manually — dotenv is dev-only, not part of the bundle
@@ -20,8 +19,6 @@ const envFile = (() => {
     return {};
   }
 })();
-
-const MIXPANEL_TOKEN = envFile.MIXPANEL_TOKEN ?? process.env.MIXPANEL_TOKEN ?? '';
 
 const external = [
   'react',
@@ -65,12 +62,6 @@ export default {
     },
   ],
   plugins: [
-    replace({
-      preventAssignment: true,
-      values: {
-        'process.env.MIXPANEL_TOKEN': JSON.stringify(MIXPANEL_TOKEN),
-      },
-    }),
     peerDepsExternal({
       includeDependencies: false,
     }),

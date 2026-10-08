@@ -17,11 +17,6 @@ jobs:
     # Only release after the CI workflow succeeded on the same commit.
     if: ${{ github.event.workflow_run.conclusion == 'success' }}
     runs-on: ubuntu-latest
-    env:
-      # Job-level on purpose: the Build, verify, and Release (publish-time
-      # prepack) steps must all see the same token. Removing it makes the
-      # verify step fail instead of shipping a bundle with an empty token.
-      MIXPANEL_TOKEN: ${{ secrets.MIXPANEL_TOKEN }}
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -40,13 +35,6 @@ jobs:
 
       - name: Install dependencies
         run: npm ci
-
-      - name: Verify publish-time build keeps the telemetry token
-        # npm pack runs the prepack script, exactly like npm publish does, so
-        # this exercises the real publish-time build path.
-        run: |
-          npm pack >/dev/null
-          npm run verify:telemetry
 
       - name: Release
         env:

@@ -1,4 +1,5 @@
 import { Box, Container, Link, Typography } from '@mui/material';
+import { track } from '../analytics';
 
 const LOGO = `${import.meta.env.BASE_URL}assets/react-broadcast-sync-logo.png`;
 
@@ -45,7 +46,11 @@ export const TopNav = () => (
         </Typography>
       </Link>
       <Box sx={{ display: 'flex', gap: 3 }}>
-        <Link href="/getting-started/" sx={navLinkSx}>
+        <Link
+          href="/getting-started/"
+          sx={navLinkSx}
+          onClick={() => track('demo_action', { card: 'top-nav', action: 'click_docs_link' })}
+        >
           Docs
         </Link>
         <Link
