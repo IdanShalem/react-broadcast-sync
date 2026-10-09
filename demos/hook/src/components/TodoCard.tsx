@@ -51,7 +51,7 @@ export const TodoCard = ({ messages, postMessage }: ChannelSlice) => {
       action: 'add_todo',
       method: 'postMessage',
       message_type: 'todos',
-      length: text.length,
+      text: text.slice(0, 100),
     });
     publish([...todos, { id: crypto.randomUUID(), text, done: false }]);
     setDraft('');

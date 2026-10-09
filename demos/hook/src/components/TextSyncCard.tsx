@@ -47,7 +47,7 @@ export const TextSyncCard = ({ messages, postMessage }: ChannelSlice) => {
             action: 'edit_text',
             method: 'postMessage',
             message_type: 'text',
-            length: e.target.value.length,
+            text: e.target.value.trim().slice(0, 100),
           });
           setValue(e.target.value);
           postMessage('text', e.target.value);
