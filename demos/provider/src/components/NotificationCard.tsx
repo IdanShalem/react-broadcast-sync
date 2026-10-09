@@ -42,7 +42,7 @@ export const NotificationCard = () => {
       method: 'postMessage',
       message_type: 'notification',
       severity,
-      text: trimmed.slice(0, 100),
+      length: trimmed.length,
     });
     postMessage('notification', { text: trimmed, severity } satisfies NotificationPayload);
     setText('');

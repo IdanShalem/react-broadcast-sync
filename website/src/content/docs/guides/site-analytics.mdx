@@ -14,12 +14,12 @@ The **react-broadcast-sync library collects no telemetry**. This documentation s
 ## Demos
 
 - Each action you take in a demo (for example increment, add a todo, send a notification, ping) and whether the demo uses the hook or the provider.
-- The text you type into demo fields (text sync, todos, notifications) is sent, first 100 characters. Reaction emoji and notification severity are sent too.
+- Only the shape of what you type is sent (length), not the text you enter in demo fields. Reaction emoji and notification severity are sent.
 
 ## Privacy
 
 - Events go to Mixpanel's EU endpoint with IP geolocation turned off.
 - No cookies, no localStorage or sessionStorage. A random ID is generated on each page load, is never stored, and changes on every visit, so visits cannot be linked.
 - Mixpanel still receives standard request metadata (such as IP address) as part of any web request; see [Mixpanel's privacy policy](https://mixpanel.com/legal/privacy-policy/).
-- Because search text is free text, do not type personal information into the search box or the demo text fields.
+- Because search text is free text, do not type personal information into the search box.
 - Ad blockers will stop these requests; nothing breaks if they are blocked.
