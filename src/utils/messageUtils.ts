@@ -64,7 +64,14 @@ export const getInternalMessageType = (
 ): string => {
   const fullChannel = `${channelName}-${namespace}`;
   const input = `${SECRET}:${baseType}:${fullChannel}`;
-  const hash = btoa(input); // optional: use sha256 if added
+  // BroadcastChannel names are Unicode strings. Preserve the existing encoding
+  // for Latin-1 names so mixed-version tabs keep the same internal wire types.
+  const binary = /[\u0100-\uffff]/.test(input)
+    ? encodeURIComponent(input).replace(/%([0-9A-F]{2})/g, (_match, hex) =>
+        String.fromCharCode(parseInt(hex, 16))
+      )
+    : input;
+  const hash = btoa(binary);
   return `${INTERNAL_PREFIX}:${baseType}:${hash}`;
 };
 

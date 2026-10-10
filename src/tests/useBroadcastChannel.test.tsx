@@ -116,6 +116,29 @@ describe('useBroadcastChannel', () => {
     });
   });
 
+  describe('Unicode channel names', () => {
+    it('mounts and sends messages with a Hebrew channel and emoji namespace', () => {
+      const { result: sender } = renderHook(() =>
+        useBroadcastChannel('עדכונים', {
+          namespace: '🌍',
+          sourceName: 'sender',
+          batchingDelayMs: 0,
+        })
+      );
+      const { result: receiver } = renderHook(() =>
+        useBroadcastChannel('עדכונים', {
+          namespace: '🌍',
+          sourceName: 'receiver',
+          batchingDelayMs: 0,
+        })
+      );
+      act(() => sender.current.postMessage('update', { value: 1 }));
+      expect(receiver.current.messages).toHaveLength(1);
+      expect(receiver.current.messages[0].message).toEqual({ value: 1 });
+      expect(sender.current.channelName).toBe('עדכונים-🌍');
+    });
+  });
+
   describe('Core Functionality', () => {
     it('posts and receives message', async () => {
       const { result: hook1 } = renderHook(() =>

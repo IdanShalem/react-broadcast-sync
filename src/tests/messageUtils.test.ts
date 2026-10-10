@@ -118,6 +118,23 @@ describe('messageUtils', () => {
     expect(one).not.toBe(two);
   });
 
+  it.each([
+    ['ערוץ-עדכונים', ''],
+    ['updates', 'מרחב-משותף'],
+    ['📣-updates', '🌍'],
+  ])('supports Unicode channel %s and namespace %s', (channelName, namespace) => {
+    const type = getInternalMessageType('PING', channelName, namespace);
+    expect(type).toBe(getInternalMessageType('PING', channelName, namespace));
+    expect(type).not.toBe(getInternalMessageType('PING', `${channelName}-other`, namespace));
+    expect(isInternalType(type)).toBe(true);
+  });
+
+  it('preserves the existing internal wire type for ASCII names', () => {
+    expect(getInternalMessageType('PING', 'updates', 'shared')).toBe(
+      `__INTERNAL__:PING:${btoa('react-broadcast-sync:PING:updates-shared')}`
+    );
+  });
+
   it('getInternalMessageType generates consistent hash string', () => {
     const type = getInternalMessageType('CLEAR_SENT_MESSAGES', 'my-channel', 'ns');
     expect(type).toContain('__INTERNAL__');
