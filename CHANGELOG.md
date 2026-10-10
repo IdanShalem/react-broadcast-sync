@@ -1,3 +1,10 @@
+## [2.1.4](https://github.com/IdanShalem/react-broadcast-sync/compare/v2.1.3...v2.1.4) (2026-10-10)
+
+
+### Bug Fixes
+
+* support Unicode channel names and namespaces ([#51](https://github.com/IdanShalem/react-broadcast-sync/issues/51)) ([545b7ee](https://github.com/IdanShalem/react-broadcast-sync/commit/545b7eeb9f15ab0d94013f9d2bb27b8c1b2e34fd))
+
 ## [2.1.3](https://github.com/IdanShalem/react-broadcast-sync/compare/v2.1.2...v2.1.3) (2026-10-08)
 
 
