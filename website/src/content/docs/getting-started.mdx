@@ -22,7 +22,7 @@ This guide walks you from an empty file to two tabs staying in sync, step by ste
 npm install react-broadcast-sync
 ```
 
-React 18 or 19 is required. The package ships ESM, CJS, and TypeScript types.
+The package declares React and React DOM `>=16.8.0` as peer dependencies. The package ships ESM, CJS, and TypeScript types.
 
 ## 2. Pick your entry point
 
@@ -56,26 +56,38 @@ counter.postMessage('increment', { by: 1 });
 
 ## 5. Receive and render
 
-Incoming messages land in `messages`, an event log of `BroadcastMessage` objects (newest arrivals appended). Render from it like any state:
+Incoming messages land in `messages`, an event log of `BroadcastMessage` objects. For a counter, keep the count as local state and handle each incoming increment with `onMessage`. Apply your own click locally too, because the sender never receives its own message:
 
 ```tsx
-function Counter() {
-  const { messages, postMessage } = useBroadcastChannel('counter');
+import { useState } from 'react';
+import { useBroadcastChannel } from 'react-broadcast-sync';
 
-  const count = messages.filter(m => m.type === 'increment').length;
+export default function Counter() {
+  const [count, setCount] = useState(0);
+  const { postMessage } = useBroadcastChannel('counter', {
+    registeredTypes: ['increment'],
+    onMessage: {
+      increment: () => setCount(current => current + 1),
+    },
+  });
 
-  return <button onClick={() => postMessage('increment', {})}>Count: {count}</button>;
+  const increment = () => {
+    setCount(current => current + 1);
+    postMessage('increment', { by: 1 });
+  };
+
+  return <button onClick={increment}>Count: {count}</button>;
 }
 ```
 
 Two things to keep in mind:
 
-- `messages` is a log, not current state. Derive state from it, or pass `keepLatestMessage: true` in the options to keep only the newest message.
+- `messages` is a log, not current state. `keepLatestMessage: true` keeps only the newest received message; it does not accumulate increments or replay history.
 - A tab that opens late does not receive messages from before it opened.
 
 ## 6. See it sync
 
-Open the page in a second tab (same browser, same origin) and click the button. Both tabs count every click, no matter which tab made it.
+Open the page in a second tab (same browser, same origin) and click the button. While both tabs are listening, both count every click: the clicked tab updates locally and the other handles the incoming increment. A new or refreshed tab starts at 0; this example does not restore earlier clicks.
 
 ## 7. Next steps
 
