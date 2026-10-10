@@ -21,6 +21,7 @@ class MockBroadcastChannel {
   }
 
   postMessage = jest.fn((data: any) => {
+    if (this.closed) throw new DOMException('Channel is closed', 'InvalidStateError');
     const others = MockBroadcastChannel.channels[this.name] || [];
     for (const channel of others) {
       if (channel !== this && !channel.closed && channel._onmessage) {
@@ -1547,6 +1548,101 @@ describe('useBroadcastChannel', () => {
   });
 
   describe('Batching', () => {
+    describe('queued messages during channel cleanup', () => {
+      beforeEach(() => jest.useFakeTimers());
+      afterEach(() => jest.useRealTimers());
+
+      it('flushes a pending batch before unmount closes the channel', () => {
+        const { result, unmount } = renderHook(() =>
+          useBroadcastChannel('queued', { sourceName: 'A', batchingDelayMs: 50 })
+        );
+        const { result: receiver } = renderHook(() =>
+          useBroadcastChannel('queued', { sourceName: 'B' })
+        );
+        act(() => result.current.postMessage('update', 1));
+        unmount();
+        expect(receiver.current.messages.map(msg => msg.message)).toEqual([1]);
+        act(() => jest.advanceTimersByTime(100));
+        expect(receiver.current.messages).toHaveLength(1);
+      });
+
+      it('flushes only to the old channel before a channel-name change', () => {
+        const { result, rerender } = renderHook(
+          ({ name }) => useBroadcastChannel(name, { sourceName: 'A', batchingDelayMs: 50 }),
+          { initialProps: { name: 'old' } }
+        );
+        const { result: oldReceiver } = renderHook(() =>
+          useBroadcastChannel('old', { sourceName: 'B' })
+        );
+        const { result: newReceiver } = renderHook(() =>
+          useBroadcastChannel('new', { sourceName: 'C' })
+        );
+        act(() => result.current.postMessage('update', 'old'));
+        rerender({ name: 'new' });
+        act(() => {
+          result.current.postMessage('update', 'new');
+          jest.advanceTimersByTime(100);
+        });
+        expect(oldReceiver.current.messages.map(msg => msg.message)).toEqual(['old']);
+        expect(newReceiver.current.messages.map(msg => msg.message)).toEqual(['new']);
+        expect(result.current.error).toBeNull();
+      });
+
+      it('flushes to the old namespace before replacing its listener', () => {
+        const { result, rerender } = renderHook(
+          ({ namespace }) =>
+            useBroadcastChannel('queued', { namespace, sourceName: 'A', batchingDelayMs: 50 }),
+          { initialProps: { namespace: 'old' } }
+        );
+        const oldChannel = mockChannels[0];
+        const { result: receiver } = renderHook(() =>
+          useBroadcastChannel('queued', { namespace: 'old', sourceName: 'B' })
+        );
+        act(() => result.current.postMessage('update', 1));
+        rerender({ namespace: 'new' });
+        expect(receiver.current.messages.map(msg => msg.message)).toEqual([1]);
+        expect(oldChannel.removeEventListener).toHaveBeenCalledWith(
+          'message',
+          oldChannel.addEventListener.mock.calls[0][1]
+        );
+        expect(oldChannel.closed).toBe(true);
+      });
+
+      it('still closes and clears the timer when flushing throws', () => {
+        const { result } = renderHook(() =>
+          useBroadcastChannel('queued', { sourceName: 'A', batchingDelayMs: 50 })
+        );
+        const bc = mockChannels[0];
+        bc.postMessage.mockImplementation(() => {
+          throw new Error('send failed');
+        });
+        act(() => {
+          result.current.postMessage('update', 1);
+          expect(() => result.current.closeChannel()).not.toThrow();
+          jest.advanceTimersByTime(100);
+        });
+        expect(bc.postMessage).toHaveBeenCalledTimes(1);
+        expect(bc.close).toHaveBeenCalledTimes(1);
+      });
+
+      it('flushes pending messages once when explicitly closed', () => {
+        const { result } = renderHook(() =>
+          useBroadcastChannel('queued', { sourceName: 'A', batchingDelayMs: 50 })
+        );
+        const { result: receiver } = renderHook(() =>
+          useBroadcastChannel('queued', { sourceName: 'B' })
+        );
+        act(() => {
+          result.current.postMessage('update', 1);
+          result.current.closeChannel();
+          result.current.closeChannel();
+          jest.advanceTimersByTime(100);
+        });
+        expect(receiver.current.messages.map(msg => msg.message)).toEqual([1]);
+        expect(result.current.error).toBeNull();
+      });
+    });
+
     it('batches multiple messages sent within the delay', async () => {
       jest.useFakeTimers();
       const { result: hook1 } = renderHook(() =>

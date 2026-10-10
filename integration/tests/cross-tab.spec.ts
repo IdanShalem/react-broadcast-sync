@@ -6,6 +6,7 @@ interface TabOptions {
   source?: string;
   types?: string;
   cleaningInterval?: number;
+  batchingDelayMs?: number;
 }
 
 async function openTab(context: BrowserContext, options: TabOptions = {}): Promise<Page> {
@@ -15,6 +16,8 @@ async function openTab(context: BrowserContext, options: TabOptions = {}): Promi
   if (options.source) params.set('source', options.source);
   if (options.types) params.set('types', options.types);
   if (options.cleaningInterval) params.set('cleaningInterval', String(options.cleaningInterval));
+  if (options.batchingDelayMs !== undefined)
+    params.set('batchingDelayMs', String(options.batchingDelayMs));
   const page = await context.newPage();
   await page.goto(`/?${params.toString()}`);
   await expect(page.getByTestId('source-name')).toBeVisible();
@@ -154,4 +157,17 @@ test('expired messages are removed from receiving tabs', async ({ context }) => 
   );
 
   await expect(tabB.getByTestId('received')).toBeEmpty({ timeout: 5000 });
+});
+
+test('a pending batch arrives exactly once when its sender closes the channel', async ({
+  context,
+}) => {
+  const sender = await openTab(context, { source: 'tab-a', batchingDelayMs: 1000 });
+  const receiver = await openTab(context, { source: 'tab-b' });
+  await sender.getByTestId('content-input').fill('queued before close');
+  await sender.getByTestId('send-and-close').click();
+  await expect(receiver.getByTestId('received')).toContainText('queued before close');
+  await sender.waitForTimeout(1200);
+  await expect(receiver.getByTestId('received').locator('li')).toHaveCount(1);
+  await expect(sender.getByTestId('error')).toHaveCount(0);
 });
