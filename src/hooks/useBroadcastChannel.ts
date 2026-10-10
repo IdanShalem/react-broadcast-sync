@@ -422,15 +422,36 @@ export const useBroadcastChannel = (
     [source, keepLatestMessage, setErrorMessage, internalTypes, deduplicationTTL]
   );
 
+  const flushPendingBatch = useCallback((bc: BroadcastChannel) => {
+    if (batchingTimeoutRef.current) {
+      clearTimeout(batchingTimeoutRef.current);
+      batchingTimeoutRef.current = null;
+    }
+    const pending = batchingMessagesRef.current;
+    batchingMessagesRef.current = [];
+    if (pending.length > 0 && !batchingErrorRef.current) {
+      try {
+        bc.postMessage(pending);
+      } catch (e) {
+        debug.error({
+          action: 'flushPendingBatch',
+          channelName: bc.name,
+          originalError: e instanceof Error ? e.message : String(e),
+        });
+      }
+    }
+    batchingErrorRef.current = false;
+  }, []);
+
   const closeChannel = useCallback(() => {
     const bc = channel.current;
     if (bc && typeof bc.close === 'function') {
-      bc.removeEventListener('message', handleMessage);
+      flushPendingBatch(bc);
       bc.close();
       debug.channel.closed(resolvedChannelName);
       channel.current = null;
     }
-  }, [handleMessage, resolvedChannelName]);
+  }, [flushPendingBatch, resolvedChannelName]);
 
   useEffect(() => {
     if (typeof BroadcastChannel === 'undefined') {
@@ -461,7 +482,7 @@ export const useBroadcastChannel = (
     channel.current = bc;
     debug.channel.created(resolvedChannelName);
 
-    bc.addEventListener('message', (event: MessageEvent) => {
+    const listener = (event: MessageEvent) => {
       // event.data may be a single message or an array of messages (batch)
       if (Array.isArray(event.data)) {
         event.data.forEach((message: BroadcastMessage) => {
@@ -470,11 +491,20 @@ export const useBroadcastChannel = (
       } else {
         handleMessage(event);
       }
-    });
-    return () => {
-      closeChannel();
     };
-  }, [resolvedChannelName, handleMessage, setErrorMessage]);
+    bc.addEventListener('message', listener);
+    return () => {
+      bc.removeEventListener('message', listener);
+      // Flush while this effect's channel is still open. A later effect may
+      // create a different channel, so never carry this queue into it.
+      if (channel.current === bc) {
+        flushPendingBatch(bc);
+        bc.close();
+        debug.channel.closed(resolvedChannelName);
+        channel.current = null;
+      }
+    };
+  }, [resolvedChannelName, handleMessage, setErrorMessage, flushPendingBatch]);
 
   useEffect(() => {
     if (cleaningInterval <= 0) return;
@@ -507,33 +537,6 @@ export const useBroadcastChannel = (
 
     return () => clearInterval(interval);
   }, [deduplicationTTL]);
-
-  useEffect(() => {
-    return () => {
-      // Always flush any unsent batched messages on unmount
-      if (batchingMessagesRef.current.length > 0 && channel.current && !batchingErrorRef.current) {
-        try {
-          channel.current.postMessage(batchingMessagesRef.current);
-        } catch (e) {
-          const error = 'Failed to send message';
-          debug.error({
-            action: 'useBroadcastChannel',
-            channelName: resolvedChannelName,
-            originalError: e instanceof Error ? e : String(e),
-          });
-          setErrorMessage(error);
-        }
-        batchingMessagesRef.current = [];
-        // Allow event loop to process delivery for tests
-        setTimeout(() => {}, 0);
-      }
-      if (batchingTimeoutRef.current) {
-        clearTimeout(batchingTimeoutRef.current);
-        batchingTimeoutRef.current = null;
-      }
-      batchingErrorRef.current = false;
-    };
-  }, []);
 
   return {
     channelName: resolvedChannelName,

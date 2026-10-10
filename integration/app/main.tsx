@@ -8,6 +8,7 @@ interface AppParams {
   source?: string;
   types?: string[];
   cleaningInterval?: number;
+  batchingDelayMs?: number;
 }
 
 function readParams(): AppParams {
@@ -15,6 +16,9 @@ function readParams(): AppParams {
   const types = params.get('types');
   const cleaningInterval = params.get('cleaningInterval');
   return {
+    batchingDelayMs: params.has('batchingDelayMs')
+      ? Number(params.get('batchingDelayMs'))
+      : undefined,
     channel: params.get('channel') || 'integration-channel',
     namespace: params.get('namespace') || undefined,
     source: params.get('source') || undefined,
@@ -33,11 +37,13 @@ function App() {
     clearSentMessages,
     ping,
     error,
+    closeChannel,
   } = useBroadcastChannel(params.channel, {
     sourceName: params.source,
     namespace: params.namespace,
     registeredTypes: params.types,
     cleaningInterval: params.cleaningInterval,
+    batchingDelayMs: params.batchingDelayMs,
   });
 
   const [messageType, setMessageType] = useState('chat');
@@ -60,6 +66,15 @@ function App() {
       />
       <button data-testid="send" onClick={() => postMessage(messageType, messageContent)}>
         Send
+      </button>
+      <button
+        data-testid="send-and-close"
+        onClick={() => {
+          postMessage(messageType, messageContent);
+          closeChannel();
+        }}
+      >
+        Send and close
       </button>
       <button
         data-testid="send-expiring"
