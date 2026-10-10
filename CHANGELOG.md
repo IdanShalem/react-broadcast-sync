@@ -1,3 +1,10 @@
+## [2.1.5](https://github.com/IdanShalem/react-broadcast-sync/compare/v2.1.4...v2.1.5) (2026-10-10)
+
+
+### Bug Fixes
+
+* flush queued messages before closing their channel ([#54](https://github.com/IdanShalem/react-broadcast-sync/issues/54)) ([aa0dca1](https://github.com/IdanShalem/react-broadcast-sync/commit/aa0dca1319b531acbf7e509feadac59e70fa851e))
+
 ## [2.1.4](https://github.com/IdanShalem/react-broadcast-sync/compare/v2.1.3...v2.1.4) (2026-10-10)
 
 
