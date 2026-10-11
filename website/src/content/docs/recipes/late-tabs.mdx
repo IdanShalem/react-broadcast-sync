@@ -12,46 +12,83 @@ head:
     content: '{"@context": "https://schema.org", "@type": "BreadcrumbList", "itemListElement": [{"@type": "ListItem", "position": 1, "name": "Docs", "item": "https://react-broadcast-sync-docs.vercel.app/"}, {"@type": "ListItem", "position": 2, "name": "Late-joining Tabs", "item": "https://react-broadcast-sync-docs.vercel.app/recipes/late-tabs/"}]}'
 ---
 
-Messages are not replayed: a tab that opens late sees only what is sent after it opened. `keepLatestMessage` and `getLatestMessage` read the local log, so they cannot help. The fix is a request/answer exchange:
+Messages are not replayed: a tab that opens late sees only what is sent after it opened. `keepLatestMessage` and `getLatestMessage` read the local log, so they cannot recover an earlier value. A request/answer exchange can bootstrap a new tab:
 
-1. The new tab posts a `state-request` once, when it mounts.
-2. Every existing tab that holds the state answers with the current value.
-3. The new tab applies the first (or latest) answer.
+1. The new tab posts a `state-request` with a unique request ID.
+2. Existing tabs answer with `state-response`, including that ID and their current value.
+3. Only the requesting tab accepts the first matching response. If it has already received a live update or made a local edit, it ignores the bootstrap response.
+
+Keep bootstrap responses separate from live `set` messages. Broadcasting a response as `set` makes every existing tab apply it too, and a delayed answer can undo an edit made while the request was in flight.
 
 ```tsx
-function Counter() {
+import { useEffect, useRef, useState } from 'react';
+import { useBroadcastChannel } from 'react-broadcast-sync';
+
+export default function Counter() {
   const [count, setCount] = useState(0);
   const countRef = useRef(count);
-  countRef.current = count;
+  const pendingRequest = useRef<string | null>(null);
+
+  const apply = (next: number) => {
+    countRef.current = next;
+    setCount(next);
+  };
 
   const { postMessage } = useBroadcastChannel('counter', {
     onMessage: {
-      set: msg => setCount(msg.message),
-      'state-request': () => postMessage('set', countRef.current),
+      set: msg => {
+        if (typeof msg.message !== 'number') return;
+        pendingRequest.current = null;
+        apply(msg.message);
+      },
+      'state-request': msg => {
+        if (typeof msg.message?.requestId !== 'string') return;
+        postMessage('state-response', {
+          requestId: msg.message.requestId,
+          value: countRef.current,
+        });
+      },
+      'state-response': msg => {
+        const { requestId, value } = msg.message ?? {};
+        if (
+          typeof requestId !== 'string' ||
+          requestId !== pendingRequest.current ||
+          typeof value !== 'number'
+        )
+          return;
+        pendingRequest.current = null;
+        apply(value);
+      },
     },
   });
 
-  // Ask once, on mount only
   useEffect(() => {
-    postMessage('state-request', null);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    const suffix = Math.random().toString(36).slice(2);
+    const requestId = `${Date.now()}-${suffix}`;
+    pendingRequest.current = requestId;
+    postMessage('state-request', { requestId });
+    // Ask only on mount.
+    /* eslint-disable-next-line
+       react-hooks/exhaustive-deps */
   }, []);
 
   const update = (next: number) => {
-    setCount(next);
+    pendingRequest.current = null;
+    apply(next);
     postMessage('set', next);
   };
 
-  return <button onClick={() => update(count + 1)}>Count: {count}</button>;
+  const increment = () => update(countRef.current + 1);
+  return <button onClick={increment}>Count: {count}</button>;
 }
 ```
 
-Why the ref: the `state-request` handler must answer with the _current_ value, not the value captured when the channel opened. Keep a ref synced (`countRef.current = count`) so the answer is always fresh.
+Why the ref: a request handler needs the current count. Updating `countRef` together with state also lets it answer correctly before React's next render. Each hook instance gets a generated source name by default; do not give every tab the same `sourceName` or they will ignore each other.
 
-Edge cases:
+Limits of this example:
 
-- **No other tab open**: nothing answers, the tab keeps its default state. That is usually fine.
-- **Several tabs answer**: they should agree; applying the last answer is safe when every tab derives state the same way.
-- **Do not answer a request with a rebroadcast of every message**: one message with the current value is enough.
-
-This pattern has limits. Under rapid concurrent edits, tabs can disagree briefly; for strict consistency you need an authority (a server, or a designated tab) rather than peer broadcast.
+- **No existing tab**: nothing answers, so the new tab keeps its default state. If all tabs close, their state is gone. Use persistence or a server when that is not acceptable.
+- **Several tabs answer**: first matching answer wins. This is a simple policy, not proof that the first peer has the newest state. Tabs that disagree need a versioned protocol or an authority.
+- **Live edit during bootstrap**: an incoming `set` or local click cancels the pending bootstrap. A delayed reply cannot replace that edit. This does not make concurrent absolute-value writes atomic: two tabs incrementing from the same value can still lose an increment.
+- **History is different**: this sends one current value, not old messages. Replaying a log also needs expiry/clearing rules, deduplication, registered-type filtering and size limits.
+- **No automatic guarantee**: requests/replies can be missed, and this example has no retry or persistence. For strict consistency use an authority such as a server rather than peer broadcast.
