@@ -1,3 +1,10 @@
+## [2.1.6](https://github.com/IdanShalem/react-broadcast-sync/compare/v2.1.5...v2.1.6) (2026-10-11)
+
+
+### Bug Fixes
+
+* recover ping state when sending fails ([#57](https://github.com/IdanShalem/react-broadcast-sync/issues/57)) ([f0a5524](https://github.com/IdanShalem/react-broadcast-sync/commit/f0a552460cd7c434e9b17a56e2685b50b3b5945c))
+
 ## [2.1.5](https://github.com/IdanShalem/react-broadcast-sync/compare/v2.1.4...v2.1.5) (2026-10-10)
 
 
