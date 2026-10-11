@@ -1146,6 +1146,32 @@ describe('useBroadcastChannel', () => {
       expect(res2).toHaveLength(0);
     });
 
+    it('reports a failed ping send without throwing or leaving ping stuck', async () => {
+      const { result } = renderHook(() => useBroadcastChannel('ping-error', { sourceName: 'A' }));
+      renderHook(() => useBroadcastChannel('ping-error', { sourceName: 'B' }));
+      const bc = mockChannels[0];
+      bc.postMessage.mockImplementationOnce(() => {
+        throw new DOMException('Channel is closed', 'InvalidStateError');
+      });
+      let failed: Promise<string[]> = Promise.resolve(['unexpected']);
+      act(() => {
+        expect(() => {
+          failed = result.current.ping(100);
+        }).not.toThrow();
+      });
+      expect(await failed).toEqual([]);
+      expect(result.current.error).toBe('Failed to send ping');
+      expect(result.current.isPingInProgress).toBe(false);
+      let sources: string[] = [];
+      await act(async () => {
+        const retry = result.current.ping(100);
+        jest.advanceTimersByTime(101);
+        sources = await retry;
+      });
+      expect(sources).toEqual(['B']);
+      expect(result.current.isPingInProgress).toBe(false);
+    });
+
     it('should expose isPingInProgress state', async () => {
       const { result } = renderHook(() =>
         useBroadcastChannel('test-channel', { sourceName: 'source-1' })

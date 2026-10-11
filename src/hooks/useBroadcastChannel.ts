@@ -170,7 +170,20 @@ export const useBroadcastChannel = (
       const collector = new Set<string>();
       activeSourcesCollector.current = collector;
 
-      channel.current.postMessage(createMessage(internalTypes.PING, null, source));
+      try {
+        channel.current.postMessage(createMessage(internalTypes.PING, null, source));
+      } catch (e) {
+        activeSourcesCollector.current = null;
+        setIsPingInProgress(false);
+        const error = 'Failed to send ping';
+        debug.error({
+          action: 'ping',
+          channelName: resolvedChannelName,
+          originalError: e instanceof Error ? e.message : String(e),
+        });
+        setErrorMessage(error);
+        return Promise.resolve([]);
+      }
 
       return new Promise(resolve => {
         setTimeout(() => {
@@ -182,7 +195,7 @@ export const useBroadcastChannel = (
         }, timeoutMs);
       });
     },
-    [internalTypes.PING, source, setErrorMessage, isPingInProgress, flushSyncFn]
+    [internalTypes.PING, source, setErrorMessage, isPingInProgress, resolvedChannelName]
   );
 
   const postMessage = useCallback(
