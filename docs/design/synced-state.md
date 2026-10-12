@@ -61,3 +61,7 @@ This draft adds an internal version comparator/clock helper and a pure request/r
 The internal session prototype owns one injected connection, explicit sync windows, superseded-request cancellation, disposal/listener/timer cleanup and send failure reporting. Failed sends do not commit a local value or claim success. A committed matching response counts as an answer even when its version is already known; unrelated live writes do not. Uncommitted fallback responses still mean no authoritative peer state.
 
 Next: hook integration, namespace/channel naming, unsupported-browser handling, lifecycle/StrictMode tests and native multi-tab tests. The protocol currently uses raw packets on an injected transport; it must not silently share the existing envelope-based channel without routing isolation. It does not export useSyncedState, alter current channel behavior or promise a release version. The old issue's 1.12.0 estimate is stale: current npm is 2.1.6. An eventual public hook would be an additive minor release, subject to review and approval.
+
+## Native transport coverage
+
+The injected session now has real same-origin BroadcastChannel tests in Chromium, Firefox and WebKit: late join after a write, live update, key isolation/no-peer result, concurrent-write convergence and disposal/replacement. These tests exercise the internal session directly, not a released hook or public API. Hook integration and React StrictMode tests remain incomplete.
