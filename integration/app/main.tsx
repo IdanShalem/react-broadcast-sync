@@ -28,8 +28,9 @@ function readParams(): AppParams {
   };
 }
 
-function App() {
+function App({ source }: { source?: string } = {}) {
   const params = readParams();
+  if (source !== undefined) params.source = source;
   const {
     messages,
     sentMessages,
@@ -67,6 +68,9 @@ function App() {
       />
       <button data-testid="send" onClick={() => postMessage(messageType, messageContent)}>
         Send
+      </button>
+      <button data-testid="close" onClick={closeChannel}>
+        Close
       </button>
       <button
         data-testid="send-and-close"
@@ -141,12 +145,29 @@ function DraftStateApp() {
     </div>
   );
 }
-const draft = new URLSearchParams(window.location.search).has('draftState');
+function MultiHookApp() {
+  const [firstMounted, setFirstMounted] = useState(true);
+  const sameSource = new URLSearchParams(window.location.search).has('sameSource');
+  return (
+    <div>
+      <button data-testid="unmount-first" onClick={() => setFirstMounted(false)}>
+        Unmount first hook
+      </button>
+      <section data-testid="hook-a">{firstMounted ? <App source="hook-a" /> : null}</section>
+      <section data-testid="hook-b">
+        <App source={sameSource ? 'hook-a' : 'hook-b'} />
+      </section>
+    </div>
+  );
+}
+
 createRoot(document.getElementById('root')!).render(
-  draft ? (
+  new URLSearchParams(window.location.search).has('draftState') ? (
     <React.StrictMode>
       <DraftStateApp />
     </React.StrictMode>
+  ) : new URLSearchParams(window.location.search).has('multiHook') ? (
+    <MultiHookApp />
   ) : (
     <App />
   )
