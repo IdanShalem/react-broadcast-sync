@@ -64,4 +64,4 @@ Next: hook integration, namespace/channel naming, unsupported-browser handling, 
 
 ## Native transport coverage
 
-The injected session now has real same-origin BroadcastChannel tests in Chromium, Firefox and WebKit: late join after a write, live update, key isolation/no-peer result, concurrent-write convergence and disposal/replacement. These tests exercise the internal session directly, not a released hook or public API. Hook integration and React StrictMode tests remain incomplete.
+The injected session now has real same-origin BroadcastChannel tests in Chromium, Firefox and WebKit: late join after a write, live update, key isolation/no-peer result, concurrent-write convergence and disposal/replacement. Local Chromium passes all four tests; Firefox/WebKit await CI because their local browser executables are not installed. These tests exercise the internal session directly, not a released hook or public API. Hook integration and React StrictMode tests remain incomplete.
