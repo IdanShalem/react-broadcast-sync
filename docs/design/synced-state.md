@@ -56,4 +56,6 @@ A reply with no committed version indicates only a peer fallback. Treat it separ
 
 ## Implementation status
 
-This draft adds only an internal version comparator/clock helper and its tests. It does not export useSyncedState, alter current channel behavior or promise a release version. The old issue's 1.12.0 estimate is stale: current npm is 2.1.6. An eventual public hook would be an additive minor release, subject to review and approval.
+This draft adds an internal version comparator/clock helper and a pure request/response/local-write reducer with tests. Responses retain the original write version, a join gathers the greatest version while open, expired/unmatched responses only advance the observed clock, and received values never emit set packets. Uncommitted defaults stay local. An old timeout cannot close a newer request. Value validation remains application-owned; this is not a security boundary.
+
+Next: transport/hook integration, send failure and timer handling, lifecycle/StrictMode tests and native multi-tab tests. It does not export useSyncedState, alter current channel behavior or promise a release version. The old issue's 1.12.0 estimate is stale: current npm is 2.1.6. An eventual public hook would be an additive minor release, subject to review and approval.
