@@ -25,7 +25,8 @@ export const createStateSession = <T>(
   initialValue: T,
   transport: StateTransport,
   onChange: (state: StateSnapshot<T>) => void,
-  onError: (error: unknown) => void
+  onError: (error: unknown) => void,
+  validate: (value: unknown) => boolean = () => true
 ) => {
   const source = generateSourceName();
   let state = initialStateSnapshot(initialValue);
@@ -62,6 +63,14 @@ export const createStateSession = <T>(
   };
   const receive = (event: MessageEvent) => {
     if (disposed) return;
+    if (isStatePacket<T>(event.data) && event.data.key === key && event.data.type !== 'request') {
+      try {
+        if (!validate(event.data.value)) return;
+      } catch (error) {
+        onError(error);
+        return;
+      }
+    }
     const received = receiveStatePacket<T>(state, key, event.data);
     if (
       pending &&
@@ -82,6 +91,15 @@ export const createStateSession = <T>(
     /** A failed send does not commit a local value or claim success. */
     setValue(value: T): boolean {
       if (disposed) return false;
+      try {
+        if (!validate(value)) {
+          onError(new Error('Invalid state value'));
+          return false;
+        }
+      } catch (error) {
+        onError(error);
+        return false;
+      }
       const write = localStateWrite(state, key, source, value);
       if (!write) {
         onError(new Error('Cannot create a safe state version'));
@@ -93,7 +111,7 @@ export const createStateSession = <T>(
     },
     sync(windowMs = 250): Promise<StateSyncResult> {
       if (disposed) return Promise.resolve('cancelled');
-      if (!Number.isFinite(windowMs) || windowMs < 0) {
+      if (!Number.isFinite(windowMs) || windowMs < 0 || windowMs > 2147483647) {
         onError(new Error('Invalid state sync window'));
         return Promise.resolve('send-failed');
       }

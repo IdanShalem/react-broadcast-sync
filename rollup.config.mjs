@@ -78,6 +78,8 @@ export default {
     }),
     typescript({
       tsconfig: './tsconfig.json',
+      // React 16.8 has no react/jsx-runtime; keep published root compatible.
+      jsx: 'react',
       exclude: ['**/__tests__/**', '**/*.test.ts', '**/*.test.tsx'],
       declaration: true,
       declarationDir: './dist',
@@ -90,7 +92,7 @@ export default {
         [
           '@babel/preset-react',
           {
-            runtime: 'automatic',
+            runtime: 'classic',
             development: process.env.NODE_ENV === 'development',
           },
         ],

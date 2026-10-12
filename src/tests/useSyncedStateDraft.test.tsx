@@ -1,6 +1,6 @@
 import React, { StrictMode } from 'react';
 import { act, renderHook } from '@testing-library/react';
-import { useSyncedStateDraft } from '../hooks/useSyncedStateDraft';
+import { useSyncedState } from '../hooks/useSyncedState';
 
 class Channel {
   static ports: Channel[] = [];
@@ -64,12 +64,12 @@ it('StrictMode leaves one active connection, syncs a late hook and cleans every 
   const wrapper = ({ children }: { children: React.ReactNode }) => (
     <StrictMode>{children}</StrictMode>
   );
-  const a = renderHook(() => useSyncedStateDraft('app', 'filters', 'default'), { wrapper });
+  const a = renderHook(() => useSyncedState('app', 'filters', 'default'), { wrapper });
   expect(Channel.ports.filter(p => !p.closed)).toHaveLength(1);
   act(() => {
     expect(a.result.current[1]('written')).toBe(true);
   });
-  const b = renderHook(() => useSyncedStateDraft('app', 'filters', 'fallback'), { wrapper });
+  const b = renderHook(() => useSyncedState('app', 'filters', 'fallback'), { wrapper });
   await tick();
   expect(b.result.current[0]).toBe('written');
   act(() => {
@@ -84,7 +84,7 @@ it('StrictMode leaves one active connection, syncs a late hook and cleans every 
 });
 
 it('resets key/channel changes and makes old setters/sync calls inert', async () => {
-  const hook = renderHook(({ channel, key }) => useSyncedStateDraft(channel, key, key), {
+  const hook = renderHook(({ channel, key }) => useSyncedState(channel, key, key), {
     initialProps: { channel: 'a', key: 'one' },
   });
   act(() => {
@@ -105,10 +105,10 @@ it('resets key/channel changes and makes old setters/sync calls inert', async ()
 
 it('keeps fallback stable across rerenders and isolates namespaces', async () => {
   const a = renderHook(
-    ({ fallback }) => useSyncedStateDraft('app', 'k', fallback, { namespace: 'one' }),
+    ({ fallback }) => useSyncedState('app', 'k', fallback, { namespace: 'one' }),
     { initialProps: { fallback: 'first' } }
   );
-  const b = renderHook(() => useSyncedStateDraft('app', 'k', 'other', { namespace: 'two' }));
+  const b = renderHook(() => useSyncedState('app', 'k', 'other', { namespace: 'two' }));
   a.rerender({ fallback: 'ignored' });
   expect(a.result.current[0]).toBe('first');
   expect(Channel.ports).toHaveLength(2);
@@ -122,7 +122,7 @@ it('keeps fallback stable across rerenders and isolates namespaces', async () =>
 });
 
 it('supports explicit no-peer sync and cancels it on unmount', async () => {
-  const hook = renderHook(() => useSyncedStateDraft('app', 'k', 'fallback'));
+  const hook = renderHook(() => useSyncedState('app', 'k', 'fallback'));
   let promise: ReturnType<(typeof hook.result.current)[2]['sync']>;
   act(() => {
     promise = hook.result.current[2].sync();
@@ -139,7 +139,7 @@ it('supports explicit no-peer sync and cancels it on unmount', async () => {
 it('reports unsupported browser, invalid input and constructor failure without throwing', async () => {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   global.BroadcastChannel = undefined as any;
-  const unsupported = renderHook(() => useSyncedStateDraft('a', 'k', 'fallback'));
+  const unsupported = renderHook(() => useSyncedState('a', 'k', 'fallback'));
   expect(unsupported.result.current[2].error).toBe('BroadcastChannel is unavailable');
   expect(unsupported.result.current[1]('x')).toBe(false);
   expect(await unsupported.result.current[2].sync()).toBe('unavailable');
@@ -149,16 +149,16 @@ it('reports unsupported browser, invalid input and constructor failure without t
       throw new Error('denied');
     }
   } as unknown as typeof BroadcastChannel;
-  const failed = renderHook(() => useSyncedStateDraft('a', 'k', 'fallback'));
+  const failed = renderHook(() => useSyncedState('a', 'k', 'fallback'));
   expect(failed.result.current[2].error).toBe('denied');
   failed.unmount();
-  const invalid = renderHook(() => useSyncedStateDraft('', 'k', 'fallback'));
+  const invalid = renderHook(() => useSyncedState('', 'k', 'fallback'));
   expect(invalid.result.current[2].error).toMatch(/Invalid/);
   invalid.unmount();
 });
 
 it('does not change local state on a send failure and can retry a later write', () => {
-  const hook = renderHook(() => useSyncedStateDraft('a', 'k', 'fallback'));
+  const hook = renderHook(() => useSyncedState('a', 'k', 'fallback'));
   Channel.ports[0].fail = true;
   act(() => {
     expect(hook.result.current[1]('lost')).toBe(false);
@@ -175,7 +175,7 @@ it('does not change local state on a send failure and can retry a later write', 
 
 it('changing only the sync window does not reset a committed value or reopen transport', async () => {
   const hook = renderHook(
-    ({ ms }) => useSyncedStateDraft('app', 'k', 'fallback', { syncWindowMs: ms }),
+    ({ ms }) => useSyncedState('app', 'k', 'fallback', { syncWindowMs: ms }),
     { initialProps: { ms: 250 } }
   );
   act(() => {
@@ -190,5 +190,51 @@ it('changing only the sync window does not reset a committed value or reopen tra
   });
   await tick(50);
   expect(await pending!).toBe('no-peer');
+  hook.unmount();
+});
+
+it('validates incoming/local values and clears a prior error on successful write', async () => {
+  const validate = (value: unknown): value is string => typeof value === 'string';
+  const hook = renderHook(() => useSyncedState('a', 'k', 'fallback', { validate }));
+  act(() => {
+    Channel.ports[0].deliver({
+      protocol: 1,
+      key: 'k',
+      type: 'set',
+      value: 42,
+      version: { clock: 2, source: 'peer' },
+    });
+  });
+  expect(hook.result.current[0]).toBe('fallback');
+  act(() => {
+    expect(hook.result.current[1](42 as unknown as string)).toBe(false);
+  });
+  expect(hook.result.current[2].error).toBe('Invalid state value');
+  act(() => {
+    expect(hook.result.current[1]('valid')).toBe(true);
+  });
+  expect(hook.result.current[2].error).toBeNull();
+  hook.unmount();
+});
+
+it('contains a throwing application validator instead of throwing from the message listener', () => {
+  const hook = renderHook(() =>
+    useSyncedState('a', 'k', 'fallback', {
+      validate: (_value: unknown): _value is string => {
+        throw new Error('bad validator');
+      },
+    })
+  );
+  act(() => {
+    Channel.ports[0].deliver({
+      protocol: 1,
+      key: 'k',
+      type: 'set',
+      value: 'v',
+      version: { clock: 2, source: 'peer' },
+    });
+  });
+  expect(hook.result.current[0]).toBe('fallback');
+  expect(hook.result.current[2].error).toBe('bad validator');
   hook.unmount();
 });

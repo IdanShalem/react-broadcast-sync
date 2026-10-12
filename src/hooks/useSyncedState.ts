@@ -1,26 +1,33 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { createStateSession, StateSyncResult } from '../utils/stateSession';
 
-interface DraftOptions {
+export interface SyncedStateOptions<T> {
   namespace?: string;
   syncWindowMs?: number;
+  /** Optional application payload check, used for incoming and local values. */
+  validate?: (value: unknown) => value is T;
 }
-interface DraftStatus {
+export interface SyncedStateStatus {
   error: string | null;
-  sync: () => Promise<StateSyncResult | 'unavailable'>;
+  sync: () => Promise<SyncedStateSyncResult>;
 }
 
-/** Internal prototype only. Not exported from the package root. */
-export const useSyncedStateDraft = <T>(
+export type SyncedStateSyncResult = StateSyncResult | 'unavailable';
+export type SyncedStateSetter<T> = (value: T | ((current: T) => T)) => boolean;
+
+/** Current-value sync on a separate same-origin channel. No persistence/atomic updates. */
+export const useSyncedState = <T>(
   channel: string,
   key: string,
   initialValue: T,
-  options: DraftOptions = {}
-): [T, (value: T | ((current: T) => T)) => boolean, DraftStatus] => {
+  options: SyncedStateOptions<T> = {}
+): [T, SyncedStateSetter<T>, SyncedStateStatus] => {
   const namespace = options.namespace ?? '';
   const windowMs = options.syncWindowMs ?? 250;
   // A distinct transport prevents raw state packets reaching envelope consumers.
   const identity = JSON.stringify([channel, namespace, key]);
+  const validator = useRef(options.validate);
+  validator.current = options.validate;
   const syncWindow = useRef(windowMs);
   syncWindow.current = windowMs;
   const initial = useRef({ identity, value: initialValue });
@@ -65,7 +72,8 @@ export const useSyncedStateDraft = <T>(
         state => {
           if (alive) setView(current => ({ ...current, identity, value: state.value }));
         },
-        reportError
+        reportError,
+        value => (validator.current ? validator.current(value) : true)
       );
       active.current = { identity, session };
       void session.sync(syncWindow.current);
@@ -90,7 +98,9 @@ export const useSyncedStateDraft = <T>(
         typeof next === 'function'
           ? (next as (current: T) => T)(current.session.getSnapshot().value)
           : next;
-      return current.session.setValue(value);
+      const sent = current.session.setValue(value);
+      if (sent) setView(view => ({ ...view, error: null }));
+      return sent;
     },
     [identity]
   );

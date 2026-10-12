@@ -338,6 +338,38 @@ default state.
 
 ## API Reference
 
+### `useSyncedState` Hook
+
+> Added by the state-hook feature in this branch. It is not in npm 2.1.6; install the next minor release after it is published.
+
+```tsx
+import { useSyncedState } from 'react-broadcast-sync';
+
+const [theme, setTheme, state] = useSyncedState('app', 'theme', 'light', {
+  namespace: 'ui-v1',
+  syncWindowMs: 250,
+  validate: (value): value is string => value === 'light' || value === 'dark',
+});
+
+// Applies locally only if validation and native postMessage succeed.
+const sent = setTheme('dark');
+// Uses this tab's latest value. Not an atomic cross-tab operation.
+setTheme(current => (current === 'light' ? 'dark' : 'light'));
+const result = await state.sync();
+```
+
+Use this hook for one current value per key, not arbitrary message history. It opens a separate protocol channel; it does not share the message log or options of `useBroadcastChannel`/`BroadcastProvider`. All participants use `useSyncedState` with the same channel, namespace and key. The raw transport name is reserved and is not a public API.
+
+- **Initial value:** a fallback, not a committed write. Mount requests written state from open peers. No peer or only uncommitted defaults leaves the fallback unchanged. Different defaults do not converge until someone writes. Later changes to `initialValue` alone are ignored. Function values should be wrapped when using the setter; native structured clone still rejects functions.
+- **Setter:** accepts a value or functional update; returns `true` only when validation and `postMessage` succeed, then updates locally. On unsupported browser, clone/send failure or invalid value it returns `false` and does not commit the value. Successful send is not an acknowledgement of delivery to another tab. Treat objects as immutable. Updater exceptions are caller errors and propagate.
+- **Sync:** automatically starts on mount, can be requested explicitly, and gathers matching responses for `syncWindowMs` (default 250). The value can update as greater versions arrive; it is not held until the window ends. Result is `received` for a matching committed peer response, `no-peer` if none arrives before the deadline, `send-failed`, `cancelled` for superseded/disposed requests, or `unavailable` without an active connection. `no-peer` does not prove no tab exists or that the fallback is authoritative. A live update can arrive even when a sync returns `no-peer`.
+- **Conflict rule:** greatest logical `(clock, source)` version wins, independent of arrival order. Clock first, deterministic source-string tie breaker second. Responses retain the original write version. Stale/unmatched response clocks are observed but their values are not applied. A response cannot replace a newer local/live version. This is not wall-clock order, a transaction, an atomic counter, or preservation of every edit intent.
+- **Lifecycle:** key/channel/namespace changes close the old connection and start from that identity's fallback. Pending sync is cancelled. Changing only the sync window or validator does not discard the current state. React StrictMode cleanup/remount is supported.
+- **Options:** `namespace` (default `''`), `syncWindowMs` (finite 0 to 2147483647 milliseconds), and optional `validate(value): value is T`. The validator checks incoming/local values. Malformed protocol packets and invalid incoming values are ignored; a throwing validator sets `error`. Without it, app values are not runtime-validated. `T` alone cannot validate external data.
+- **Errors:** `state.error` is `string | null`; successful local writes clear it. There is no persistence, automatic reconnection, server sync or fallback transport. Unsupported browsers report an error; the local setter is unavailable. React >=16.8 is supported.
+
+BroadcastChannel is a same-origin/partition transport, not authentication or authorization. Payload validation and version checks are not a security boundary. Business records and permissions still need an authoritative server. A closed last peer loses the shared value; do not use this as durable storage.
+
 ### `useBroadcastChannel` Hook
 
 ```typescript
@@ -909,7 +941,7 @@ We're actively improving `react-broadcast-sync`! Here are some features and enha
   On connect, a new tab can request recent message history from already-open tabs. Includes chunked transfer, expiry filtering, and deduplication to prevent replaying stale or duplicate messages.
 
 - **Integration Tests**  
-  Real browser cross-tab tests using Playwright that go beyond what jsdom mocks can cover.
+  Already included: native Chromium, Firefox and WebKit cross-tab tests.
 
 - **Anonymous Usage Telemetry**  
   Removed. The `telemetry` option remains as a deprecated no-op.

@@ -131,8 +131,9 @@ it('rejects invalid windows without leaving a timer', async () => {
   const { session, port, error } = setup();
   expect(await session.sync(-1)).toBe('send-failed');
   expect(await session.sync(Infinity)).toBe('send-failed');
+  expect(await session.sync(2147483648)).toBe('send-failed');
   expect(port.posted).toHaveLength(0);
-  expect(error).toHaveBeenCalledTimes(2);
+  expect(error).toHaveBeenCalledTimes(3);
   session.dispose();
 });
 

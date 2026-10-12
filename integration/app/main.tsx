@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { createRoot } from 'react-dom/client';
 import { useBroadcastChannel } from '../../src';
-import { useSyncedStateDraft } from '../../src/hooks/useSyncedStateDraft';
+import { useSyncedState } from '../../src/hooks/useSyncedState';
 
 interface AppParams {
   channel: string;
@@ -115,7 +115,7 @@ function App() {
 function DraftStateApp() {
   const params = new URLSearchParams(window.location.search);
   const [key, setKey] = useState(params.get('key') || 'filters');
-  const [value, setValue, status] = useSyncedStateDraft(
+  const [value, setValue, status] = useSyncedState(
     params.get('channel') || 'draft-hook',
     key,
     'fallback',

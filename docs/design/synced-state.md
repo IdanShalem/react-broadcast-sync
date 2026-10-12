@@ -1,6 +1,6 @@
 # Current-state bootstrap proposal
 
-Status: draft design and protocol foundation for issue #19. Not a released API.
+Status: implemented proposal for issue #19. Public exports/types prepared on this branch, not released in npm 2.1.6.
 
 ## Scope
 
@@ -70,4 +70,4 @@ The injected session now has real same-origin BroadcastChannel tests in Chromium
 
 `useSyncedStateDraft` is deliberately not exported from the package root. It uses a separate versioned channel with JSON-encoded channel/namespace routing (raw state packets cannot leak into the existing envelope-based hook). It automatically requests on mount; exposes boolean write success, a functional local-value setter, explicit sync result and an error. Initial value remains a fallback across rerenders. Channel/key/namespace changes dispose the old session and reset to that identity's fallback; stale setters cannot write through an old identity. Sync-window-only changes do not reset state.
 
-Seven unit lifecycle tests cover React StrictMode cleanup/remount, late joins/live changes, functional writes, key/channel/namespace isolation, no peer/cancel, unsupported browser, constructor/send failures and option changes. A real React StrictMode hook test joins two native tabs, shares edits and isolates a key change. Local Chromium passes; other browsers await CI. Before a public API: review write-on-send-failure behavior, return shape/status, payload validation ownership, React >=16.8 build compatibility and public docs/types. No release version or readiness claim yet.
+Seven unit lifecycle tests cover React StrictMode cleanup/remount, late joins/live changes, functional writes, key/channel/namespace isolation, no peer/cancel, unsupported browser, constructor/send failures and option changes. A real React StrictMode hook test joins two native tabs, shares edits and isolates a key change. Local Chromium passes; other browsers await CI. Public API is now `useSyncedState`, with typed options/setter/status exports. Failed validation/send does not commit locally; optional runtime validation checks received/local values. README and packaged skill document semantics and limits. Published bundle React 16.8 compatibility required classic JSX compilation; actual React 16.8 mount/functional write/cleanup passes. No release has been made.
