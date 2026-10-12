@@ -1,3 +1,10 @@
+# [2.2.0](https://github.com/IdanShalem/react-broadcast-sync/compare/v2.1.6...v2.2.0) (2026-10-12)
+
+
+### Features
+
+* add versioned current-state hook with React 16.8 compatibility ([3088643](https://github.com/IdanShalem/react-broadcast-sync/commit/308864387cdeafc5b3fa34e16c71b1085da65de7))
+
 ## [2.1.6](https://github.com/IdanShalem/react-broadcast-sync/compare/v2.1.5...v2.1.6) (2026-10-11)
 
 
