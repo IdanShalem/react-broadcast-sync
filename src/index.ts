@@ -14,3 +14,11 @@ export type {
   OnMessageMap,
 } from './types/types';
 export type { BroadcastProviderProps } from './BroadcastProvider';
+
+export { useSyncedState } from './hooks/useSyncedState';
+export type {
+  SyncedStateOptions,
+  SyncedStateStatus,
+  SyncedStateSyncResult,
+  SyncedStateSetter,
+} from './hooks/useSyncedState';

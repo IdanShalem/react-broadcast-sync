@@ -1,0 +1,73 @@
+# Current-state bootstrap proposal
+
+Status: implemented proposal for issue #19. Public exports/types prepared on this branch, not released in npm 2.1.6.
+
+## Scope
+
+A state hook is different from history replay (#11). Share one current value per key, request it when joining, and never rebroadcast received values. Do not replay expired, cleared or arbitrary message logs. No persistence, server, automatic reconnect or atomic increments in this first API.
+
+The existing late-tab recipe is a useful manual option. It targets responses by request ID and ignores bootstrap after a local/live edit, but first-response wins cannot choose between disagreeing peers. A state hook needs a stronger ordering rule before it can promise convergence.
+
+## Proposed shape
+
+```ts
+const [value, setValue, sync] = useSyncedState(channel, key, initialValue, options);
+```
+
+Open questions before exposing this shape:
+
+- Does channel mean a name, or existing actions? Existing actions do not allow adding a subscriber without replacing onMessage. Prefer a channel name for a first implementation, but document the additional connection.
+- Should sync return a result containing whether a peer answered, rather than only the value? A timeout with no answer must not imply an authoritative default.
+- Keep source IDs generated and unique. A user-supplied shared source name would suppress messages and undermine the tie-breaker.
+- The initial value is a fallback, not a write. Version-zero defaults do not override a value received from a peer. Disagreeing defaults with no writes are not resolved by this protocol.
+- A functional setter uses this tab's current value. Concurrent increments remain independent writes; one can be lost. Do not call this a distributed atomic counter.
+
+## Version ordering
+
+Each accepted write has `(clock, source)`:
+
+1. Before a local write, increment this tab's Lamport clock above every observed clock.
+2. Accept an incoming write only if its version is greater than the current version.
+3. Compare clocks numerically, then source IDs by a fixed JavaScript string comparison. Do not use locale-dependent sorting.
+4. Advance the local clock for any valid observed version, including a stale targeted response that cannot overwrite the current value.
+
+This is logical last-write-wins, not wall-clock last-write-wins. Two concurrent writes choose the same deterministic winner in every tab after both messages arrive. It does not prove which user action happened last, or prevent a lost intent.
+
+## Wire protocol
+
+Use reserved, versioned message types for request, response and set. Include the state key and protocol version in every payload. Responses include the request ID and the value's original version, not a new write version. Do not increase a value's version merely by relaying it.
+
+A join request gathers matching responses for a bounded window (the issue proposes 250 ms). Accept only a matching key/request/protocol and valid version. Pick the greatest version, regardless of arrival order, while never replacing a newer local/live write. Apply only once per accepted version; receipt must not trigger another set broadcast.
+
+A reply with no committed version indicates only a peer fallback. Treat it separately from versioned state. A malicious peer can send an artificially huge clock; BroadcastChannel peers are trusted same-origin app contexts, not a security boundary. Validate safe nonnegative integer clocks and known payload shape, but do not claim this authenticates a sender.
+
+## Required test matrix before a public hook
+
+- Late join with one existing written value.
+- Two disagreeing peers replying in reverse order: same greatest version wins.
+- Local edit during join; stale response cannot replace it.
+- Concurrent writes delivered in opposite orders: same final winner.
+- Next local write follows a larger observed clock.
+- Received state is never rebroadcast as a write.
+- Keys, namespaces and protocol versions are isolated.
+- StrictMode mount/cleanup, key/channel change, explicit sync, no peer and unsupported browser.
+- Malformed payload, unsafe clock and send failure: no throw or false success.
+- React >=16.8 compatibility, public types, generated agent docs and native Chromium/Firefox/WebKit cross-tab tests.
+
+## Implementation status
+
+This draft adds an internal version comparator/clock helper and a pure request/response/local-write reducer with tests. Responses retain the original write version, a join gathers the greatest version while open, expired/unmatched responses only advance the observed clock, and received values never emit set packets. Uncommitted defaults stay local. An old timeout cannot close a newer request. Value validation remains application-owned; this is not a security boundary.
+
+The internal session prototype owns one injected connection, explicit sync windows, superseded-request cancellation, disposal/listener/timer cleanup and send failure reporting. Failed sends do not commit a local value or claim success. A committed matching response counts as an answer even when its version is already known; unrelated live writes do not. Uncommitted fallback responses still mean no authoritative peer state.
+
+Public hook integration, isolated channel naming, unsupported-browser handling and StrictMode lifecycle tests are implemented. The existing message hook behavior is unchanged. Root state-hook exports are prepared for an additive minor release, subject to review/approval; npm is still 2.1.6. The old issue's 1.12.0 estimate is stale.
+
+## Native transport coverage
+
+The injected session now has real same-origin BroadcastChannel tests in Chromium, Firefox and WebKit: late join after a write, live update, key isolation/no-peer result, concurrent-write convergence and disposal/replacement. All three browsers passed CI at the session-only stage; latest full API checks are pending. These tests exercise the internal session directly, not a released hook or public API. Hook integration/React StrictMode are covered by the hook tests below.
+
+## React hook API
+
+`useSyncedState` and public option/setter/status/result types are exported from the package root on this branch. It uses a separate versioned channel with JSON-encoded channel/namespace routing (raw state packets cannot leak into the existing envelope-based hook). It automatically requests on mount; exposes boolean write success, a functional local-value setter, explicit sync result and an error. Initial value remains a fallback across rerenders. Channel/key/namespace changes dispose the old session and reset to that identity's fallback; stale setters cannot write through an old identity. Sync-window-only changes do not reset state.
+
+Nine unit lifecycle tests cover React StrictMode cleanup/remount, late joins/live changes, functional writes, key/channel/namespace isolation, no peer/cancel, unsupported browser, constructor/send failures and option changes. A real React StrictMode hook test joins two native tabs, shares edits and isolates a key change. Local Chromium passes; other browsers await CI. Public API is now `useSyncedState`, with typed options/setter/status exports. Failed validation/send does not commit locally; optional runtime validation checks received/local values. README and packaged skill document semantics and limits. Published bundle React 16.8 compatibility required classic JSX compilation; actual React 16.8 mount/functional write/cleanup passes. No release has been made.

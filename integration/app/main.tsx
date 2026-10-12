@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { createRoot } from 'react-dom/client';
 import { useBroadcastChannel } from '../../src';
+import { useSyncedState } from '../../src/hooks/useSyncedState';
 
 interface AppParams {
   channel: string;
@@ -115,6 +116,35 @@ function App({ source }: { source?: string } = {}) {
   );
 }
 
+function DraftStateApp() {
+  const params = new URLSearchParams(window.location.search);
+  const [key, setKey] = useState(params.get('key') || 'filters');
+  const [value, setValue, status] = useSyncedState(
+    params.get('channel') || 'draft-hook',
+    key,
+    'fallback',
+    { namespace: params.get('namespace') || '' }
+  );
+  const [result, setResult] = useState('');
+  return (
+    <div>
+      <div data-testid="state-value">{value}</div>
+      <input
+        data-testid="state-input"
+        value={value}
+        onChange={event => setValue(event.target.value)}
+      />
+      <button data-testid="state-sync" onClick={() => void status.sync().then(setResult)}>
+        Sync
+      </button>
+      <button data-testid="state-change-key" onClick={() => setKey('other')}>
+        Change key
+      </button>
+      <div data-testid="state-result">{result}</div>
+      <div data-testid="state-error">{status.error || ''}</div>
+    </div>
+  );
+}
 function MultiHookApp() {
   const [firstMounted, setFirstMounted] = useState(true);
   const sameSource = new URLSearchParams(window.location.search).has('sameSource');
@@ -132,5 +162,13 @@ function MultiHookApp() {
 }
 
 createRoot(document.getElementById('root')!).render(
-  new URLSearchParams(window.location.search).has('multiHook') ? <MultiHookApp /> : <App />
+  new URLSearchParams(window.location.search).has('draftState') ? (
+    <React.StrictMode>
+      <DraftStateApp />
+    </React.StrictMode>
+  ) : new URLSearchParams(window.location.search).has('multiHook') ? (
+    <MultiHookApp />
+  ) : (
+    <App />
+  )
 );

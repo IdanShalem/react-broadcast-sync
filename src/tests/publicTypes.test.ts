@@ -27,3 +27,14 @@ describe('public type exports', () => {
     expect([clear, received, sent, latest, map, send, props, actions]).toHaveLength(8);
   });
 });
+
+it('exports the state hook and typed setter/status from the package root', () => {
+  const options: import('../index').SyncedStateOptions<string> = {
+    syncWindowMs: 100,
+    validate: (v: unknown): v is string => typeof v === 'string',
+  };
+  const setter: import('../index').SyncedStateSetter<string> = value => typeof value === 'string';
+  const result: import('../index').SyncedStateSyncResult = 'no-peer';
+  const status: import('../index').SyncedStateStatus = { error: null, sync: async () => result };
+  expect([options, setter, status]).toHaveLength(3);
+});
