@@ -13,7 +13,7 @@ Cross-tab messaging for React over the browser `BroadcastChannel` API. Version 2
 - A tab never receives its own messages.
 - Messages are not replayed. A tab opened later sees only messages sent after it opened.
 - Deduplication is by message ID, not content.
-- `useBroadcastChannel` does not replicate state automatically. `useSyncedState` (next minor release, not npm 2.1.6) requests and shares one current value per key on a separate protocol channel.
+- `useBroadcastChannel` does not replicate state automatically. `useSyncedState` (2.2.0+) requests and shares one current value per key on a separate protocol channel.
 - The package collects no telemetry; the `telemetry` option is a deprecated no-op. Do not add it.
 
 ## Install
@@ -131,6 +131,6 @@ Use one channel per topic (or `namespace`) so each listener only gets its own me
 
 Full docs: https://github.com/IdanShalem/react-broadcast-sync#readme
 
-## Current-state hook (next minor release)
+## Current-state hook (2.2.0+)
 
-Use `useSyncedState(channel, key, initialValue, { namespace, syncWindowMs, validate })` for a current value. Returns `[value, setter, status]`; setter returns boolean send success and supports functional updates. Failed validation/clone/send leaves local value unchanged. `status.sync()` resolves to `received`, `no-peer`, `send-failed`, `cancelled` or `unavailable`; no-peer is not authoritative absence. Initial value is only a fallback. Requests gather greatest logical clock/source version; received values are not rebroadcast. Not atomic concurrent updates, persistence, history or a security boundary. Validate application payloads, keep server authority. Channel/key/namespace changes reset this identity; changing only sync-window/validator does not reset it. Check installed version: this API is not in 2.1.6.
+Use `useSyncedState(channel, key, initialValue, { namespace, syncWindowMs, validate })` for a current value. Returns `[value, setter, status]`; setter returns boolean send success and supports functional updates. Failed validation/clone/send leaves local value unchanged. `status.sync()` resolves to `received`, `no-peer`, `send-failed`, `cancelled` or `unavailable`; no-peer is not authoritative absence. Initial value is only a fallback. Requests gather greatest logical clock/source version; received values are not rebroadcast. Not atomic concurrent updates, persistence, history or a security boundary. Validate application payloads, keep server authority. Channel/key/namespace changes reset this identity; changing only sync-window/validator does not reset it. Check installed version: this API requires 2.2.0 or later.
