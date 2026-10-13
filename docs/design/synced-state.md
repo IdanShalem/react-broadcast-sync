@@ -1,6 +1,6 @@
 # Current-state bootstrap proposal
 
-Status: implemented proposal for issue #19. Public exports/types prepared on this branch, not released in npm 2.1.6.
+Status: implemented for issue #19 and released in npm 2.2.0.
 
 ## Scope
 
@@ -60,14 +60,14 @@ This draft adds an internal version comparator/clock helper and a pure request/r
 
 The internal session prototype owns one injected connection, explicit sync windows, superseded-request cancellation, disposal/listener/timer cleanup and send failure reporting. Failed sends do not commit a local value or claim success. A committed matching response counts as an answer even when its version is already known; unrelated live writes do not. Uncommitted fallback responses still mean no authoritative peer state.
 
-Public hook integration, isolated channel naming, unsupported-browser handling and StrictMode lifecycle tests are implemented. The existing message hook behavior is unchanged. Root state-hook exports are prepared for an additive minor release, subject to review/approval; npm is still 2.1.6. The old issue's 1.12.0 estimate is stale.
+Public hook integration, isolated channel naming, unsupported-browser handling and StrictMode lifecycle tests are implemented. The existing message hook behavior is unchanged. Root state-hook exports shipped in the approved 2.2.0 minor release; npm is 2.2.0. The old issue's 1.12.0 estimate is stale.
 
 ## Native transport coverage
 
-The injected session now has real same-origin BroadcastChannel tests in Chromium, Firefox and WebKit: late join after a write, live update, key isolation/no-peer result, concurrent-write convergence and disposal/replacement. All three browsers passed CI at the session-only stage; latest full API checks are pending. These tests exercise the internal session directly, not a released hook or public API. Hook integration/React StrictMode are covered by the hook tests below.
+The injected session now has real same-origin BroadcastChannel tests in Chromium, Firefox and WebKit: late join after a write, live update, key isolation/no-peer result, concurrent-write convergence and disposal/replacement. All three browsers passed full API CI before the approved merge; main CI and the 2.2.0 release workflow also passed. These tests exercise the internal session directly, not a released hook or public API. Hook integration/React StrictMode are covered by the hook tests below.
 
 ## React hook API
 
 `useSyncedState` and public option/setter/status/result types are exported from the package root on this branch. It uses a separate versioned channel with JSON-encoded channel/namespace routing (raw state packets cannot leak into the existing envelope-based hook). It automatically requests on mount; exposes boolean write success, a functional local-value setter, explicit sync result and an error. Initial value remains a fallback across rerenders. Channel/key/namespace changes dispose the old session and reset to that identity's fallback; stale setters cannot write through an old identity. Sync-window-only changes do not reset state.
 
-Nine unit lifecycle tests cover React StrictMode cleanup/remount, late joins/live changes, functional writes, key/channel/namespace isolation, no peer/cancel, unsupported browser, constructor/send failures and option changes. A real React StrictMode hook test joins two native tabs, shares edits and isolates a key change. Local Chromium passes; other browsers await CI. Public API is now `useSyncedState`, with typed options/setter/status exports. Failed validation/send does not commit locally; optional runtime validation checks received/local values. README and packaged skill document semantics and limits. Published bundle React 16.8 compatibility required classic JSX compilation; actual React 16.8 mount/functional write/cleanup passes. No release has been made.
+Nine unit lifecycle tests cover React StrictMode cleanup/remount, late joins/live changes, functional writes, key/channel/namespace isolation, no peer/cancel, unsupported browser, constructor/send failures and option changes. A real React StrictMode hook test joins two native tabs, shares edits and isolates a key change. Chromium, Firefox and WebKit pass full CI. Public API is now `useSyncedState`, with typed options/setter/status exports. Failed validation/send does not commit locally; optional runtime validation checks received/local values. README and packaged skill document semantics and limits. Published bundle React 16.8 compatibility required classic JSX compilation; actual React 16.8 mount/functional write/cleanup passes. Released as 2.2.0 after approval; published tarball exports and React 16.8 root compatibility were verified.

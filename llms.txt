@@ -66,7 +66,7 @@ default state.
 
 ### `useSyncedState` Hook
 
-> Added by the state-hook feature in this branch. It is not in npm 2.1.6; install the next minor release after it is published.
+> Available in react-broadcast-sync 2.2.0 and later. Upgrade from 2.1.6 before using this hook.
 
 ```tsx
 import { useSyncedState } from 'react-broadcast-sync';
