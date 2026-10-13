@@ -104,6 +104,7 @@ export default defineConfig({
         {
           label: 'API Reference',
           items: [
+            { label: 'useSyncedState (2.2.0+)', slug: 'api/use-synced-state' },
             { label: 'useBroadcastChannel', slug: 'api/use-broadcast-channel' },
             { label: 'BroadcastActions', slug: 'api/broadcast-actions' },
             { label: 'BroadcastProvider', slug: 'api/broadcast-provider' },
