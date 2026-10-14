@@ -1,0 +1,81 @@
+---
+title: useSyncedState
+description: Share one current value per key, with late-tab bootstrap and deterministic version ordering.
+head:
+  - tag: script
+    attrs:
+      type: application/ld+json
+    content: '{"@context": "https://schema.org", "@type": "TechArticle", "headline": "useSyncedState", "description": "Share one current value per key, with late-tab bootstrap and deterministic version ordering.", "url": "https://react-broadcast-sync-docs.vercel.app/api/use-synced-state/", "author": {"@type": "Person", "name": "Idan Shalem"}}'
+  - tag: script
+    attrs:
+      type: application/ld+json
+    content: '{"@context": "https://schema.org", "@type": "BreadcrumbList", "itemListElement": [{"@type": "ListItem", "position": 1, "name": "Docs", "item": "https://react-broadcast-sync-docs.vercel.app/"}, {"@type": "ListItem", "position": 2, "name": "useSyncedState", "item": "https://react-broadcast-sync-docs.vercel.app/api/use-synced-state/"}]}'
+---
+
+Available in **2.2.0 and later**. This hook shares a current value between open tabs of the same origin. It is separate from the message log in `useBroadcastChannel` and `BroadcastProvider`.
+
+```tsx
+import { useSyncedState } from 'react-broadcast-sync';
+
+export default function ThemePicker() {
+  const [theme, setTheme, state] = useSyncedState('app', 'theme', 'light', {
+    namespace: 'ui-v1',
+    validate: (value): value is string => value === 'light' || value === 'dark',
+  });
+  return (
+    <section>
+      <button onClick={() => setTheme(theme === 'light' ? 'dark' : 'light')}>Theme: {theme}</button>
+      {state.error && <p role="alert">{state.error}</p>}
+    </section>
+  );
+}
+```
+
+All participants must use the same channel, namespace and key. The hook opens its own protocol connection, not the existing message hook's connection. Do not use its raw transport name as an application API.
+
+## Return value
+
+`[value, setValue, state]`
+
+- `value`: the latest accepted value in this tab.
+- `setValue(next)` or `setValue(current => next)`: returns a boolean. A successful validation and native send commits the local value and returns `true`. Unsupported transport, failed validation, clone or send leaves the value unchanged and returns `false`. A successful send is not a peer delivery acknowledgement. Updater exceptions propagate to the caller. Treat objects as immutable; functions are not structured-cloneable values.
+- `state.error`: `string | null`. A successful local write clears it.
+- `state.sync()`: starts another bounded request window and returns a promise with the result below. Mount starts a request automatically.
+
+## Options
+
+| Option         | Default | Meaning                                                                                       |
+| -------------- | ------- | --------------------------------------------------------------------------------------------- |
+| `namespace`    | `''`    | Isolates groups on the same channel name.                                                     |
+| `syncWindowMs` | `250`   | Finite number from 0 to 2147483647 milliseconds. Replies are gathered until this window ends. |
+| `validate`     | none    | Optional `(value: unknown) => value is T` check for incoming and local values.                |
+
+TypeScript's `T` is not runtime validation. Invalid incoming payloads are ignored. A throwing validator sets the error. Without a validator, application values are not checked beyond the protocol shape.
+
+## Bootstrap and sync results
+
+The initial value is a fallback, not a write. A new tab asks open peers for committed state. It accepts greater versions as replies arrive, not only at the end of the window. Uncommitted peer defaults do not replace its fallback.
+
+| Result        | Meaning                                                                                                                                   |
+| ------------- | ----------------------------------------------------------------------------------------------------------------------------------------- |
+| `received`    | A matching committed peer response arrived, even if that version was already known.                                                       |
+| `no-peer`     | No matching committed response arrived before the deadline. This does not prove there are no peers or that the fallback is authoritative. |
+| `send-failed` | The request could not be sent, or the window was invalid.                                                                                 |
+| `cancelled`   | A newer sync replaced this request, or the connection was disposed.                                                                       |
+| `unavailable` | There is no active connection, for example in an unsupported browser.                                                                     |
+
+Live updates can arrive even when sync returns `no-peer`. If peers have closed, this hook cannot recover their values. There is no persistence, history replay, server sync, automatic reconnect or fallback transport.
+
+## Conflicts and lifecycle
+
+The greatest logical `(clock, source)` version wins: clock first, a fixed source-string tie-breaker second. A reply keeps the original write version. Receiving a value does not broadcast it again. Stale or unmatched response clocks are observed without applying their values. A reply cannot replace a newer local/live version.
+
+This is not wall-clock ordering, an atomic counter, a transaction or preservation of every edit intent. Concurrent functional increments can lose an intent. Keep business records and permissions authoritative on the server.
+
+Channel, namespace or key changes close the old connection, cancel its requests and reset to the new identity's initial fallback. Rerendering with a different initial value alone does not reset it. Changing only the validator or sync window does not reset it. React StrictMode cleanup/remount and React 16.8+ are supported.
+
+BroadcastChannel is a same-origin/partition transport, not an authentication or authorization boundary. Neither a namespace nor a validator authenticates the sender.
+
+## Choose the right API
+
+Use this hook for one current value such as a theme or filter selection. Use [useBroadcastChannel](/api/use-broadcast-channel/) for application events, custom protocols or a message log. The [manual late-tab recipe](/recipes/late-tabs/) still applies to that message API; it is not the state hook's conflict policy.
