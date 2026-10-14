@@ -1,0 +1,105 @@
+---
+title: Optimistic Task Updates
+description: Share an optimistic completion intent without confusing it with a server acknowledgement.
+head:
+  - tag: script
+    attrs:
+      type: application/ld+json
+    content: '{"@context": "https://schema.org", "@type": "TechArticle", "headline": "Optimistic Task Updates", "description": "Share an optimistic completion intent without confusing it with a server acknowledgement.", "url": "https://react-broadcast-sync-docs.vercel.app/recipes/optimistic-updates/", "author": {"@type": "Person", "name": "Idan Shalem"}, "isPartOf": {"@type": "WebSite", "name": "react-broadcast-sync documentation", "url": "https://react-broadcast-sync-docs.vercel.app"}}'
+  - tag: script
+    attrs:
+      type: application/ld+json
+    content: '{"@context": "https://schema.org", "@type": "BreadcrumbList", "itemListElement": [{"@type": "ListItem", "position": 1, "name": "Docs", "item": "https://react-broadcast-sync-docs.vercel.app/"}, {"@type": "ListItem", "position": 2, "name": "Optimistic Task Updates", "item": "https://react-broadcast-sync-docs.vercel.app/recipes/optimistic-updates/"}]}'
+---
+
+A user completes a task in tab A. Its UI updates before the save finishes, but tab B still shows the old task. Send an explicit completion intent from the click handler and apply it in the receiving connection.
+
+This recipe uses `useBroadcastChannel`, not `useSyncedState`: it sends an event, not a versioned current value. Completion is idempotent here; there is no toggle or shared counter.
+
+## The tested component
+
+The same component lives in `examples/optimistic-task.tsx` and runs in the native two-page integration tests. `saveTask` is the app's server operation, not a library API.
+
+```tsx
+import React, { useState } from 'react';
+import { useBroadcastChannel } from 'react-broadcast-sync';
+
+type Completion = { taskId: string };
+
+export function OptimisticTask({ saveTask }: { saveTask: (taskId: string) => Promise<void> }) {
+  const taskId = 'write-docs';
+  const [done, setDone] = useState(false);
+  const [status, setStatus] = useState('Not saved in this tab');
+  const [pending, setPending] = useState(false);
+  const { postMessage, error } = useBroadcastChannel('task-intents', {
+    registeredTypes: ['task-completed'],
+    onMessage: {
+      'task-completed': msg => {
+        const payload = msg.message as Partial<Completion> | null;
+        if (payload?.taskId !== taskId) return;
+        setDone(true);
+        // Receiving an intent does not prove that a server saved it.
+        setStatus('Completion received from another connection');
+      },
+    },
+  });
+
+  const complete = async () => {
+    setDone(true); // Optimistic local UI: the sender does not receive its own event.
+    setPending(true);
+    setStatus('Saving in this tab');
+    postMessage('task-completed', { taskId });
+    try {
+      await saveTask(taskId);
+      setStatus('Saved by this tab');
+    } catch {
+      // Keep the intent visible, but do not claim that the server accepted it.
+      setStatus('Save failed: reload authoritative data before retrying');
+    } finally {
+      setPending(false);
+    }
+  };
+
+  return (
+    <section>
+      <h1>Optimistic task completion</h1>
+      <p>Write the docs: {done ? 'Complete' : 'Incomplete'}</p>
+      <button disabled={done || pending} onClick={() => void complete()}>
+        Complete task
+      </button>
+      <p role="status">{status}</p>
+      {error && <p role="alert">Cross-tab delivery error: {error}</p>}
+    </section>
+  );
+}
+```
+
+Supply your save operation when mounting it:
+
+```tsx
+<OptimisticTask
+  saveTask={async taskId => {
+    const response = await fetch(`/api/tasks/${taskId}/complete`, { method: 'POST' });
+    if (!response.ok) throw new Error('Save failed');
+  }}
+/>
+```
+
+The URL above is an example app endpoint. The library does not provide it. The integration tests intercept this request with a deliberately delayed response or a failure; they do not test a real backend.
+
+## What each tab knows
+
+- Tab A updates itself and sends once from its handler. It alone calls `saveTask` and displays its server result.
+- Tab B applies the received completion, but does not call `saveTask`, rebroadcast it, or claim it was saved.
+- A failed save leaves the optimistic intent visible with an error in A. This is deliberate, not automatic rollback. A production app must refetch authoritative data and choose how to reconcile pending operations, including notifying peers if needed. Blindly undoing the task can overwrite a newer operation.
+- The hook's `error` reports a messaging problem separately from a save failure. Neither receipt nor lack of an error proves all peers received the event.
+
+## Boundaries
+
+- A later tab starts from the initial UI. Raw messages have no replay. Load authoritative task data on mount, or consider [useSyncedState](/api/use-synced-state/) for ephemeral current-value sync, not server authority.
+- Tabs need the same origin and channel. Independent connections with different sources can also receive each other's events within one tab.
+- Do not send from an effect watching `done`; received changes would be sent again.
+- This one-way completion recipe does not resolve competing completion/reopen actions. Add app-level operation/version rules before extending it. Concurrent absolute-value writes are not atomic.
+- Shared intent and local save status are different state. The event log is not a database, and payload validation here only checks the expected task ID, not sender identity.
+
+See [Sync Shared State](/guides/sync-shared-state/) for the event/state distinction and [Late-joining Tabs](/recipes/late-tabs/) for manual bootstrap.

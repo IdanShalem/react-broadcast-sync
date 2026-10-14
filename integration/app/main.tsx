@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { createRoot } from 'react-dom/client';
 import { useBroadcastChannel } from '../../src';
+import { OptimisticTask } from '../../examples/optimistic-task';
 import { useSyncedState } from '../../src/hooks/useSyncedState';
 
 interface AppParams {
@@ -162,7 +163,14 @@ function MultiHookApp() {
 }
 
 createRoot(document.getElementById('root')!).render(
-  new URLSearchParams(window.location.search).has('draftState') ? (
+  new URLSearchParams(window.location.search).has('optimisticTask') ? (
+    <OptimisticTask
+      saveTask={async taskId => {
+        const response = await fetch(`/api/tasks/${taskId}/complete`, { method: 'POST' });
+        if (!response.ok) throw new Error('Save failed');
+      }}
+    />
+  ) : new URLSearchParams(window.location.search).has('draftState') ? (
     <React.StrictMode>
       <DraftStateApp />
     </React.StrictMode>
