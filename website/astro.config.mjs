@@ -115,6 +115,7 @@ export default defineConfig({
           label: 'Recipes',
           items: [
             { label: 'Real-time Notifications', slug: 'recipes/notifications' },
+            { label: 'Optimistic Task Updates', slug: 'recipes/optimistic-updates' },
             { label: 'Multi-tab Form Sync', slug: 'recipes/form-sync' },
             { label: 'Tab Presence', slug: 'recipes/tab-presence' },
             { label: 'Late-joining Tabs', slug: 'recipes/late-tabs' },
