@@ -1,0 +1,847 @@
+<p align="center">
+  <img src="./assets/react-broadcast-sync-logo.png" alt="react-broadcast-sync logo" width="300" />
+</p>
+
+<p align="center">
+
+# react-broadcast-sync
+
+</p>
+
+<p align="center">
+  <a href="https://github.com/IdanShalem/react-broadcast-sync/actions/workflows/ci.yml">
+    <img alt="CI" src="https://github.com/IdanShalem/react-broadcast-sync/actions/workflows/ci.yml/badge.svg" />
+  </a>
+  <a href="https://codecov.io/gh/IdanShalem/react-broadcast-sync">
+    <img alt="Coverage" src="https://codecov.io/gh/IdanShalem/react-broadcast-sync/branch/main/graph/badge.svg" />
+  </a>
+  <a href="https://www.npmjs.com/package/react-broadcast-sync">
+    <img alt="NPM Version" src="https://img.shields.io/npm/v/react-broadcast-sync.svg" />
+  </a>
+  <a href="https://www.npmjs.com/package/react-broadcast-sync">
+    <img alt="NPM Downloads" src="https://img.shields.io/npm/dm/react-broadcast-sync.svg" />
+  </a>
+  <a href="https://bundlephobia.com/result?p=react-broadcast-sync">
+    <img alt="Bundlephobia" src="https://badgen.net/bundlephobia/minzip/react-broadcast-sync" />
+  </a>
+  <a href="https://opensource.org/licenses/MIT">
+    <img alt="License: MIT" src="https://img.shields.io/badge/License-MIT-blue.svg" />
+  </a>
+  <a href="https://github.com/IdanShalem/react-broadcast-sync/issues">
+    <img alt="GitHub issues" src="https://img.shields.io/github/issues/IdanShalem/react-broadcast-sync" />
+  </a>
+</p>
+
+Easily sync UI state or user events across browser tabs in React apps — notifications, presence, forms, and more. This package provides a clean and type-safe abstraction over the native API, enabling efficient, scoped, and reliable cross-tab messaging.
+
+<p align="center">
+  <img src="https://raw.githubusercontent.com/IdanShalem/react-broadcast-sync/main/demo/react-broadcast-sync-demo/public/assets/react-broadcast-sync-demo-video.gif" alt="React Broadcast Sync Demo" width="600" />
+</p>
+
+## Table of Contents
+
+- [Features](#features)
+- [Demo App](#demo-app)
+- [Installation](#installation)
+- [Quick Start](#quick-start)
+- [Advanced Usage](#️advanced-usage)
+- [BroadcastProvider](#using-broadcastprovider)
+- [API Reference](#api-reference)
+- [Best Practices](#best-practices)
+- [Common Use Cases](#common-use-cases)
+- [Performance Considerations](#performance-considerations)
+- [Troubleshooting](#-roubleshooting)
+- [Testing](#testing)
+- [Browser Support](#browser-support)
+- [Telemetry](#telemetry)
+- [Coming Soon](#coming-soon)
+- [Versioning & Releases](#versioning--releases)
+- [Contributing](#contributing)
+- [License](#license)
+
+## Features
+
+- Simple and intuitive API
+- Real-time synchronization across tabs
+- TypeScript support
+- Zero dependencies
+- Automatic message expiration and cleanup
+- Send/receive any serializable message
+- Namespace and source scoping support
+- Clear individual or all messages
+- Only accept allowed message types (optional)
+- `BroadcastProvider` for context-based usage with full options support
+- **Ping and active source detection** (discover other tabs and their source names)
+- **Per-type `onMessage` callbacks** (react to incoming messages without polling state)
+
+## Demo App
+
+Check out our [live demo](https://react-broadcast-sync-3w3m.vercel.app/) to see the library in action! The demo showcases three main features:
+
+1. **Counter Synchronization**
+
+   - Real-time counter updates across tabs
+   - Visual feedback for sync status
+   - Smooth animations
+
+2. **Text Synchronization**
+
+   - Real-time text input sync
+   - Multi-line support
+   - Instant updates
+
+3. **Todo List**
+   - Synchronized todo items
+   - Real-time hover effects
+   - Scroll position sync
+   - Completion status sync
+   - Delete functionality
+
+The demo is built with React 19, TypeScript, Material-UI, and Framer Motion. You can find the source code in the [demo directory](./demo/react-broadcast-sync-demo).
+
+---
+
+## Installation
+
+```bash
+npm install react-broadcast-sync
+# or
+yarn add react-broadcast-sync
+# or
+pnpm add react-broadcast-sync
+```
+
+---
+
+## Quick Start
+
+### Basic Usage
+
+```tsx
+import { useBroadcastChannel } from 'react-broadcast-sync';
+
+function MyComponent() {
+  const { messages, postMessage, clearReceivedMessages } = useBroadcastChannel('my-channel');
+
+  const handleSend = () => {
+    postMessage('greeting', { text: 'Hello from another tab!' });
+  };
+
+  return (
+    <>
+      <button onClick={handleSend}>Send</button>
+      {messages.map(msg => (
+        <div key={msg.id}>
+          {msg.message.text}
+          <button onClick={() => clearReceivedMessages({ ids: [msg.id] })}>Clear</button>
+        </div>
+      ))}
+    </>
+  );
+}
+```
+
+---
+
+### Advanced Usage
+
+```tsx
+const {
+  channelName,
+  messages,
+  sentMessages,
+  postMessage,
+  clearReceivedMessages,
+  clearSentMessages,
+  error,
+} = useBroadcastChannel('my-channel', {
+  sourceName: 'my-tab',
+  cleaningInterval: 2000,
+  keepLatestMessage: true,
+  registeredTypes: ['greeting', 'notification'],
+  namespace: 'my-app',
+  deduplicationTTL: 10 * 60 * 1000, // 10 minutes
+  cleanupDebounceMs: 500, // Debounce cleanup operations by 500ms
+});
+```
+
+#### Sending a message with expiration:
+
+```tsx
+postMessage('notification', { text: 'This disappears in 5s' }, { expirationDuration: 5000 });
+```
+
+---
+
+### Using `BroadcastProvider`
+
+You can wrap part of your app with `BroadcastProvider` and use `useBroadcastProvider()` to consume the channel context.
+
+```tsx
+import { BroadcastProvider, useBroadcastProvider } from 'react-broadcast-sync';
+
+function App() {
+  return (
+    <BroadcastProvider channelName="notifications">
+      <NotificationBar />
+    </BroadcastProvider>
+  );
+}
+
+function NotificationBar() {
+  const { messages } = useBroadcastProvider();
+
+  return (
+    <div>
+      {messages.map(msg => (
+        <p key={msg.id}>{msg.message.text}</p>
+      ))}
+    </div>
+  );
+}
+```
+
+#### `BroadcastProvider` Props
+
+| Prop          | Type               | Required | Description                                  |
+| ------------- | ------------------ | -------- | -------------------------------------------- |
+| `channelName` | `string`           | ✅       | The name of the broadcast channel            |
+| `options`     | `BroadcastOptions` | ❌       | Any option accepted by `useBroadcastChannel` |
+| `children`    | `React.ReactNode`  | ✅       | Component subtree                            |
+
+All fields in `BroadcastOptions` (see the table in the [API Reference](#broadcastoptions)) can be forwarded via the `options` prop. This includes `namespace`, `registeredTypes`, `onMessage`, `keepLatestMessage`, `sourceName`, and more.
+
+```tsx
+<BroadcastProvider
+  channelName="notifications"
+  options={{
+    namespace: 'v2',
+    registeredTypes: ['alert', 'info'],
+    onMessage: {
+      alert: msg => showToast(msg.message.text),
+    },
+  }}
+>
+  <App />
+</BroadcastProvider>
+```
+
+---
+
+## API Reference
+
+### `useBroadcastChannel` Hook
+
+```typescript
+const {
+  channelName,
+  messages,
+  sentMessages,
+  postMessage,
+  clearReceivedMessages,
+  clearSentMessages,
+  error,
+} = useBroadcastChannel(channelName, options);
+```
+
+#### Options
+
+```typescript
+interface BroadcastOptions {
+  sourceName?: string; // Custom name for the message source
+  cleaningInterval?: number; // Interval in ms for cleaning expired messages (default: 1000)
+  keepLatestMessage?: boolean; // Keep only the latest message (default: false)
+  registeredTypes?: string[]; // List of allowed message types
+  namespace?: string; // Channel namespace for isolation
+  deduplicationTTL?: number; // Time in ms to keep message IDs for deduplication (default: 5 minutes)
+  cleanupDebounceMs?: number; // Debounce time in ms for cleanup operations (default: 0)
+  batchingDelayMs?: number; // Delay in ms to batch outgoing messages (default: 20). If > 0, messages are batched and sent together.
+  excludedBatchMessageTypes?: string[]; // Message types to always send immediately, never batched (default: []).
+  onMessage?: MessageCallback | OnMessageMap; // Callback(s) fired when a received message passes all filters (default: undefined).
+  telemetry?: boolean; // Opt-out anonymous usage telemetry (default: true). Pass false to disable.
+}
+```
+
+#### Default Values
+
+| Option                      | Default Value | Description                                    |
+| --------------------------- | ------------- | ---------------------------------------------- |
+| `sourceName`                | `undefined`   | Auto-generated if not provided                 |
+| `cleaningInterval`          | `1000`        | 1 second between cleanup runs                  |
+| `keepLatestMessage`         | `false`       | Keep all messages by default                   |
+| `registeredTypes`           | `[]`          | Accept all message types by default            |
+| `namespace`                 | `''`          | No namespace by default                        |
+| `deduplicationTTL`          | `300000`      | 5 minutes (5 × 60 × 1000 ms)                   |
+| `cleanupDebounceMs`         | `0`           | No debounce by default                         |
+| `batchingDelayMs`           | `20`          | Batch delay in ms (0 = off)                    |
+| `excludedBatchMessageTypes` | `[]`          | Types never batched                            |
+| `onMessage`                 | `undefined`   | Callback(s) for received messages              |
+| `telemetry`                 | `true`        | Anonymous usage stats. Pass `false` to opt out |
+
+#### Return Value
+
+```typescript
+interface BroadcastActions {
+  channelName: string; // The resolved channel name (includes namespace)
+  messages: BroadcastMessage[]; // Received messages
+  sentMessages: BroadcastMessage[]; // Messages sent by this instance
+  postMessage: (type: string, content: any, options?: SendMessageOptions) => void;
+  clearReceivedMessages: (opts?: { ids?: string[]; types?: string[]; sources?: string[] }) => void;
+  clearSentMessages: (opts?: { ids?: string[]; types?: string[]; sync?: boolean }) => void;
+  getLatestMessage: (opts?: { type?: string; source?: string }) => BroadcastMessage | null;
+  closeChannel: () => void;
+  error: string | null; // Current error state
+}
+```
+
+### `useBroadcastChannel(channelName, options?)`
+
+Returns an object with:
+
+| Property                  | Type                 | Description                                                                                                                                                                                  |
+| ------------------------- | -------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `channelName`             | `string`             | The resolved channel name (includes namespace)                                                                                                                                               |
+| `messages`                | `BroadcastMessage[]` | All received messages from other tabs                                                                                                                                                        |
+| `sentMessages`            | `BroadcastMessage[]` | Messages sent from this tab                                                                                                                                                                  |
+| `postMessage()`           | `function`           | Send a message to all tabs                                                                                                                                                                   |
+| `clearReceivedMessages()` | `function`           | Clear received messages. No filters ⇒ clear all. With filters, a message is deleted only if it matches **every** provided filter (`ids`, `types`, `sources`). Empty arrays act as wildcards. |
+| `clearSentMessages()`     | `function`           | Clear messages this tab sent (same matching rules). Pass `sync: true` to broadcast the clear to other tabs.                                                                                  |
+| `getLatestMessage()`      | `function`           | Get the latest message matching optional filters (`type`, `source`). Returns the most recent message that matches, or `null` if none.                                                        |
+| `ping(timeoutMs?)`        | `function`           | Ping other tabs on the channel and collect their source names. `timeoutMs` (default: 300ms) controls how long to wait for responses before resolving. Returns a Promise of string array.     |
+| `isPingInProgress`        | `boolean`            | `true` while a ping is active, otherwise `false`.                                                                                                                                            |
+| `closeChannel()`          | `function`           | Explicitly closes the broadcast channel and removes event listeners. Safe to call multiple times.                                                                                            |
+| `error`                   | `string \| null`     | Any runtime error from the channel                                                                                                                                                           |
+
+#### Clearing examples
+
+```tsx
+// Clear everything we've received
+clearReceivedMessages();
+
+// Clear all messages we sent and broadcast the clear to other tabs
+clearSentMessages({ sync: true });
+
+// Clear by id or by type (OR inside each array)
+clearReceivedMessages({ ids: ['123'] }); // id match
+clearReceivedMessages({ types: ['alert', 'chat'] }); // type match
+
+// Combine filters (logical AND between filters)
+// Removes messages whose id is '123' AND type is 'alert'
+clearSentMessages({ ids: ['123'], types: ['alert'] });
+```
+
+#### Send Options:
+
+```ts
+interface SendMessageOptions {
+  expirationDuration?: number; // TTL in ms
+  expirationDate?: number; // Exact expiry timestamp
+}
+```
+
+#### Message Format:
+
+```ts
+interface BroadcastMessage {
+  id: string;
+  type: string;
+  message: any;
+  timestamp: number;
+  source: string;
+  expirationDate?: number;
+}
+```
+
+#### Getting the Latest Message
+
+You can use `getLatestMessage` to retrieve the most recent message received, optionally filtered by `type` and/or `source`. If no options are provided, it returns the latest message of any kind. If no message matches, it returns `null`.
+
+**Signature:**
+
+```ts
+getLatestMessage(options?: { type?: string; source?: string }): BroadcastMessage | null
+```
+
+**Examples:**
+
+```tsx
+// Get the latest message of any type/source
+const latest = getLatestMessage();
+
+// Get the latest message of a specific type
+const latestAlert = getLatestMessage({ type: 'alert' });
+
+// Get the latest message from a specific source
+const latestFromTab = getLatestMessage({ source: 'tab-123' });
+
+// Get the latest message of a specific type from a specific source
+const latestInfoFromTab = getLatestMessage({ type: 'info', source: 'tab-123' });
+
+// Check if there are any messages of a type
+if (getLatestMessage({ type: 'notification' })) {
+  // ...
+}
+```
+
+**Behavior:**
+
+- If no messages are present, returns `null`.
+- If no message matches the filter, returns `null`.
+- If multiple messages match, returns the most recently received one.
+
+#### Ping & Active Source Detection
+
+`useBroadcastChannel` provides a `ping` method and an `isPingInProgress` state for discovering active sources (tabs) on the same channel.
+
+- **`ping(timeoutMs?: number): Promise<string[]>`**: Broadcasts a ping and collects responses from other tabs within the timeout. Returns an array of source names (excluding your own).
+- **`isPingInProgress: boolean`**: Indicates if a ping is currently in progress.
+
+**Example:**
+
+```tsx
+const { ping, isPingInProgress } = useBroadcastChannel('my-channel', {
+  sourceName: 'my-tab',
+});
+
+// To discover other active sources:
+const activeSources = await ping(300); // e.g., ['tab-2', 'tab-3']
+
+// To show loading state:
+if (isPingInProgress) {
+  // Show spinner or status
+}
+```
+
+#### Closing the Channel Explicitly
+
+You can use `closeChannel` to explicitly close the underlying BroadcastChannel and remove all event listeners. This is useful if you want to clean up resources before the component unmounts, or to stop all cross-tab communication on demand. Note that the channel will automatically close and all event listeners will be removed when the component unmounts, so this method is mainly useful for manual cleanup.
+
+**Signature:**
+
+```ts
+closeChannel(): void
+```
+
+**Example:**
+
+```tsx
+const { closeChannel } = useBroadcastChannel('my-channel');
+
+// ... later, when you want to stop all communication:
+closeChannel();
+```
+
+**Notes:**
+
+- After calling `closeChannel`, the channel is closed and will not send or receive any more messages.
+- It is safe to call `closeChannel` multiple times (idempotent).
+- You do not need to call this for normal React unmounting; the hook will clean up automatically. Use it for explicit/manual cleanup only.
+
+---
+
+#### `onMessage` Callbacks
+
+`onMessage` lets you react to incoming messages imperatively — without polling `messages` state or using `useEffect`. The callback fires after the message is added to state and only for messages that pass all active filters (`registeredTypes`, expiry, deduplication, self-filter). Internal protocol messages (PING, PONG, CLEAR_SENT_MESSAGES) never trigger it.
+
+**Two supported shapes:**
+
+```ts
+// 1. A single catch-all function — fires for every accepted message type
+type MessageCallback = (msg: BroadcastMessage) => void;
+
+// 2. A map from message type → one handler function
+type OnMessageMap = { [type: string]: (msg: BroadcastMessage) => void };
+```
+
+**Catch-all example:**
+
+```tsx
+const { postMessage } = useBroadcastChannel('my-channel', {
+  onMessage: msg => {
+    console.log('received', msg.type, msg.message);
+  },
+});
+```
+
+**Per-type map example:**
+
+```tsx
+useBroadcastChannel('my-channel', {
+  onMessage: {
+    error: msg => showToast(`Error: ${msg.message.text}`),
+    success: msg => celebrate(),
+    log: msg => console.log('[log]', msg.message),
+  },
+});
+```
+
+**Behavior:**
+
+- Fires for messages from **other** tabs only — self-messages are always ignored before this point.
+- Fires **after** `messages` state is updated — both the callback argument and `messages[messages.length - 1]` will be the same object.
+- A type not listed in the map causes no error — it is silently skipped.
+- If the callback throws, the error is caught and debug-logged. Message state is **not** affected.
+- Changing `onMessage` between renders is safe — the latest callback is always used with no stale closure risk.
+- Works with batched messages: each message in a batch triggers its own callback call.
+
+---
+
+#### `telemetry` Option
+
+`react-broadcast-sync` collects anonymous, structural usage signals to help the maintainer understand how the library is used in the wild.
+
+**What is collected:**
+
+- Which `BroadcastOptions` keys are present (not their values)
+- The shape of `onMessage` (`none` / `function` / `map`)
+- Whether batching is enabled
+- Whether `BroadcastChannel` is supported in the browser
+- Which action methods (`postMessage`, `ping`, etc.) are called at least once per session
+- Hook vs. provider entry point
+
+**What is never collected:**
+
+- Channel names, source names, message content, or message types
+- Any user-identifying data
+
+Telemetry is **on by default**. Pass `telemetry: false` to opt out at any time with no behaviour change.
+
+Events are batched and flushed in a single request when the tab is hidden or after 30 seconds. A failed request is silently discarded and never surfaces to your application.
+
+See [TELEMETRY.md](./TELEMETRY.md) for the full legal notice.
+
+---
+
+## Best Practices
+
+- **Use `namespace`** to isolate functionality between different app modules.
+- **Register allowed message types** using `registeredTypes` to avoid processing unknown or irrelevant messages.
+- **Always handle `error`** state in UI or logs to detect channel failures.
+- **Use `keepLatestMessage: true`** if you only care about the most recent message (e.g. status updates).
+- **Set appropriate `deduplicationTTL`** based on your message frequency and importance.
+- **Use `cleanupDebounceMs`** when dealing with rapid message updates to prevent performance issues.
+- **Use `onMessage`** for imperative side-effects (toasts, analytics, logging) rather than `useEffect` on `messages` — it fires exactly once per accepted message, with no extra renders required.
+
+## Common Use Cases
+
+### Real-time Notifications
+
+```tsx
+function NotificationSystem() {
+  const { messages, postMessage } = useBroadcastChannel('notifications', {
+    keepLatestMessage: true,
+    registeredTypes: ['alert', 'info', 'warning'],
+    deduplicationTTL: 60000, // 1 minute
+  });
+
+  return (
+    <div>
+      {messages.map(msg => (
+        <Notification key={msg.id} type={msg.type} content={msg.message} />
+      ))}
+    </div>
+  );
+}
+```
+
+### Multi-tab Form Synchronization
+
+```tsx
+function FormSync() {
+  const { messages, postMessage } = useBroadcastChannel('form-sync', {
+    namespace: 'my-form',
+    cleaningInterval: 5000,
+  });
+
+  const handleChange = (field: string, value: string) => {
+    postMessage('field-update', { field, value }, { expirationDuration: 300000 }); // 5 minutes
+  };
+
+  return <Form onChange={handleChange} />;
+}
+```
+
+### Tab Status Synchronization
+
+```tsx
+function TabStatus() {
+  const { postMessage } = useBroadcastChannel('tab-status', {
+    sourceName: 'main-tab',
+    keepLatestMessage: true,
+  });
+
+  useEffect(() => {
+    postMessage('tab-active', { timestamp: Date.now() });
+    return () => postMessage('tab-inactive', { timestamp: Date.now() });
+  }, []);
+
+  return null;
+}
+```
+
+## Performance Considerations
+
+### Message Size
+
+- Keep messages small and serializable
+- Avoid sending large objects or circular references
+- Consider using message IDs to reference larger data
+
+### Message Frequency
+
+- Use `keepLatestMessage: true` for high-frequency updates
+- Implement debouncing for rapid state changes
+- Consider using `expirationDuration` for temporary messages
+
+#### Batching Mechanism
+
+**Batching** allows you to group multiple outgoing messages and send them together in a single post to the BroadcastChannel. This can significantly reduce the number of cross-tab events, improve performance, and avoid flooding the channel when many messages are sent in rapid succession (e.g., during fast typing or bulk updates).
+
+- **batchingDelayMs**: If set to a value greater than 0 (default: 20ms), outgoing messages are collected for up to this delay and then sent as an array. If 0 or negative, batching is disabled and all messages are sent immediately.
+- **excludedBatchMessageTypes**: An array of message types that should always be sent immediately, even if batching is enabled. Use this for urgent or high-priority messages (e.g., 'alert', 'sync-now').
+
+**How it works:**
+
+- When batching is enabled, calls to `postMessage` within the batching window are buffered and sent as a batch (array of messages) after the delay.
+- On the receiving side, the hook automatically handles both single messages and batches (arrays). If you listen to the channel directly, always check if `Array.isArray(event.data)`.
+- If the tab unmounts or the channel closes, any unsent batched messages are flushed immediately.
+
+**Why batching matters:**
+
+- Reduces the number of events and improves efficiency, especially for high-frequency updates.
+- Prevents message storms that can occur when many updates happen in a short time.
+- Lets you control which messages are always sent immediately for real-time needs.
+
+**Example:**
+
+```tsx
+const { postMessage } = useBroadcastChannel('my-channel', {
+  batchingDelayMs: 50, // Batch messages for up to 50ms
+  excludedBatchMessageTypes: ['alert'], // Always send 'alert' immediately
+});
+
+// These will be batched if sent within 50ms
+postMessage('edit', { field: 'a', value: 1 });
+postMessage('edit', { field: 'b', value: 2 });
+// This will be sent immediately
+postMessage('alert', { message: 'Something happened!' });
+```
+
+### Memory Management
+
+- Clear messages when they're no longer needed using `clearReceivedMessages` / `clearSentMessages`
+- Use `cleaningInterval` to automatically remove expired messages
+- Implement proper cleanup in component unmount
+
+### Message Deduplication
+
+The `deduplicationTTL` option creates a time window (in milliseconds) during which messages with the same content and type from the same source are considered duplicates and will be ignored. This is particularly useful for:
+
+- **Preventing Message Loops**: Avoids infinite message echo between tabs when they broadcast the same message back and forth
+- **Reducing Redundancy**: Filters out identical messages sent in rapid succession, preventing unnecessary processing
+- **Natural Debouncing**: Provides built-in debouncing behavior for broadcast events without additional code
+
+Recommended TTL values based on use case:
+
+- **High-frequency updates** (e.g., real-time typing, cursor position): 1000-5000ms
+- **Medium-frequency updates** (e.g., form sync, status changes): 5000-15000ms
+- **Low-frequency updates** (e.g., notifications, alerts): 15000-30000ms
+
+Example:
+
+```tsx
+// Without deduplication, this could cause a message loop
+function ChatComponent() {
+  const { postMessage } = useBroadcastChannel('chat', {
+    deduplicationTTL: 5000, // Ignore duplicate messages for 5 seconds
+  });
+
+  const handleMessage = (text: string) => {
+    postMessage('chat-message', { text });
+  };
+}
+```
+
+### Cleanup Optimization
+
+- Use `cleanupDebounceMs` to prevent excessive cleanup operations
+- Recommended values:
+  - For frequent updates: 500-1000ms
+  - For infrequent updates: 0ms (no debounce)
+- Adjust `cleaningInterval` based on your message expiration needs
+
+## Troubleshooting
+
+### Common Issues
+
+1. **Messages Not Received**
+
+   - Check if `registeredTypes` includes your message type
+   - Verify the channel name and namespace match
+   - Ensure the message hasn't expired
+   - Check if `deduplicationTTL` isn't too short
+
+2. **Performance Issues**
+
+   - Increase `cleanupDebounceMs` if cleanup is too frequent
+   - Use `keepLatestMessage: true` for high-frequency updates
+   - Consider increasing `cleaningInterval` if cleanup is too aggressive
+
+3. **Memory Leaks**
+   - Ensure proper cleanup in component unmount
+   - Use message expiration for temporary data
+   - Clear messages when they're no longer needed
+
+### Debug Mode
+
+Enable debug logging by setting the environment variable:
+
+```bash
+REACT_APP_DEBUG_BROADCAST=true
+```
+
+This will log:
+
+- Channel creation and closure
+- Message sending and receiving
+- Cleanup operations
+- Error states
+
+## Testing
+
+### Unit Testing
+
+```tsx
+import { renderHook, act } from '@testing-library/react-hooks';
+import { useBroadcastChannel } from 'react-broadcast-sync';
+
+test('should send and receive messages', () => {
+  const { result } = renderHook(() => useBroadcastChannel('test-channel'));
+
+  act(() => {
+    result.current.postMessage('test', { data: 'hello' });
+  });
+
+  expect(result.current.messages).toHaveLength(1);
+  expect(result.current.messages[0].message.data).toBe('hello');
+});
+```
+
+### Integration Testing
+
+```tsx
+import { render, screen } from '@testing-library/react';
+import { BroadcastProvider } from 'react-broadcast-sync';
+
+test('should render messages from provider', () => {
+  render(
+    <BroadcastProvider channelName="test-channel">
+      <TestComponent />
+    </BroadcastProvider>
+  );
+
+  // Your test assertions here
+});
+```
+
+---
+
+### Running This Repository's Test Suites
+
+The repository has two test suites:
+
+```bash
+# Unit tests (Jest + jsdom)
+npm test
+
+# Cross-tab integration tests (Playwright + real Chromium tabs)
+npx playwright install chromium   # one-time browser install
+npm run test:integration
+```
+
+The integration suite serves a small React app from `integration/app` and drives two
+real browser tabs through the public hook API: message delivery between tabs,
+self-filtering, namespace isolation, `registeredTypes` filtering, `ping` source
+discovery, synced `clearSentMessages`, local `clearReceivedMessages`, and message
+expiration.
+
+## Browser Support
+
+Relies on [BroadcastChannel API](https://developer.mozilla.org/en-US/docs/Web/API/BroadcastChannel):
+
+- ✅ Chrome 54+
+- ✅ Firefox 38+
+- ✅ Edge 79+
+- ✅ Safari 15.4+
+- ✅ Opera 41+
+
+---
+
+## Telemetry
+
+`react-broadcast-sync` collects **anonymous, non-personal usage statistics** by default to help the maintainer prioritise features and fix real-world issues. No channel names, source names, message content, or user data of any kind is ever collected.
+
+A random session ID is generated on every page load and is never persisted to cookies or storage, making it impossible to track individual users or sessions.
+
+**To opt out**, pass `telemetry: false`:
+
+```tsx
+useBroadcastChannel('my-channel', { telemetry: false });
+// or
+<BroadcastProvider channelName="my-channel" options={{ telemetry: false }} />;
+```
+
+See [TELEMETRY.md](./TELEMETRY.md) for full details, legal basis, and the complete list of signals collected.
+
+---
+
+## Coming Soon
+
+We're actively improving `react-broadcast-sync`! Here are some features and enhancements planned for upcoming versions:
+
+- **Automatic Channel Recovery**  
+  Reconnect automatically if the `BroadcastChannel` gets disconnected or closed by the browser, with configurable retry delay and attempt cap.
+
+- **Cross-tab History (`withHistory`)**  
+  On connect, a new tab can request recent message history from already-open tabs. Includes chunked transfer, expiry filtering, and deduplication to prevent replaying stale or duplicate messages.
+
+- **Integration Tests**  
+  Real browser cross-tab tests using Playwright that go beyond what jsdom mocks can cover.
+
+- **Anonymous Usage Telemetry**  
+  ✅ Released — the package collects anonymous structural signals (options used, methods called, hook vs. provider). No user data. No message content.
+
+We're committed to keeping this package lightweight, flexible, and production-ready.  
+Your feedback and contributions are welcome — feel free to [open an issue](https://github.com/IdanShalem/react-broadcast-sync/issues)!
+
+---
+
+## Versioning & Releases
+
+This project uses [Semantic Release](https://semantic-release.gitbook.io/) for fully automated versioning and changelog generation.
+
+Every push to the `main` branch with a [Conventional Commit](https://www.conventionalcommits.org/en/v1.0.0/) message triggers a release that includes:
+
+- ✅ Automatic semantic version bump (`major`, `minor`, or `patch`)
+- ✅ Changelog generation and publishing to GitHub Releases
+- ✅ Publishing to [npm](https://www.npmjs.com/package/react-broadcast-sync)
+
+### Example Commit Messages
+
+```bash
+feat: add support for per-type callbacks
+fix: debounce cleanup runs properly on tab reload
+chore: update dependencies
+
+---
+
+## Contributing
+
+PRs and feature suggestions welcome! Open an issue or submit a pull request.
+
+---
+
+## License
+
+MIT © [Idan Shalem](https://github.com/IdanShalem)
+```

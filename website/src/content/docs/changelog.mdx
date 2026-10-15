@@ -25,10 +25,12 @@ This site documents **v2** (`>=2.0.0 <3.0.0`), with corrections for the latest r
 
 A major-version label does not mean every API exists in every v2 release. For example, `useSyncedState` requires **2.2.0+**. Check the minimum version on the relevant API page and your installed package version before copying an example.
 
-The site is deployed from `main`. Documentation-only corrections may land after a package release without changing npm. New, unreleased APIs must be explicitly marked as unreleased and must not be presented as available in the latest published package. The header label links here; it is not a dropdown while there is only one documentation edition.
+The site is deployed from `main`. Documentation-only corrections may land after a package release without changing npm. New, unreleased APIs must be explicitly marked as unreleased and must not be presented as available in the latest published package. The version chooser switches between current v2 and the fixed v1.11.2 archive. Search is limited to the selected edition.
 
-### Older and future majors
+## Older and future majors
 
-There is no v1 site archive yet. The v1.11.2 release has a README and source, but predates this documentation site. A correct v1 archive must be reconstructed from those versioned materials, not copied from v2 pages. Until then, use the v1 release/tag documentation for historical behavior and the release notes for migration.
+A [read-only v1.11.2 archive](/v1/) is reconstructed from that release's tagged README, source and types. It is a fixed snapshot of the last v1 release, not coverage of every v1 minor version. The archive corrects misleading historical prose against the tagged implementation and links its original sources.
 
-Do not treat v2-only APIs as available in v1. A future selector should show only real editions: v2 by default, v1 as a clearly labeled read-only archive once verified, and a future major or next edition only when it has real, appropriately labeled content. Patch releases normally remain within their major's docs with minimum-version notes.
+The version chooser stays on an equivalent page where one exists. Otherwise it opens the archive index at its explanation of missing equivalents. Older-version pages have their own sidebar, search scope and source links. Current demos and v2-only APIs are not presented as v1 content.
+
+Patch releases normally remain within their major's docs with minimum-version notes. A future major or next edition should appear only once it has real, appropriately labelled content. No v3 or unreleased archive is invented here.

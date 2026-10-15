@@ -1,0 +1,91 @@
+---
+import { isArchivePath } from '../editions.mjs';
+import { Icon } from '@astrojs/starlight/components';
+const edition = isArchivePath(Astro.url.pathname) ? 'v1' : 'v2';
+---
+<site-search data-edition={edition} data-dev={import.meta.env.DEV ? "true" : "false"}>
+  <button data-open-modal aria-label={`Search ${edition} documentation`} aria-keyshortcuts="Control+K" disabled><Icon name="magnifier" size="1.2rem" /><span class="search-label">Search {edition}</span></button>
+  <dialog aria-label={`Search ${edition} documentation`}>
+    <div class="dialog-frame">
+      <button data-close-modal aria-label="Close search">Close</button>
+      <p>Search {edition === 'v1' ? 'v1.11.2 archive only' : 'v2 documentation only'}</p>
+      <div id="starlight__search" class="pagefind-ui">
+        <label for="edition-search-input" class="sr-only">Search this edition</label>
+        <input id="edition-search-input" class="pagefind-ui__search-input" type="search" placeholder={`Search ${edition} docs`} autocomplete="off" />
+        <ul class="edition-results" aria-label="Search results"></ul>
+      </div>
+      <p class="search-status" role="status"></p>
+    </div>
+  </dialog>
+</site-search>
+<script is:inline type="module">
+  const host = document.querySelector('site-search');
+  if (host) {
+    const open = host.querySelector('button[data-open-modal]');
+    const close = host.querySelector('button[data-close-modal]');
+    const dialog = host.querySelector('dialog');
+    const input = host.querySelector('input');
+    const status = host.querySelector('.search-status');
+    const list = host.querySelector('.edition-results');
+    let queryId = 0;
+    let timer;
+    let api;
+    const show = () => { dialog.showModal(); document.body.toggleAttribute('data-search-modal-open', true); input.focus(); };
+    const search = async () => {
+      const id = ++queryId;
+      const term = input.value.trim();
+      list.replaceChildren();
+      if (!term) { status.textContent = ''; return; }
+      if (host.dataset.dev === "true") { status.textContent = 'Search is available in the production build.'; return; }
+      status.textContent = 'Searching…';
+      try {
+        const bundlePath = new URL('/pagefind/pagefind.js', window.location.href).href;
+        api ??= import(/* @vite-ignore */ bundlePath);
+        const pagefind = await api;
+        const found = await pagefind.search(term, { filters: { edition: host.dataset.edition } });
+        const results = await Promise.all(found.results.map((result) => result.data()));
+        if (id !== queryId) return;
+        for (const result of results) {
+          const li = document.createElement('li');
+          const a = document.createElement('a');
+          a.className = 'pagefind-ui__result-link'; a.href = result.url; a.textContent = result.meta.title;
+          const excerpt = document.createElement('p');
+          excerpt.textContent = new DOMParser().parseFromString(result.excerpt, 'text/html').body.textContent;
+          li.append(a, excerpt); list.append(li);
+        }
+        status.textContent = `${found.results.length} results in ${host.dataset.edition}.`;
+      } catch (error) { console.error('Edition search failed', error); if (id === queryId) status.textContent = 'Search could not load. Use the edition sidebar or try again.'; }
+    };
+    input.addEventListener('input', () => { clearTimeout(timer); ++queryId; timer = setTimeout(search, 150); });
+    open.disabled = false;
+    open.addEventListener('click', show);
+    close.addEventListener('click', () => dialog.close());
+    dialog.addEventListener('click', event => { if (event.target === dialog) dialog.close(); });
+    dialog.addEventListener('close', () => { document.body.toggleAttribute('data-search-modal-open', false); open.focus(); });
+    window.addEventListener('keydown', event => {
+      if (event.key === 'Escape' && dialog.open) { event.preventDefault(); dialog.close(); return; }
+      if ((event.ctrlKey || event.metaKey) && event.key === 'k') { event.preventDefault(); dialog.open ? dialog.close() : show(); }
+    });
+  }
+</script>
+<style>
+
+site-search { display: contents; }
+button { cursor: pointer; font: inherit; }
+button[data-open-modal] { color: var(--sl-color-text); background: var(--sl-color-bg-nav); border: 1px solid var(--sl-color-gray-5); border-radius: .4rem; padding: .4rem .6rem; display: flex; gap: .5rem; align-items: center; white-space: nowrap; }
+dialog { color: var(--sl-color-text); background: var(--sl-color-bg); border: 1px solid var(--sl-color-gray-5); border-radius: .5rem; margin: 4rem auto; width: min(40rem, calc(100% - 2rem)); max-height: calc(100% - 6rem); padding: 1rem; }
+dialog::backdrop { background: #0008; }
+[data-close-modal] { float: right; color: var(--sl-color-text); background: var(--sl-color-gray-6); border: 1px solid var(--sl-color-gray-5); border-radius: .3rem; padding: .3rem .6rem; }
+@media (max-width: 49.99rem) { .search-label { display: none; } }
+#starlight__search { --pagefind-ui-primary: var(--sl-color-text-accent); --pagefind-ui-text: var(--sl-color-text); --pagefind-ui-background: var(--sl-color-bg); --pagefind-ui-border: var(--sl-color-gray-5); --pagefind-ui-font: var(--__sl-font); }
+</style>
+
+<style is:global>
+[data-search-modal-open] { overflow: hidden; }
+.edition-results { list-style: none; padding: 0; }
+.edition-results li { margin-top: .7rem; padding: .7rem; border: 1px solid var(--sl-color-gray-5); border-radius: .3rem; }
+.edition-results a { color: var(--sl-color-text-accent); font-weight: 600; }
+.edition-results p { margin: .4rem 0 0; font-size: .9rem; }
+.pagefind-ui__search-input { width: 100%; background: var(--sl-color-bg); color: var(--sl-color-text); border: 1px solid var(--sl-color-gray-4); border-radius: .3rem; padding: .7rem; font: inherit; }
+.sr-only { position: absolute; width: 1px; height: 1px; padding: 0; overflow: hidden; clip: rect(0,0,0,0); white-space: nowrap; }
+</style>

@@ -39,6 +39,7 @@ export default defineConfig({
   integrations: [
     starlight({
       title: 'react-broadcast-sync',
+      routeMiddleware: './src/routeData.ts',
       head: [
         { tag: 'meta', attrs: { property: 'og:image', content: OG_IMAGE } },
         { tag: 'meta', attrs: { property: 'og:image:width', content: '1200' } },
@@ -76,6 +77,7 @@ export default defineConfig({
       customCss: ['./src/styles/custom.css'],
       components: {
         Header: './src/components/Header.astro',
+        Search: './src/components/EditionSearch.astro',
       },
       sidebar: [
         { label: 'Getting Started', slug: 'getting-started' },
