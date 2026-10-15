@@ -18,7 +18,7 @@ head:
 | ----------------------- | ---------------------------------------------------------------------------- | ------------------------------------------------------------------------------------ |
 | `channelName`           | `string`                                                                     | Resolved channel name, including the namespace.                                      |
 | `messages`              | `BroadcastMessage[]`                                                         | Received messages (the log). Empty in a late-joining tab until something arrives.    |
-| `sentMessages`          | `BroadcastMessage[]`                                                         | Messages this tab sent.                                                              |
+| `sentMessages`          | `BroadcastMessage[]`                                                         | Local send attempts, including queued/failed sends. Not delivery acknowledgements.   |
 | `isPingInProgress`      | `boolean`                                                                    | `true` while a `ping()` is collecting answers.                                       |
 | `error`                 | `string \| null`                                                             | Set when the browser lacks `BroadcastChannel` or the channel fails.                  |
 | `postMessage`           | `(type: string, content: any, options?: SendMessageOptions) => void`         | Send to every other tab on the channel.                                              |
