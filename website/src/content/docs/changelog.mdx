@@ -18,3 +18,17 @@ Release notes and breaking changes are documented in the repository:
 - [GitHub Releases](https://github.com/IdanShalem/react-broadcast-sync/releases) - release-by-release notes.
 
 When a release changes behavior you rely on, the changelog entry says how to adapt. The sections of this site describe current behavior; for "what used to be different," the changelog is the source of truth.
+
+## Documentation versions
+
+This site documents **v2** (`>=2.0.0 <3.0.0`), with corrections for the latest reviewed release, **2.2.0**. This is the documentation scope, not a promise of ongoing maintenance for every older minor release.
+
+A major-version label does not mean every API exists in every v2 release. For example, `useSyncedState` requires **2.2.0+**. Check the minimum version on the relevant API page and your installed package version before copying an example.
+
+The site is deployed from `main`. Documentation-only corrections may land after a package release without changing npm. New, unreleased APIs must be explicitly marked as unreleased and must not be presented as available in the latest published package. The header label links here; it is not a dropdown while there is only one documentation edition.
+
+### Older and future majors
+
+There is no v1 site archive yet. The v1.11.2 release has a README and source, but predates this documentation site. A correct v1 archive must be reconstructed from those versioned materials, not copied from v2 pages. Until then, use the v1 release/tag documentation for historical behavior and the release notes for migration.
+
+Do not treat v2-only APIs as available in v1. A future selector should show only real editions: v2 by default, v1 as a clearly labeled read-only archive once verified, and a future major or next edition only when it has real, appropriately labeled content. Patch releases normally remain within their major's docs with minimum-version notes.

@@ -1,5 +1,6 @@
 ---
 import config from 'virtual:starlight/user-config';
+import { docsVersion } from '../docs-version.mjs';
 
 import LanguageSelect from 'virtual:starlight/components/LanguageSelect';
 import Search from 'virtual:starlight/components/Search';
@@ -26,6 +27,7 @@ const isActive = (match: string) => currentPath.startsWith(match);
 <div class="header">
 	<div class="title-wrapper sl-flex">
 		<SiteTitle />
+		<a class="docs-version" href="/changelog/#documentation-versions" aria-label={`Documentation version ${docsVersion.label}, latest release ${docsVersion.latestRelease}`}>{docsVersion.label}</a>
 	</div>
 	<nav class="top-nav sl-hidden lg:sl-flex" aria-label="Main">
 		{
@@ -58,7 +60,30 @@ const isActive = (match: string) => currentPath.startsWith(match);
 			height: 100%;
 		}
 
+		.docs-version {
+			flex-shrink: 0;
+			font-size: var(--sl-text-sm);
+			font-weight: 600;
+			text-decoration: none;
+			color: var(--sl-color-accent-high);
+			border: 1px solid var(--sl-color-gray-5);
+			border-radius: 0.3rem;
+			padding: 0.25rem 0.4rem;
+			align-self: center;
+		}
+
+		.title-wrapper :global(.site-title) {
+			min-width: 0;
+			overflow: hidden;
+		}
+		.title-wrapper :global(.site-title span) {
+			overflow: hidden;
+			text-overflow: ellipsis;
+			white-space: nowrap;
+		}
 		.title-wrapper {
+			flex: 1 1 auto;
+			gap: 0.4rem;
 			overflow: clip;
 			padding: 0.25rem;
 			margin: -0.25rem;
@@ -84,7 +109,7 @@ const isActive = (match: string) => currentPath.startsWith(match);
 		}
 
 		.search-wrapper {
-			flex: 1;
+			flex: 0 0 auto;
 			justify-content: flex-end;
 			min-width: 0;
 		}
