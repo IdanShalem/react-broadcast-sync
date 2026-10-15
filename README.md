@@ -442,7 +442,7 @@ Returns an object with:
 | ------------------------- | -------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `channelName`             | `string`             | The resolved channel name (includes namespace)                                                                                                                                               |
 | `messages`                | `BroadcastMessage[]` | All received messages from other tabs                                                                                                                                                        |
-| `sentMessages`            | `BroadcastMessage[]` | Messages sent from this tab                                                                                                                                                                  |
+| `sentMessages`            | `BroadcastMessage[]` | Local send attempts (including queued/failed sends), not delivery acknowledgements                                                                                                           |
 | `postMessage()`           | `function`           | Send a message to all tabs                                                                                                                                                                   |
 | `clearReceivedMessages()` | `function`           | Clear received messages. No filters ⇒ clear all. With filters, a message is deleted only if it matches **every** provided filter (`ids`, `types`, `sources`). Empty arrays act as wildcards. |
 | `clearSentMessages()`     | `function`           | Clear messages this tab sent (same matching rules). Pass `sync: true` to broadcast the clear to other tabs.                                                                                  |
@@ -930,15 +930,15 @@ The package no longer collects any telemetry. The `telemetry` option is still ac
 
 ---
 
-## Coming Soon
+## Future work
 
-We're actively improving `react-broadcast-sync`! Here are some features and enhancements planned for upcoming versions:
+These are design directions, not committed releases. Current status and scope matter more than the age of an open issue.
 
 - **Automatic Channel Recovery**  
-  Reconnect automatically if the `BroadcastChannel` gets disconnected or closed by the browser, with configurable retry delay and attempt cap.
+  Qualify recoverable creation/send failures before adding retry behavior. Deliberate `closeChannel()` must stay closed; a payload/deserialization error is not proof of disconnection. Transport recreation cannot restore missed messages. See the [failure qualification](docs/channel-recovery-contract.md).
 
 - **Cross-tab History (`withHistory`)**  
-  On connect, a new tab can request recent message history from already-open tabs. Includes chunked transfer, expiry filtering, and deduplication to prevent replaying stale or duplicate messages.
+  Proposed, not implemented: a bounded opt-in history request for late joiners. Size limits, expiry/clear filtering, deduplication and replay side effects need a contract before an API. This is distinct from released `useSyncedState` current-value bootstrap.
 
 - **Integration Tests**  
   Already included: native Chromium, Firefox and WebKit cross-tab tests.
