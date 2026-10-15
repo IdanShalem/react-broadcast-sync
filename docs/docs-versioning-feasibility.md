@@ -30,3 +30,25 @@ https://starlight-versions.vercel.app/getting-started/
 https://starlight-versions.vercel.app/configuration/
 https://registry.npmjs.org/starlight-versions/latest
 https://github.com/HiDeoo/starlight-versions
+
+## Follow-up prototype: authentic v1 without plugin/Node upgrade
+
+The follow-up PR uses current Starlight route middleware plus two small component overrides. It adds a fixed read-only **1.11.2** edition, not a fabricated copy of the v2 site and not coverage of every v1 minor. npm `gitHead` matches tag commit `9d1a9a92148054cd2b7073974d36069dc7f17ef5`. Original README/types/runtime/export/telemetry documents are frozen under `website/archive/v1.11.2/` with hashes. Tagged-runtime evidence corrects old README claims about clear-filter matching, deduplication and self reception.
+
+- `/v1/` has overview, pinned-install/example, message API, provider and historical telemetry pages. Every page warns that it is a read-only snapshot. No v2 state hook or current demos masquerade as v1.
+- Native details/links chooser maps real equivalents. Missing equivalents land at `/v1/#no-equivalent-page`, not a made-up page.
+- Route middleware isolates v1 sidebar, previous/next, title home link and breadcrumb/schema. Astro emits edition-specific canonicals.
+- Pagefind tags every indexed page with its edition. The small search dialog applies the edition filter on **every query**, not an optional checkbox; it keeps the existing query/click instrumentation selectors, Ctrl/Cmd+K and Escape. Results are page-level links/snippets. This replaces the unfiltered default search UI rather than patching its internals.
+- No new package dependency, plugin, Node change or package runtime change. The search module uses native inline module loading because bundling dynamic Pagefind imports in this stack produced an unresolved Vite preload helper; the built production output is exercised, not just dev.
+
+Reproduce from repo with existing dependencies and Chromium installed:
+
+```bash
+npm --prefix website run build
+npm --prefix website run test:editions
+npm --prefix website run test:v1-example
+```
+
+Build checks validate source hashes, archive warnings and version mapping. Browser checks cover 320/390/1280, keyboard switch/search/Escape, equivalent/fallback, filtered search, sidebar/pagination/canonicals/schema. The v1 example check downloads the exact npm1.11.2 tarball, verifies the pinned SHA512 integrity, runs the actual archived snippets in native tabs and tests delivery both directions, self exclusion, late-tab non-replay, provider reception and explicit telemetry opt-out. Downloaded historical code is a test fixture, never bundled into the docs site. An isolated npm fixture avoids adding a second library version to runtime/dev dependencies.
+
+Remaining limits: no archived runnable demo, no automatic archive creation for future majors, no claim of support for all old minors, no legal revalidation of the historical telemetry notice. Fixed archive source links and current-edition migration links are intentionally different audiences, labelled in the page.

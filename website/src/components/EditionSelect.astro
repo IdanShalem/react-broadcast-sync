@@ -1,0 +1,23 @@
+---
+import { editionTarget, isArchivePath } from '../editions.mjs';
+const path = Astro.url.pathname;
+const archived = isArchivePath(path);
+const edition = archived ? 'v1' : 'v2';
+---
+<details class="edition-select">
+  <summary aria-label={`Documentation edition: ${edition}. Choose version`}>{edition}<span aria-hidden="true"> ▾</span></summary>
+  <ul>
+    <li><a href={archived ? editionTarget(path, 'v2') : path} aria-current={!archived ? 'true' : undefined}>v2 (current)</a></li>
+    <li><a href={archived ? path : editionTarget(path, 'v1')} aria-current={archived ? 'true' : undefined}>v1 (1.11.2 archive)</a></li>
+  </ul>
+</details>
+<style>
+.edition-select { position: relative; flex-shrink: 0; font-size: var(--sl-text-sm); align-self: center; }
+summary { cursor: pointer; color: var(--sl-color-accent-high); border: 1px solid var(--sl-color-gray-5); border-radius: .3rem; padding: .25rem .4rem; list-style: none; white-space: nowrap; }
+summary::-webkit-details-marker { display: none; }
+ul { position: absolute; z-index: 30; top: 100%; inset-inline-end: 0; min-width: 13rem; margin: .4rem 0 0; padding: .4rem; list-style: none; border: 1px solid var(--sl-color-gray-5); border-radius: .4rem; background: var(--sl-color-bg-nav); box-shadow: var(--sl-shadow-lg); }
+a { display: block; padding: .6rem; color: var(--sl-color-text); text-decoration: none; }
+a:hover, a:focus-visible { background: var(--sl-color-gray-6); }
+[aria-current] { font-weight: 700; }
+@media (max-width: 49.99rem) { ul { position: fixed; top: var(--sl-nav-height); inset-inline: 1rem; width: auto; min-width: 0; } }
+</style>

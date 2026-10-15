@@ -1,6 +1,7 @@
 ---
 import config from 'virtual:starlight/user-config';
-import { docsVersion } from '../docs-version.mjs';
+import EditionSelect from './EditionSelect.astro';
+import { archivePages, isArchivePath } from '../editions.mjs';
 
 import LanguageSelect from 'virtual:starlight/components/LanguageSelect';
 import Search from 'virtual:starlight/components/Search';
@@ -11,7 +12,7 @@ import ThemeSelect from 'virtual:starlight/components/ThemeSelect';
 const shouldRenderSearch =
 	config.pagefind || config.components.Search !== '@astrojs/starlight/components/Search.astro';
 
-const links = [
+const currentLinks = [
 	{ label: 'Docs', href: '/getting-started/', match: '/getting-started' },
 	{ label: 'Guides', href: '/guides/use-the-hook/', match: '/guides' },
 	{ label: 'API', href: '/api/use-broadcast-channel/', match: '/api' },
@@ -21,13 +22,15 @@ const links = [
 ];
 
 const currentPath = Astro.url.pathname;
-const isActive = (match: string) => currentPath.startsWith(match);
+const archived = isArchivePath(currentPath);
+const links = archived ? archivePages.map(({label, href}) => ({label: label.replace('v1 archive ', ''), href, match: href})) : currentLinks;
+const isActive = (match: string) => archived ? currentPath === match : currentPath.startsWith(match);
 ---
 
 <div class="header">
 	<div class="title-wrapper sl-flex">
 		<SiteTitle />
-		<a class="docs-version" href="/changelog/#documentation-versions" aria-label={`Documentation version ${docsVersion.label}, latest release ${docsVersion.latestRelease}`}>{docsVersion.label}</a>
+		<EditionSelect />
 	</div>
 	<nav class="top-nav sl-hidden lg:sl-flex" aria-label="Main">
 		{
@@ -60,17 +63,6 @@ const isActive = (match: string) => currentPath.startsWith(match);
 			height: 100%;
 		}
 
-		.docs-version {
-			flex-shrink: 0;
-			font-size: var(--sl-text-sm);
-			font-weight: 600;
-			text-decoration: none;
-			color: var(--sl-color-accent-high);
-			border: 1px solid var(--sl-color-gray-5);
-			border-radius: 0.3rem;
-			padding: 0.25rem 0.4rem;
-			align-self: center;
-		}
 
 		.title-wrapper :global(.site-title) {
 			min-width: 0;
@@ -84,7 +76,7 @@ const isActive = (match: string) => currentPath.startsWith(match);
 		.title-wrapper {
 			flex: 1 1 auto;
 			gap: 0.4rem;
-			overflow: clip;
+
 			padding: 0.25rem;
 			margin: -0.25rem;
 			min-width: 0;

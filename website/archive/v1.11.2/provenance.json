@@ -1,0 +1,12 @@
+{
+  "version": "1.11.2",
+  "commit": "9d1a9a92148054cd2b7073974d36069dc7f17ef5",
+  "npmIntegrity": "sha512-XtLMaJd0lM2lmTAfBWBhF6i2x1JDLIbINLMwVT+INzgUQcEaO7pYiCRnGXlx/ef0fT+vty4Kiay+5fdMaqC7VA==",
+  "files": {
+    "README.md.txt": "460ab6275e97045e3faecbd1da4bdf7dd4600f3e15e1f19762f6f5033f0f9b21",
+    "TELEMETRY.md.txt": "d25c4bd4d2caa3913ec3497ed49474563670ee662e53d7cc599cfe24c6b2d460",
+    "index.ts.txt": "698ea4242018003639eb504dce09d0cf1d55410965feb15ecf4be0712f8bb676",
+    "useBroadcastChannel.ts.txt": "caa33911f2b5124119343b918f8581ba0d370b661465d079aa9dafe2667c208c",
+    "types.ts.txt": "06aede8536b70f8c9cb47c632763c7682a8f8ccd625ef7b20c81c1a7a7003228"
+  }
+}
