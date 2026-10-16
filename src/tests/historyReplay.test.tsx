@@ -77,7 +77,7 @@ const setupTabs = (channel = 'history-channel', options: any = {}) => {
   return { tabA, tabB };
 };
 
-describe('requestHistory', () => {
+describe('requestMessagesHistory', () => {
   it('replays recent messages from another tab as isHistory entries', async () => {
     const { tabA, tabB } = setupTabs();
     act(() => {
@@ -94,7 +94,7 @@ describe('requestHistory', () => {
     expect(tabC.result.current.messages).toHaveLength(0);
 
     act(() => {
-      tabC.result.current.requestHistory();
+      tabC.result.current.requestMessagesHistory();
     });
     await tick();
 
@@ -125,7 +125,7 @@ describe('requestHistory', () => {
     );
     await tick();
     act(() => {
-      tabC.result.current.requestHistory();
+      tabC.result.current.requestMessagesHistory();
     });
     await tick();
 
@@ -146,7 +146,7 @@ describe('requestHistory', () => {
     const tabC = renderHook(() => useBroadcastChannel('history-dedup', { batchingDelayMs: 0 }));
     await tick();
     act(() => {
-      tabC.result.current.requestHistory();
+      tabC.result.current.requestMessagesHistory();
     });
     await tick();
 
@@ -155,7 +155,7 @@ describe('requestHistory', () => {
 
     // A second request must not duplicate what the first replay delivered
     act(() => {
-      tabC.result.current.requestHistory();
+      tabC.result.current.requestMessagesHistory();
     });
     await tick();
     expect(tabC.result.current.messages).toHaveLength(1);
@@ -177,7 +177,7 @@ describe('requestHistory', () => {
     await tick();
 
     act(() => {
-      tabC.result.current.requestHistory();
+      tabC.result.current.requestMessagesHistory();
     });
     await tick();
     expect(tabC.result.current.messages).toHaveLength(0);
@@ -193,7 +193,7 @@ describe('requestHistory', () => {
       tabD.result.current.clearReceivedMessages();
     });
     act(() => {
-      tabD.result.current.requestHistory();
+      tabD.result.current.requestMessagesHistory();
     });
     await tick();
     // 'old' and 'new' are both older than tabD's clear -> nothing returns
@@ -212,7 +212,7 @@ describe('requestHistory', () => {
     const tabC = renderHook(() => useBroadcastChannel('history-limit', { batchingDelayMs: 0 }));
     await tick();
     act(() => {
-      tabC.result.current.requestHistory({ limit: 2 });
+      tabC.result.current.requestMessagesHistory({ limit: 2 });
     });
     await tick();
 
@@ -230,7 +230,7 @@ describe('requestHistory', () => {
     const tabC = renderHook(() => useBroadcastChannel('history-types', { batchingDelayMs: 0 }));
     await tick();
     act(() => {
-      tabC.result.current.requestHistory({ types: ['chat'] });
+      tabC.result.current.requestMessagesHistory({ types: ['chat'] });
     });
     await tick();
 
@@ -248,7 +248,7 @@ describe('requestHistory', () => {
     const tabC = renderHook(() => useBroadcastChannel('history-expiry', { batchingDelayMs: 0 }));
     await tick();
     act(() => {
-      tabC.result.current.requestHistory();
+      tabC.result.current.requestMessagesHistory();
     });
     await tick();
 
@@ -263,7 +263,7 @@ describe('requestHistory', () => {
     await tick();
 
     act(() => {
-      tabA.result.current.requestHistory();
+      tabA.result.current.requestMessagesHistory();
     });
     await tick();
 
@@ -283,14 +283,14 @@ describe('requestHistory', () => {
 
     // A genuine request/reply round works
     act(() => {
-      tabB.result.current.requestHistory();
+      tabB.result.current.requestMessagesHistory();
     });
     await tick();
     expect(tabB.result.current.messages).toHaveLength(1);
 
     // An unsolicited internal HISTORY_RESPONSE with an unknown requestId is
     // dropped entirely: no append, and no response is sent back (no rebroadcast)
-    const responseType = getInternalMessageType('HISTORY_RESPONSE', 'history-guard', '');
+    const responseType = getInternalMessageType('MESSAGES_HISTORY_RESPONSE', 'history-guard', '');
     const sneaky = {
       id: 'sneaky-1',
       type: 'chat',
@@ -308,6 +308,35 @@ describe('requestHistory', () => {
     expect(tabB.result.current.messages.length).toBe(before);
   });
 
+  it('merges answers from several open tabs into one deduplicated set', async () => {
+    // tabA posts msg1 while alone; tabB joins later, so only tabA holds msg1
+    const tabA = renderHook(() => useBroadcastChannel('history-union', { batchingDelayMs: 0 }));
+    act(() => {
+      tabA.result.current.postMessage('chat', { n: 1 });
+    });
+    await tick();
+
+    const tabB = renderHook(() => useBroadcastChannel('history-union', { batchingDelayMs: 0 }));
+    await tick();
+    act(() => {
+      tabA.result.current.postMessage('chat', { n: 2 });
+      tabB.result.current.postMessage('chat', { n: 3 });
+    });
+    await tick();
+
+    const tabC = renderHook(() => useBroadcastChannel('history-union', { batchingDelayMs: 0 }));
+    await tick();
+    act(() => {
+      tabC.result.current.requestMessagesHistory();
+    });
+    await tick();
+
+    // Both tabs answer; the requester gets the union {1,2,3}, each exactly once
+    const texts = tabC.result.current.messages.map(m => m.message.n).sort();
+    expect(texts).toEqual([1, 2, 3]);
+    expect(tabC.result.current.messages.every(m => m.isHistory)).toBe(true);
+  });
+
   it('keeps only the latest replayed message when keepLatestMessage is set', async () => {
     const { tabA } = setupTabs('history-keeplatest');
     act(() => {
@@ -321,7 +350,7 @@ describe('requestHistory', () => {
     );
     await tick();
     act(() => {
-      tabC.result.current.requestHistory();
+      tabC.result.current.requestMessagesHistory();
     });
     await tick();
 

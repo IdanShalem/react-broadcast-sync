@@ -83,8 +83,8 @@ export interface BroadcastMessage {
   expirationDate?: number;
 
   /**
-   * True when this entry arrived through requestHistory() replay rather than
-   * live delivery. Replayed entries never trigger onMessage.
+   * True when this entry arrived through requestMessagesHistory() replay
+   * rather than live delivery. Replayed entries never trigger onMessage.
    */
   isHistory?: boolean;
 }
@@ -107,13 +107,17 @@ export interface GetLatestMessageOptions {
 }
 
 /**
- * Options for requesting message history from other open tabs
+ * Options for requesting the recent messages history from other open tabs
  */
-export interface RequestHistoryOptions {
+export interface RequestMessagesHistoryOptions {
   /** Only request messages of these types (default: all types) */
   types?: string[];
 
-  /** Maximum messages each responding tab may return (default: 50, max: 500) */
+  /**
+   * Maximum number of recent messages EACH open tab may send back
+   * (default: 50, max: 500). With several tabs open, every tab answers
+   * and the requester merges the answers, deduplicating by message ID.
+   */
   limit?: number;
 }
 
@@ -157,15 +161,18 @@ export interface BroadcastActions {
   /**
    * Ask other open tabs to replay recent messages into this tab's `messages`.
    *
+   * Every open tab that holds matching messages answers; the requester merges
+   * all answers and deduplicates by message ID, so with 3 tabs open you still
+   * get each message once (the union of what the open tabs hold).
+   *
    * Replayed entries are appended with `isHistory: true` and never trigger
    * `onMessage`, so replay cannot re-run side effects (toasts, logout, ...).
-   * Duplicates (already received live, or sent by several responding tabs) are
-   * dropped by message ID. Messages cleared locally via clearReceivedMessages()
-   * before the request are not resurrected: replay only accepts entries newer
-   * than this tab's latest local clear. The clear itself stays session-local
-   * and is not propagated to other tabs.
+   * Messages cleared locally via clearReceivedMessages() before the request
+   * are not resurrected: replay only accepts entries newer than this tab's
+   * latest local clear. The clear itself stays session-local and is not
+   * propagated to other tabs.
    */
-  requestHistory: (options?: RequestHistoryOptions) => void;
+  requestMessagesHistory: (options?: RequestMessagesHistoryOptions) => void;
 
   /** Explicitly close the broadcast channel and remove listeners */
   closeChannel: () => void;
@@ -180,5 +187,5 @@ export type InternalMessage =
   | ClearMessage
   | 'PING'
   | 'PONG'
-  | 'REQUEST_HISTORY'
-  | 'HISTORY_RESPONSE';
+  | 'REQUEST_MESSAGES_HISTORY'
+  | 'MESSAGES_HISTORY_RESPONSE';
