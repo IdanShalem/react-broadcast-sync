@@ -81,6 +81,12 @@ export interface BroadcastMessage {
 
   /** Optional expiration timestamp */
   expirationDate?: number;
+
+  /**
+   * True when this entry arrived through requestHistory() replay rather than
+   * live delivery. Replayed entries never trigger onMessage.
+   */
+  isHistory?: boolean;
 }
 export interface ClearOptions {
   ids?: string[];
@@ -98,6 +104,17 @@ export interface ClearSentMessagesOptions extends ClearOptions {
 export interface GetLatestMessageOptions {
   source?: string;
   type?: string;
+}
+
+/**
+ * Options for requesting message history from other open tabs
+ */
+export interface RequestHistoryOptions {
+  /** Only request messages of these types (default: all types) */
+  types?: string[];
+
+  /** Maximum messages each responding tab may return (default: 50, max: 500) */
+  limit?: number;
 }
 
 /** Callback invoked when a received message passes all filters */
@@ -137,6 +154,19 @@ export interface BroadcastActions {
   /** Function to get the latest message by source and type */
   getLatestMessage: (options?: GetLatestMessageOptions) => BroadcastMessage | null;
 
+  /**
+   * Ask other open tabs to replay recent messages into this tab's `messages`.
+   *
+   * Replayed entries are appended with `isHistory: true` and never trigger
+   * `onMessage`, so replay cannot re-run side effects (toasts, logout, ...).
+   * Duplicates (already received live, or sent by several responding tabs) are
+   * dropped by message ID. Messages cleared locally via clearReceivedMessages()
+   * before the request are not resurrected: replay only accepts entries newer
+   * than this tab's latest local clear. The clear itself stays session-local
+   * and is not propagated to other tabs.
+   */
+  requestHistory: (options?: RequestHistoryOptions) => void;
+
   /** Explicitly close the broadcast channel and remove listeners */
   closeChannel: () => void;
 
@@ -146,4 +176,9 @@ export interface BroadcastActions {
 
 export type ClearMessage = 'CLEAR_SENT_MESSAGES';
 
-export type InternalMessage = ClearMessage | 'PING' | 'PONG';
+export type InternalMessage =
+  | ClearMessage
+  | 'PING'
+  | 'PONG'
+  | 'REQUEST_HISTORY'
+  | 'HISTORY_RESPONSE';

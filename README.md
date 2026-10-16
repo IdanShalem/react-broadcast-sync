@@ -307,11 +307,13 @@ Do not call `postMessage` from a `useEffect` on state that you also set from inc
 Each tab re-broadcasts what it receives, the tabs ping-pong, and they can end up with different
 values. Deduplication is by message ID, so it does not stop this.
 
-### New tabs do not receive past messages
+### New tabs do not receive past messages automatically
 
-Messages are not replayed. A tab opened later only sees messages sent after it opened, and
-`keepLatestMessage` and `getLatestMessage` do not change that. To give a new tab the current state,
-let it ask for it and let an existing tab answer:
+Messages are not replayed unless the new tab asks for them. A tab opened later only sees messages
+sent after it opened, and `keepLatestMessage` and `getLatestMessage` do not change that. The
+opt-in `requestHistory()` action (below) lets a new tab pull recent messages from the tabs that
+are already open. To give a new tab the current state, you can also let it ask for it and let an
+existing tab answer:
 
 ```tsx
 const { postMessage } = useBroadcastChannel('dashboard', {
@@ -380,6 +382,7 @@ const {
   postMessage,
   clearReceivedMessages,
   clearSentMessages,
+  requestHistory,
   error,
 } = useBroadcastChannel(channelName, options);
 ```
@@ -429,6 +432,7 @@ interface BroadcastActions {
   clearReceivedMessages: (opts?: { ids?: string[]; types?: string[]; sources?: string[] }) => void;
   clearSentMessages: (opts?: { ids?: string[]; types?: string[]; sync?: boolean }) => void;
   getLatestMessage: (opts?: { type?: string; source?: string }) => BroadcastMessage | null;
+  requestHistory: (opts?: { types?: string[]; limit?: number }) => void;
   closeChannel: () => void;
   error: string | null; // Current error state
 }
@@ -438,19 +442,46 @@ interface BroadcastActions {
 
 Returns an object with:
 
-| Property                  | Type                 | Description                                                                                                                                                                                  |
-| ------------------------- | -------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `channelName`             | `string`             | The resolved channel name (includes namespace)                                                                                                                                               |
-| `messages`                | `BroadcastMessage[]` | All received messages from other tabs                                                                                                                                                        |
-| `sentMessages`            | `BroadcastMessage[]` | Local send attempts (including queued/failed sends), not delivery acknowledgements                                                                                                           |
-| `postMessage()`           | `function`           | Send a message to all tabs                                                                                                                                                                   |
-| `clearReceivedMessages()` | `function`           | Clear received messages. No filters ⇒ clear all. With filters, a message is deleted only if it matches **every** provided filter (`ids`, `types`, `sources`). Empty arrays act as wildcards. |
-| `clearSentMessages()`     | `function`           | Clear messages this tab sent (same matching rules). Pass `sync: true` to broadcast the clear to other tabs.                                                                                  |
-| `getLatestMessage()`      | `function`           | Get the latest message matching optional filters (`type`, `source`). Returns the most recent message that matches, or `null` if none.                                                        |
-| `ping(timeoutMs?)`        | `function`           | Ping other tabs on the channel and collect their source names. `timeoutMs` (default: 300ms) controls how long to wait for responses before resolving. Returns a Promise of string array.     |
-| `isPingInProgress`        | `boolean`            | `true` while a ping is active, otherwise `false`.                                                                                                                                            |
-| `closeChannel()`          | `function`           | Explicitly closes the broadcast channel and removes event listeners. Safe to call multiple times.                                                                                            |
-| `error`                   | `string \| null`     | Any runtime error from the channel                                                                                                                                                           |
+| Property                  | Type                 | Description                                                                                                                                                                                                      |
+| ------------------------- | -------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `channelName`             | `string`             | The resolved channel name (includes namespace)                                                                                                                                                                   |
+| `messages`                | `BroadcastMessage[]` | All received messages from other tabs                                                                                                                                                                            |
+| `sentMessages`            | `BroadcastMessage[]` | Local send attempts (including queued/failed sends), not delivery acknowledgements                                                                                                                               |
+| `postMessage()`           | `function`           | Send a message to all tabs                                                                                                                                                                                       |
+| `clearReceivedMessages()` | `function`           | Clear received messages. No filters ⇒ clear all. With filters, a message is deleted only if it matches **every** provided filter (`ids`, `types`, `sources`). Empty arrays act as wildcards.                     |
+| `clearSentMessages()`     | `function`           | Clear messages this tab sent (same matching rules). Pass `sync: true` to broadcast the clear to other tabs.                                                                                                      |
+| `getLatestMessage()`      | `function`           | Get the latest message matching optional filters (`type`, `source`). Returns the most recent message that matches, or `null` if none.                                                                            |
+| `requestHistory()`        | `function`           | Ask other open tabs to replay recent messages into `messages`. Replayed entries carry `isHistory: true` and never fire `onMessage`. Options: `types` (filter), `limit` (default 50, max 500 per responding tab). |
+| `ping(timeoutMs?)`        | `function`           | Ping other tabs on the channel and collect their source names. `timeoutMs` (default: 300ms) controls how long to wait for responses before resolving. Returns a Promise of string array.                         |
+| `isPingInProgress`        | `boolean`            | `true` while a ping is active, otherwise `false`.                                                                                                                                                                |
+| `closeChannel()`          | `function`           | Explicitly closes the broadcast channel and removes event listeners. Safe to call multiple times.                                                                                                                |
+| `error`                   | `string \| null`     | Any runtime error from the channel                                                                                                                                                                               |
+
+#### Requesting message history
+
+A tab that opened late can ask the tabs that are already open for their recent messages:
+
+```tsx
+const { messages, requestHistory } = useBroadcastChannel('dashboard');
+
+// Pull up to 50 recent messages (per responding tab) from the other tabs
+requestHistory();
+
+// Narrow it down: only chat messages, at most 10 per responding tab
+requestHistory({ types: ['chat'], limit: 10 });
+```
+
+Behavior to know:
+
+- Replayed entries are appended to `messages` with `isHistory: true` and **never** fire
+  `onMessage`, so replay cannot re-run side effects (toasts, logout flows, sounds).
+- Duplicates are dropped by message ID, across live messages and across several responding tabs.
+- Messages you cleared with `clearReceivedMessages()` are not resurrected: replay only accepts
+  entries newer than your tab's latest local clear. The clear stays local to your tab and is not
+  propagated.
+- Expired messages are never replayed, and each responding tab caps its answer (default 50
+  messages, plus a serialized size cap), so a large log cannot flood the channel.
+- History responses are consumed by the requesting tab only and are never re-broadcast.
 
 #### Clearing examples
 

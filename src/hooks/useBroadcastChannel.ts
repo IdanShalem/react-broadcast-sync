@@ -9,9 +9,11 @@ import {
   InternalMessage,
   MessageCallback,
   OnMessageMap,
+  RequestHistoryOptions,
   SendMessageOptions,
 } from '../types/types';
 import {
+  generateRandomPart,
   generateSourceName,
   isValidMessage,
   isMessageExpired,
@@ -26,7 +28,20 @@ const INTERNAL_MESSAGE_TYPES: Record<string, InternalMessage> = {
   CLEAR_SENT_MESSAGES: 'CLEAR_SENT_MESSAGES',
   PING: 'PING',
   PONG: 'PONG',
+  REQUEST_HISTORY: 'REQUEST_HISTORY',
+  HISTORY_RESPONSE: 'HISTORY_RESPONSE',
 } as const;
+
+/** Default per-responder message cap for history replay */
+const DEFAULT_HISTORY_LIMIT = 50;
+/** Hard upper bound for a caller-provided history limit */
+const MAX_HISTORY_LIMIT = 500;
+/** Maximum serialized size of one history response; older entries are dropped first */
+const HISTORY_RESPONSE_MAX_BYTES = 64 * 1024;
+/** Messages individually larger than this are never replayed */
+const HISTORY_MESSAGE_MAX_BYTES = 32 * 1024;
+/** How long a history request ID stays valid for incoming responses */
+const HISTORY_REQUEST_TTL_MS = 30 * 1000;
 
 let flushSyncFn: undefined | ((cb: () => void) => void) = undefined;
 if (process.env.NODE_ENV === 'test') {
@@ -47,7 +62,8 @@ if (process.env.NODE_ENV === 'test') {
  *   in `messages` or trigger `onMessage`; they are listed in `sentMessages`. Two tabs that share a
  *   `sourceName` will not receive each other's messages.
  * - `messages` is an event log of what other tabs sent, not current state.
- * - No replay: a tab opened later only receives messages sent after it opened.
+ * - No automatic replay: a tab opened later only receives messages sent after it opened,
+ *   unless it explicitly calls `requestHistory()`.
  * - `keepLatestMessage` keeps only the most recent received message in `messages`. It does not
  *   affect `sentMessages` and does not replay anything to new tabs.
  * - Batching: with `batchingDelayMs > 0` (default 20 ms) outgoing messages are grouped and sent
@@ -100,6 +116,14 @@ export const useBroadcastChannel = (
   const batchingErrorRef = useRef(false);
   const onMessageRef = useRef<MessageCallback | OnMessageMap | undefined>(onMessage);
   onMessageRef.current = onMessage;
+  const messagesRef = useRef<BroadcastMessage[]>([]);
+  messagesRef.current = messages;
+  const sentMessagesRef = useRef<BroadcastMessage[]>([]);
+  sentMessagesRef.current = sentMessages;
+  // History request IDs issued by this tab that may still receive responses
+  const pendingHistoryRequests = useRef(new Map<string, number>());
+  // Session-local clear barrier: replayed messages older than this are dropped
+  const historyClearBarrier = useRef(0);
 
   // Memoized values
   const source = useMemo(() => sourceName || generateSourceName(), [sourceName]);
@@ -112,6 +136,16 @@ export const useBroadcastChannel = (
       ),
       PING: getInternalMessageType(INTERNAL_MESSAGE_TYPES.PING, channelName, namespace),
       PONG: getInternalMessageType(INTERNAL_MESSAGE_TYPES.PONG, channelName, namespace),
+      REQUEST_HISTORY: getInternalMessageType(
+        INTERNAL_MESSAGE_TYPES.REQUEST_HISTORY,
+        channelName,
+        namespace
+      ),
+      HISTORY_RESPONSE: getInternalMessageType(
+        INTERNAL_MESSAGE_TYPES.HISTORY_RESPONSE,
+        channelName,
+        namespace
+      ),
     }),
     [channelName, namespace]
   );
@@ -285,6 +319,9 @@ export const useBroadcastChannel = (
     if (!hasFilters) {
       debug.message.allReceivedCleared();
     }
+    // Session-local barrier: history replayed after this point must be newer,
+    // so messages this tab cleared are not resurrected by another tab's copy.
+    historyClearBarrier.current = Date.now();
   }, []);
 
   const clearSentMessages = useCallback(
@@ -341,6 +378,113 @@ export const useBroadcastChannel = (
     [messages]
   );
 
+  const requestHistory = useCallback(
+    (options: RequestHistoryOptions = {}) => {
+      const channelCurrent = channel.current;
+      if (!channelCurrent) {
+        const error =
+          'BroadcastChannel is not supported in this browser. Please check browser compatibility.';
+        debug.error({
+          action: 'requestHistory',
+          channelName: resolvedChannelName,
+          originalError: error,
+        });
+        setErrorMessage(error);
+        return;
+      }
+
+      const now = Date.now();
+      for (const [id, requestedAt] of pendingHistoryRequests.current.entries()) {
+        if (now - requestedAt >= HISTORY_REQUEST_TTL_MS) {
+          pendingHistoryRequests.current.delete(id);
+        }
+      }
+
+      const requestId = `${source}-${now}-${generateRandomPart()}`;
+      pendingHistoryRequests.current.set(requestId, now);
+
+      const limit =
+        typeof options.limit === 'number' && options.limit > 0
+          ? Math.min(Math.floor(options.limit), MAX_HISTORY_LIMIT)
+          : DEFAULT_HISTORY_LIMIT;
+
+      try {
+        channelCurrent.postMessage(
+          createMessage(
+            internalTypes.REQUEST_HISTORY,
+            { requestId, types: options.types ?? [], limit },
+            source
+          )
+        );
+      } catch (e) {
+        pendingHistoryRequests.current.delete(requestId);
+        const error = 'Failed to request history';
+        debug.error({
+          action: 'requestHistory',
+          channelName: resolvedChannelName,
+          originalError: e instanceof Error ? e.message : String(e),
+        });
+        setErrorMessage(error);
+      }
+    },
+    [source, internalTypes.REQUEST_HISTORY, resolvedChannelName, setErrorMessage]
+  );
+
+  const respondToHistoryRequest = useCallback(
+    (requestId: string, types: unknown, limit: unknown) => {
+      const channelCurrent = channel.current;
+      if (!channelCurrent) return;
+
+      const maxMessages =
+        typeof limit === 'number' && limit > 0
+          ? Math.min(Math.floor(limit), MAX_HISTORY_LIMIT)
+          : DEFAULT_HISTORY_LIMIT;
+      const typeFilter =
+        Array.isArray(types) && types.length > 0
+          ? new Set(types.filter(t => typeof t === 'string'))
+          : null;
+
+      const seen = new Set<string>();
+      const pool = [...messagesRef.current, ...sentMessagesRef.current]
+        .filter(msg => !isMessageExpired(msg))
+        .filter(msg => !typeFilter || typeFilter.has(msg.type))
+        .filter(msg => {
+          if (seen.has(msg.id)) return false;
+          seen.add(msg.id);
+          return true;
+        })
+        .filter(msg => {
+          try {
+            return JSON.stringify(msg).length <= HISTORY_MESSAGE_MAX_BYTES;
+          } catch {
+            return false;
+          }
+        })
+        .sort((a, b) => a.timestamp - b.timestamp);
+
+      let selected = pool.slice(-maxMessages);
+      const totalBytes = (items: BroadcastMessage[]) =>
+        items.reduce((sum, msg) => sum + JSON.stringify(msg).length, 0);
+      while (selected.length > 1 && totalBytes(selected) > HISTORY_RESPONSE_MAX_BYTES) {
+        selected = selected.slice(1);
+      }
+      if (selected.length === 0) return;
+
+      try {
+        channelCurrent.postMessage(
+          createMessage(internalTypes.HISTORY_RESPONSE, { requestId, messages: selected }, source)
+        );
+      } catch (e) {
+        debug.error({
+          action: 'respondToHistoryRequest',
+          channelName: resolvedChannelName,
+          originalError: e instanceof Error ? e.message : String(e),
+        });
+      }
+    },
+    [source, internalTypes.HISTORY_RESPONSE, resolvedChannelName]
+  );
+
   const handleMessage = useCallback(
     (event: MessageEvent) => {
       try {
@@ -383,6 +527,54 @@ export const useBroadcastChannel = (
               collector.add(pongSource);
             }
 
+            return;
+          }
+
+          if (message.type === internalTypes.REQUEST_HISTORY) {
+            const payload = (message as any).message || {};
+            if (typeof payload.requestId !== 'string' || !payload.requestId) return;
+            respondToHistoryRequest(payload.requestId, payload.types, payload.limit);
+            return;
+          }
+
+          if (message.type === internalTypes.HISTORY_RESPONSE) {
+            const payload = (message as any).message || {};
+            const requestId = payload.requestId;
+            const historyMessages = payload.messages;
+            if (typeof requestId !== 'string' || !pendingHistoryRequests.current.has(requestId)) {
+              return;
+            }
+            if (!Array.isArray(historyMessages)) return;
+
+            const now = Date.now();
+            const barrier = historyClearBarrier.current;
+            const accepted: BroadcastMessage[] = [];
+            for (const raw of historyMessages) {
+              if (!isValidMessage(raw)) continue;
+              // Never replay this tab's own messages back into its received log
+              if (raw.source === source) continue;
+              if (
+                registeredTypesRef.current.length > 0 &&
+                !registeredTypesRef.current.includes(raw.type)
+              ) {
+                continue;
+              }
+              if (isMessageExpired(raw)) continue;
+              // Session-local clear barrier: do not resurrect cleared messages
+              if (raw.timestamp < barrier) continue;
+              // Deduplicate against live arrivals and other responders
+              if (receivedMessageIds.current.has(raw.id)) continue;
+              receivedMessageIds.current.set(raw.id, now);
+              accepted.push({ ...raw, isHistory: true });
+            }
+
+            if (accepted.length > 0) {
+              accepted.sort((a, b) => a.timestamp - b.timestamp);
+              setMessages(prev =>
+                keepLatestMessage ? [accepted[accepted.length - 1]] : [...prev, ...accepted]
+              );
+            }
+            // Display-only: onMessage is intentionally never fired for replay
             return;
           }
         }
@@ -432,7 +624,14 @@ export const useBroadcastChannel = (
         setErrorMessage(error);
       }
     },
-    [source, keepLatestMessage, setErrorMessage, internalTypes, deduplicationTTL]
+    [
+      source,
+      keepLatestMessage,
+      setErrorMessage,
+      internalTypes,
+      deduplicationTTL,
+      respondToHistoryRequest,
+    ]
   );
 
   const flushPendingBatch = useCallback((bc: BroadcastChannel) => {
@@ -561,6 +760,7 @@ export const useBroadcastChannel = (
     clearReceivedMessages,
     clearSentMessages,
     getLatestMessage,
+    requestHistory,
     error,
     closeChannel,
   };
