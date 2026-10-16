@@ -337,6 +337,65 @@ describe('requestMessagesHistory', () => {
     expect(tabC.result.current.messages.every(m => m.isHistory)).toBe(true);
   });
 
+  it('caps the total accepted history across all responders by limit', async () => {
+    // tabB posts a message while alone, so only tabB holds it
+    const tabB = renderHook(() => useBroadcastChannel('history-aggregate', { batchingDelayMs: 0 }));
+    act(() => {
+      tabB.result.current.postMessage('chat', { n: 4 });
+    });
+    await tick();
+
+    // tabA joins and posts two more; tabB receives those too
+    const tabA = renderHook(() => useBroadcastChannel('history-aggregate', { batchingDelayMs: 0 }));
+    await tick();
+    act(() => {
+      tabA.result.current.postMessage('chat', { n: 1 });
+      tabA.result.current.postMessage('chat', { n: 2 });
+    });
+    await tick();
+
+    const tabC = renderHook(() => useBroadcastChannel('history-aggregate', { batchingDelayMs: 0 }));
+    await tick();
+    act(() => {
+      tabC.result.current.requestMessagesHistory({ limit: 2 });
+    });
+    await tick();
+
+    // Total unique accepted is 2, not 2 per tab. tabA answers first with
+    // {1,2} and fills the budget; tabB's extra novel message {4} must NOT
+    // squeeze in past the exhausted budget.
+    const received = tabC.result.current.messages;
+    expect(received).toHaveLength(2);
+    expect(received.map(m => m.message.n)).toEqual([1, 2]);
+  });
+
+  it('inserts replayed history in timestamp order around live messages', async () => {
+    const { tabA } = setupTabs('history-ordering');
+    act(() => {
+      tabA.result.current.postMessage('chat', { text: 'old' });
+    });
+    await tick(20);
+
+    const tabC = renderHook(() => useBroadcastChannel('history-ordering', { batchingDelayMs: 0 }));
+    await tick();
+    // tabC receives a live message that is NEWER than the history it will request
+    act(() => {
+      tabA.result.current.postMessage('chat', { text: 'live-new' });
+    });
+    await tick(20);
+    expect(tabC.result.current.messages.map(m => m.message.text)).toEqual(['live-new']);
+
+    act(() => {
+      tabC.result.current.requestMessagesHistory();
+    });
+    await tick();
+
+    // The older history entry lands before the newer live one; nothing is lost
+    expect(tabC.result.current.messages.map(m => m.message.text)).toEqual(['old', 'live-new']);
+    expect(tabC.result.current.messages[0].isHistory).toBe(true);
+    expect(tabC.result.current.messages[1].isHistory).toBeUndefined();
+  });
+
   it('keeps only the latest replayed message when keepLatestMessage is set', async () => {
     const { tabA } = setupTabs('history-keeplatest');
     act(() => {

@@ -78,9 +78,10 @@ export const selectMessagesForHistoryResponse = (
 };
 
 /**
- * Decide which replayed messages the requesting tab accepts, and mark them as
- * history. Pure given the inputs; mutates receivedMessageIds (the shared dedup
- * map) for accepted entries, mirroring live-message dedup.
+ * Decide which replayed messages the requesting tab may accept, marked as
+ * history and sorted by timestamp. Pure: it reads the shared dedup map but
+ * does not mutate it, so the caller can apply an aggregate budget before
+ * committing entries to the map and to state.
  */
 export const filterIncomingHistoryMessages = (
   candidates: unknown[],
@@ -96,7 +97,6 @@ export const filterIncomingHistoryMessages = (
   }
 ): BroadcastMessage[] => {
   const { source, registeredTypes, receivedMessageIds, clearBarrier } = options;
-  const now = Date.now();
   const accepted: BroadcastMessage[] = [];
 
   for (const raw of candidates) {
@@ -115,9 +115,35 @@ export const filterIncomingHistoryMessages = (
     if (isMessageExpired(msg)) continue;
     if (msg.timestamp < clearBarrier) continue;
     if (receivedMessageIds.has(msg.id)) continue;
-    receivedMessageIds.set(msg.id, now);
     accepted.push({ ...msg, isHistory: true });
   }
 
   return accepted.sort((a, b) => a.timestamp - b.timestamp);
+};
+
+/**
+ * Merge already-sorted history entries into the message log by timestamp, so
+ * the log stays globally ordered no matter how many tabs answered or in which
+ * order their answers arrived. Existing entries (live or earlier history) are
+ * preserved; ties keep the earlier-arriving entry first.
+ */
+export const mergeMessagesByTimestamp = (
+  existing: BroadcastMessage[],
+  incoming: BroadcastMessage[]
+): BroadcastMessage[] => {
+  if (incoming.length === 0) return existing;
+  if (existing.length === 0) return incoming;
+  const merged: BroadcastMessage[] = [];
+  let i = 0;
+  let j = 0;
+  while (i < existing.length && j < incoming.length) {
+    if (existing[i].timestamp <= incoming[j].timestamp) {
+      merged.push(existing[i]);
+      i++;
+    } else {
+      merged.push(incoming[j]);
+      j++;
+    }
+  }
+  return merged.concat(existing.slice(i), incoming.slice(j));
 };

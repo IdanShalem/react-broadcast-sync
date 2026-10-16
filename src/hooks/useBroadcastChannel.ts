@@ -27,6 +27,7 @@ import { CHANNEL_NOT_SUPPORTED_ERROR } from '../utils/constants';
 import {
   MESSAGES_HISTORY_REQUEST_TTL_MS,
   filterIncomingHistoryMessages,
+  mergeMessagesByTimestamp,
   normalizeMessagesHistoryLimit,
   selectMessagesForHistoryResponse,
 } from '../utils/historyUtils';
@@ -116,8 +117,11 @@ export const useBroadcastChannel = (
   messagesRef.current = messages;
   const sentMessagesRef = useRef<BroadcastMessage[]>([]);
   sentMessagesRef.current = sentMessages;
-  // History request IDs issued by this tab that may still receive responses
-  const pendingHistoryRequests = useRef(new Map<string, number>());
+  // History requests issued by this tab: request ID -> issue time plus the
+  // remaining budget of unique history messages this request may still accept
+  const pendingHistoryRequests = useRef(
+    new Map<string, { requestedAt: number; remaining: number }>()
+  );
   // Session-local clear barrier: replayed messages older than this are dropped
   const historyClearBarrier = useRef(0);
 
@@ -386,14 +390,15 @@ export const useBroadcastChannel = (
       }
 
       const now = Date.now();
-      for (const [id, requestedAt] of pendingHistoryRequests.current.entries()) {
-        if (now - requestedAt >= MESSAGES_HISTORY_REQUEST_TTL_MS) {
+      for (const [id, pending] of pendingHistoryRequests.current.entries()) {
+        if (now - pending.requestedAt >= MESSAGES_HISTORY_REQUEST_TTL_MS) {
           pendingHistoryRequests.current.delete(id);
         }
       }
 
       const requestId = `${source}-${now}-${generateRandomPart()}`;
-      pendingHistoryRequests.current.set(requestId, now);
+      const limit = normalizeMessagesHistoryLimit(options.limit);
+      pendingHistoryRequests.current.set(requestId, { requestedAt: now, remaining: limit });
 
       try {
         channelCurrent.postMessage(
@@ -402,7 +407,7 @@ export const useBroadcastChannel = (
             {
               requestId,
               types: options.types ?? [],
-              limit: normalizeMessagesHistoryLimit(options.limit),
+              limit,
             },
             source
           )
@@ -508,22 +513,35 @@ export const useBroadcastChannel = (
             const payload = (message as any).message || {};
             const requestId = payload.requestId;
             const historyMessages = payload.messages;
-            if (typeof requestId !== 'string' || !pendingHistoryRequests.current.has(requestId)) {
-              return;
-            }
+            const pending =
+              typeof requestId === 'string'
+                ? pendingHistoryRequests.current.get(requestId)
+                : undefined;
+            if (!pending) return;
             if (!Array.isArray(historyMessages)) return;
 
-            const accepted = filterIncomingHistoryMessages(historyMessages, {
+            const candidates = filterIncomingHistoryMessages(historyMessages, {
               source,
               registeredTypes: registeredTypesRef.current,
               receivedMessageIds: receivedMessageIds.current,
               clearBarrier: historyClearBarrier.current,
             });
 
+            // Aggregate budget: one request accepts at most `limit` unique
+            // messages in total, no matter how many tabs answer. When a
+            // response would exceed the budget, keep its newest entries.
+            if (pending.remaining <= 0) return;
+            const accepted = candidates.slice(-pending.remaining);
             if (accepted.length > 0) {
-              setMessages(prev =>
-                keepLatestMessage ? [accepted[accepted.length - 1]] : [...prev, ...accepted]
-              );
+              pending.remaining -= accepted.length;
+              const now = Date.now();
+              for (const msg of accepted) {
+                receivedMessageIds.current.set(msg.id, now);
+              }
+              setMessages(prev => {
+                const merged = mergeMessagesByTimestamp(prev, accepted);
+                return keepLatestMessage ? [merged[merged.length - 1]] : merged;
+              });
             }
             // Display-only: onMessage is intentionally never fired for replay
             return;

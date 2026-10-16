@@ -114,9 +114,10 @@ export interface RequestMessagesHistoryOptions {
   types?: string[];
 
   /**
-   * Maximum number of recent messages EACH open tab may send back
-   * (default: 50, max: 500). With several tabs open, every tab answers
-   * and the requester merges the answers, deduplicating by message ID.
+   * Maximum total number of unique recent messages this tab accepts for one
+   * request (default: 50, max: 500). Every open tab may answer (each sends at
+   * most this many); the requester merges all answers, deduplicates by
+   * message ID, and stops once this total is reached.
    */
   limit?: number;
 }
