@@ -22,6 +22,7 @@ interface BroadcastMessage {
   timestamp: number; // creation time (ms)
   source: string; // sourceName of the sending tab
   expirationDate?: number; // set when sent with an expiry
+  isHistory?: boolean; // merged by requestMessagesHistory, never fires onMessage
 }
 ```
 
@@ -60,6 +61,17 @@ interface ClearSentMessagesOptions {
 interface GetLatestMessageOptions {
   type?: string;
   source?: string;
+}
+```
+
+## RequestMessagesHistoryOptions
+
+Available in **2.3.0 and later**. Options for `requestMessagesHistory`.
+
+```ts
+interface RequestMessagesHistoryOptions {
+  types?: string[]; // only request these message types (default: all)
+  limit?: number; // max messages kept per request, default 50, max 500
 }
 ```
 

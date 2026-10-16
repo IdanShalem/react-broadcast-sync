@@ -42,7 +42,7 @@ Do not call `postMessage` from a `useEffect` on state that you also set from inc
 
 ## New tabs do not receive past messages
 
-Messages are not replayed. A tab opened later only sees messages sent after it opened, and neither `keepLatestMessage` nor `getLatestMessage` changes that. Give the new tab a way to ask for the current state:
+Messages are not replayed automatically. A tab opened later only sees messages sent after it opened, and neither `keepLatestMessage` nor `getLatestMessage` changes that. `requestMessagesHistory` (2.3.0+) replays the recent message log, not application state. Give the new tab a way to ask for the current state:
 
 ```tsx
 const { postMessage } = useBroadcastChannel('dashboard', {

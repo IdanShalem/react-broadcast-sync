@@ -96,7 +96,7 @@ The URL above is an example app endpoint. The library does not provide it. The i
 
 ## Boundaries
 
-- A later tab starts from the initial UI. Raw messages have no replay. Load authoritative task data on mount, or consider [useSyncedState](/api/use-synced-state/) for ephemeral current-value sync, not server authority.
+- A later tab starts from the initial UI. Raw messages have no automatic replay; `requestMessagesHistory` (2.3.0+) can pull recent log messages from open tabs, but it is display-only. Load authoritative task data on mount, or consider [useSyncedState](/api/use-synced-state/) for ephemeral current-value sync, not server authority.
 - Tabs need the same origin and channel. Independent connections with different sources can also receive each other's events within one tab.
 - Do not send from an effect watching `done`; received changes would be sent again.
 - This one-way completion recipe does not resolve competing completion/reopen actions. Add app-level operation/version rules before extending it. Concurrent absolute-value writes are not atomic.

@@ -12,9 +12,9 @@ head:
     content: '{"@context": "https://schema.org", "@type": "BreadcrumbList", "itemListElement": [{"@type": "ListItem", "position": 1, "name": "Docs", "item": "https://react-broadcast-sync-docs.vercel.app/"}, {"@type": "ListItem", "position": 2, "name": "Late-joining Tabs", "item": "https://react-broadcast-sync-docs.vercel.app/recipes/late-tabs/"}]}'
 ---
 
-For one current value in 2.2.0+, see [useSyncedState](/api/use-synced-state/). This page describes the manual message API; its bootstrap/conflict policy is separate from the state hook.
+For one current value in 2.2.0+, see [useSyncedState](/api/use-synced-state/). For the message log itself in 2.3.0+, see [requestMessagesHistory](/api/broadcast-actions/#requestmessageshistory). This page describes the manual message API; its bootstrap/conflict policy is separate from the state hook.
 
-Messages are not replayed: a tab that opens late sees only what is sent after it opened. `keepLatestMessage` and `getLatestMessage` read the local log, so they cannot recover an earlier value. A request/answer exchange can bootstrap a new tab:
+By default, messages are not replayed: without an explicit `requestMessagesHistory` call (2.3.0+), a tab that opens late sees only what is sent after it opened. `keepLatestMessage` and `getLatestMessage` read the local log, so they cannot recover an earlier value. A request/answer exchange can bootstrap a new tab:
 
 1. The new tab posts a `state-request` with a unique request ID.
 2. Existing tabs answer with `state-response`, including that ID and their current value.

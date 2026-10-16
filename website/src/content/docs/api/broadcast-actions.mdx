@@ -14,19 +14,20 @@ head:
 
 `useBroadcastChannel` returns this object; `useBroadcastProvider` reads the same shape from context.
 
-| Member                  | Type                                                                         | Description                                                                          |
-| ----------------------- | ---------------------------------------------------------------------------- | ------------------------------------------------------------------------------------ |
-| `channelName`           | `string`                                                                     | Resolved channel name, including the namespace.                                      |
-| `messages`              | `BroadcastMessage[]`                                                         | Received messages (the log). Empty in a late-joining tab until something arrives.    |
-| `sentMessages`          | `BroadcastMessage[]`                                                         | Local send attempts, including queued/failed sends. Not delivery acknowledgements.   |
-| `isPingInProgress`      | `boolean`                                                                    | `true` while a `ping()` is collecting answers.                                       |
-| `error`                 | `string \| null`                                                             | Set when the browser lacks `BroadcastChannel` or the channel fails.                  |
-| `postMessage`           | `(type: string, content: any, options?: SendMessageOptions) => void`         | Send to every other tab on the channel.                                              |
-| `ping`                  | `(timeoutMs?: number) => Promise<string[]>`                                  | Discover other tabs on the channel; resolves to their source names (yours excluded). |
-| `getLatestMessage`      | `(options?: { type?: string; source?: string }) => BroadcastMessage \| null` | Most recent received message, optionally filtered. `null` when nothing matches.      |
-| `clearReceivedMessages` | `(options?: ClearReceivedMessagesOptions) => void`                           | Clear the received log, optionally by `types`, `sources`, or `ids`.                  |
-| `clearSentMessages`     | `(options?: ClearSentMessagesOptions) => void`                               | Clear the sent log. `sync: true` also clears the other tabs' received copies.        |
-| `closeChannel`          | `() => void`                                                                 | Close the channel and remove listeners. Idempotent; automatic on unmount.            |
+| Member                   | Type                                                                         | Description                                                                                 |
+| ------------------------ | ---------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------- |
+| `channelName`            | `string`                                                                     | Resolved channel name, including the namespace.                                             |
+| `messages`               | `BroadcastMessage[]`                                                         | Received messages (the log). Empty in a late-joining tab until something arrives.           |
+| `sentMessages`           | `BroadcastMessage[]`                                                         | Local send attempts, including queued/failed sends. Not delivery acknowledgements.          |
+| `isPingInProgress`       | `boolean`                                                                    | `true` while a `ping()` is collecting answers.                                              |
+| `error`                  | `string \| null`                                                             | Set when the browser lacks `BroadcastChannel` or the channel fails.                         |
+| `postMessage`            | `(type: string, content: any, options?: SendMessageOptions) => void`         | Send to every other tab on the channel.                                                     |
+| `ping`                   | `(timeoutMs?: number) => Promise<string[]>`                                  | Discover other tabs on the channel; resolves to their source names (yours excluded).        |
+| `getLatestMessage`       | `(options?: { type?: string; source?: string }) => BroadcastMessage \| null` | Most recent received message, optionally filtered. `null` when nothing matches.             |
+| `clearReceivedMessages`  | `(options?: ClearReceivedMessagesOptions) => void`                           | Clear the received log, optionally by `types`, `sources`, or `ids`.                         |
+| `clearSentMessages`      | `(options?: ClearSentMessagesOptions) => void`                               | Clear the sent log. `sync: true` also clears the other tabs' received copies.               |
+| `closeChannel`           | `() => void`                                                                 | Close the channel and remove listeners. Idempotent; automatic on unmount.                   |
+| `requestMessagesHistory` | `(options?: RequestMessagesHistoryOptions) => void`                          | Ask open tabs for their recent messages and merge the union into this tab’s log. **2.3.0+** |
 
 ## getLatestMessage
 
@@ -41,3 +42,15 @@ Returns the most recently received matching message, or `null`. Note that in a l
 ## closeChannel
 
 Use for manual cleanup only: after it, the channel sends and receives nothing. Safe to call repeatedly. You do not need it for normal unmounting.
+
+## requestMessagesHistory
+
+Available in **2.3.0 and later**. Asks every other open tab on the channel to send its newest messages and merges the union into this tab's received log, ordered oldest to newest:
+
+```tsx
+requestMessagesHistory({ types: ['chat'], limit: 50 });
+```
+
+Each open tab answers with its own newest messages, up to `limit` (default 50, max 500). The requester unions all answers and deduplicates by message ID; when answers together exceed the limit, a later answer carrying newer messages replaces older retained entries, so the request always keeps its newest `limit` unique messages and no tab gets priority for answering first. Pass `types` to limit the request to specific message types.
+
+Replayed entries carry `isHistory: true`, never trigger `onMessage`, and are not rebroadcast, so they are for display and catch-up, not side effects. Replay needs live peers: only tabs open when the request is made can answer, and once every tab on the channel has closed, those messages are gone.
