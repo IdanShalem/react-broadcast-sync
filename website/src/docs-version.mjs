@@ -3,6 +3,6 @@
 export const docsVersion = {
   major: 2,
   label: 'v2',
-  latestRelease: '2.2.0',
+  latestRelease: '2.3.0',
   range: '>=2.0.0 <3.0.0',
 };

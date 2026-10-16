@@ -37,4 +37,4 @@ Channels do not cross origins. `https://app.example.com` cannot talk to `https:/
 
 ## Ephemeral by design
 
-Messages are not persisted. A refresh wipes the log, and there is no built-in replay. If you need state to survive reloads, pair the library with storage (for example, persist in `localStorage` and use the channel to announce changes). See [Why not localStorage?](/concepts/why-not-localstorage/) for the trade-offs.
+Messages are not persisted. A refresh wipes the log. Replay is opt-in: `requestMessagesHistory` (2.3.0+) collects recent messages from tabs that are still open, and nothing can recover messages once every tab on the channel has closed. If you need state to survive reloads, pair the library with storage (for example, persist in `localStorage` and use the channel to announce changes). See [Why not localStorage?](/concepts/why-not-localstorage/) for the trade-offs.
