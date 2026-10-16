@@ -1,6 +1,6 @@
 {
   "name": "react-broadcast-sync",
-  "version": "2.2.0",
+  "version": "2.3.0",
   "description": "React hook and provider for cross-tab messaging over BroadcastChannel, with a versioned current-state hook and helpers for cross-tab messaging.",
   "main": "dist/index.cjs.js",
   "module": "dist/index.esm.js",

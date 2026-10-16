@@ -1,3 +1,10 @@
+# [2.3.0](https://github.com/IdanShalem/react-broadcast-sync/compare/v2.2.0...v2.3.0) (2026-10-16)
+
+
+### Features
+
+* requestHistory() - bounded display-only history replay for new tabs ([#67](https://github.com/IdanShalem/react-broadcast-sync/issues/67)) ([b80cbe3](https://github.com/IdanShalem/react-broadcast-sync/commit/b80cbe3c26b641eb210e755d0b3142971d5f8081)), closes [#11](https://github.com/IdanShalem/react-broadcast-sync/issues/11)
+
 # [2.2.0](https://github.com/IdanShalem/react-broadcast-sync/compare/v2.1.6...v2.2.0) (2026-10-12)
 
 
