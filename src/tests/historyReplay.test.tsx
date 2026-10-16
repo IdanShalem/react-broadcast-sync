@@ -81,7 +81,10 @@ describe('requestMessagesHistory', () => {
   it('replays recent messages from another tab as isHistory entries', async () => {
     const { tabA, tabB } = setupTabs();
     act(() => {
-      tabA.result.current.postMessage('chat', { text: 'hello' }, { expirationDuration: undefined });
+      tabA.result.current.postMessage('chat', { text: 'hello' });
+    });
+    await tick(10);
+    act(() => {
       tabA.result.current.postMessage('chat', { text: 'world' });
     });
     await tick();
@@ -202,12 +205,12 @@ describe('requestMessagesHistory', () => {
 
   it('respects the limit option and replays the most recent messages', async () => {
     const { tabA } = setupTabs('history-limit');
-    act(() => {
-      for (let i = 1; i <= 5; i++) {
+    for (let i = 1; i <= 5; i++) {
+      act(() => {
         tabA.result.current.postMessage('chat', { n: i });
-      }
-    });
-    await tick();
+      });
+      await tick(10);
+    }
 
     const tabC = renderHook(() => useBroadcastChannel('history-limit', { batchingDelayMs: 0 }));
     await tick();
@@ -350,6 +353,9 @@ describe('requestMessagesHistory', () => {
     await tick();
     act(() => {
       tabA.result.current.postMessage('chat', { n: 1 });
+    });
+    await tick(10);
+    act(() => {
       tabA.result.current.postMessage('chat', { n: 2 });
     });
     await tick();
@@ -361,9 +367,9 @@ describe('requestMessagesHistory', () => {
     });
     await tick();
 
-    // Total unique accepted is 2, not 2 per tab. tabA answers first with
-    // {1,2} and fills the budget; tabB's extra novel message {4} must NOT
-    // squeeze in past the exhausted budget.
+    // Total unique accepted is 2, not 2 per tab: the union is {1,2,4}, and
+    // the newest two by timestamp win. {4} is the oldest and held only by
+    // tabB, so it must not get in.
     const received = tabC.result.current.messages;
     expect(received).toHaveLength(2);
     expect(received.map(m => m.message.n)).toEqual([1, 2]);
@@ -396,10 +402,58 @@ describe('requestMessagesHistory', () => {
     expect(tabC.result.current.messages[1].isHistory).toBeUndefined();
   });
 
+  it('replaces an older replayed entry when a later answer carries a newer one', async () => {
+    // tabA only accepts 'chat' messages, so its answer cannot include the
+    // newer 'alert' message that tabB holds. With limit 1, tabA's older entry
+    // is accepted first and must be REPLACED when tabB's newer one arrives.
+    const tabA = renderHook(() =>
+      useBroadcastChannel('history-replace', { batchingDelayMs: 0, registeredTypes: ['chat'] })
+    );
+    act(() => {
+      tabA.result.current.postMessage('chat', { text: 'older' });
+    });
+    await tick(10);
+
+    const tabB = renderHook(() => useBroadcastChannel('history-replace', { batchingDelayMs: 0 }));
+    await tick();
+    act(() => {
+      tabB.result.current.postMessage('alert', { text: 'newer' });
+    });
+    await tick(10);
+
+    const tabC = renderHook(() => useBroadcastChannel('history-replace', { batchingDelayMs: 0 }));
+    await tick();
+
+    act(() => {
+      tabC.result.current.requestMessagesHistory({ limit: 1 });
+    });
+    await tick();
+
+    // tabA's 'older' was accepted first, then REPLACED by tabB's newer
+    // 'alert' - the final log must not contain 'older'
+    expect(tabC.result.current.messages.map(m => m.message.text)).toEqual(['newer']);
+    expect(tabC.result.current.messages[0].isHistory).toBe(true);
+
+    // A live message arriving after the replacement is appended normally,
+    // and the replayed entry stays put
+    act(() => {
+      tabB.result.current.postMessage('chat', { text: 'live-present' });
+    });
+    await tick(10);
+    expect(tabC.result.current.messages.map(m => m.message.text)).toEqual([
+      'newer',
+      'live-present',
+    ]);
+    expect(tabC.result.current.messages[1].isHistory).toBeUndefined();
+  });
+
   it('keeps only the latest replayed message when keepLatestMessage is set', async () => {
     const { tabA } = setupTabs('history-keeplatest');
     act(() => {
       tabA.result.current.postMessage('chat', { n: 1 });
+    });
+    await tick(10);
+    act(() => {
       tabA.result.current.postMessage('chat', { n: 2 });
     });
     await tick();

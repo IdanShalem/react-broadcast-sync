@@ -31,6 +31,13 @@ export const normalizeMessagesHistoryLimit = (limit: unknown): number =>
     ? Math.min(Math.floor(limit), MAX_MESSAGES_HISTORY_LIMIT)
     : DEFAULT_MESSAGES_HISTORY_LIMIT;
 
+/**
+ * Deterministic history ordering: by timestamp, ties broken by message ID so
+ * every tab ranks the same set the same way, even for same-millisecond posts.
+ */
+export const compareMessagesByTimestamp = (a: BroadcastMessage, b: BroadcastMessage): number =>
+  a.timestamp - b.timestamp || (a.id < b.id ? -1 : a.id > b.id ? 1 : 0);
+
 const serializedSize = (msg: BroadcastMessage): number => {
   try {
     return JSON.stringify(msg).length;
@@ -66,7 +73,7 @@ export const selectMessagesForHistoryResponse = (
       return true;
     })
     .filter(msg => serializedSize(msg) <= MESSAGES_HISTORY_MESSAGE_MAX_BYTES)
-    .sort((a, b) => a.timestamp - b.timestamp);
+    .sort(compareMessagesByTimestamp);
 
   let selected = pool.slice(-maxMessages);
   const totalBytes = (items: BroadcastMessage[]) =>
@@ -90,13 +97,18 @@ export const filterIncomingHistoryMessages = (
     source: string;
     /** Active registeredTypes filter, empty means all types */
     registeredTypes: string[];
-    /** Shared dedup map (message ID -> first-seen timestamp) */
-    receivedMessageIds: Map<string, number>;
+    /**
+     * Returns true for message IDs that must be skipped (already live in the
+     * log or accepted by another request). IDs accepted by THIS request are
+     * not duplicates: re-announced entries re-enter the candidate pool so the
+     * request can re-rank its newest set.
+     */
+    isDuplicate: (id: string) => boolean;
     /** Session-local clear barrier; older replayed messages are dropped */
     clearBarrier: number;
   }
 ): BroadcastMessage[] => {
-  const { source, registeredTypes, receivedMessageIds, clearBarrier } = options;
+  const { source, registeredTypes, isDuplicate, clearBarrier } = options;
   const accepted: BroadcastMessage[] = [];
 
   for (const raw of candidates) {
@@ -114,11 +126,11 @@ export const filterIncomingHistoryMessages = (
     if (registeredTypes.length > 0 && !registeredTypes.includes(msg.type)) continue;
     if (isMessageExpired(msg)) continue;
     if (msg.timestamp < clearBarrier) continue;
-    if (receivedMessageIds.has(msg.id)) continue;
+    if (isDuplicate(msg.id)) continue;
     accepted.push({ ...msg, isHistory: true });
   }
 
-  return accepted.sort((a, b) => a.timestamp - b.timestamp);
+  return accepted.sort(compareMessagesByTimestamp);
 };
 
 /**
@@ -137,7 +149,7 @@ export const mergeMessagesByTimestamp = (
   let i = 0;
   let j = 0;
   while (i < existing.length && j < incoming.length) {
-    if (existing[i].timestamp <= incoming[j].timestamp) {
+    if (compareMessagesByTimestamp(existing[i], incoming[j]) <= 0) {
       merged.push(existing[i]);
       i++;
     } else {

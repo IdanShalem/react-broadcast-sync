@@ -26,6 +26,7 @@ import { debug } from '../utils/debug';
 import { CHANNEL_NOT_SUPPORTED_ERROR } from '../utils/constants';
 import {
   MESSAGES_HISTORY_REQUEST_TTL_MS,
+  compareMessagesByTimestamp,
   filterIncomingHistoryMessages,
   mergeMessagesByTimestamp,
   normalizeMessagesHistoryLimit,
@@ -117,10 +118,14 @@ export const useBroadcastChannel = (
   messagesRef.current = messages;
   const sentMessagesRef = useRef<BroadcastMessage[]>([]);
   sentMessagesRef.current = sentMessages;
-  // History requests issued by this tab: request ID -> issue time plus the
-  // remaining budget of unique history messages this request may still accept
+  // History requests issued by this tab: request ID -> issue time, accepted
+  // limit, and this request's currently retained newest set (bounded by
+  // limit). Newer candidates from later answers replace older retained ones.
   const pendingHistoryRequests = useRef(
-    new Map<string, { requestedAt: number; remaining: number }>()
+    new Map<
+      string,
+      { requestedAt: number; limit: number; accepted: Map<string, BroadcastMessage> }
+    >()
   );
   // Session-local clear barrier: replayed messages older than this are dropped
   const historyClearBarrier = useRef(0);
@@ -398,7 +403,11 @@ export const useBroadcastChannel = (
 
       const requestId = `${source}-${now}-${generateRandomPart()}`;
       const limit = normalizeMessagesHistoryLimit(options.limit);
-      pendingHistoryRequests.current.set(requestId, { requestedAt: now, remaining: limit });
+      pendingHistoryRequests.current.set(requestId, {
+        requestedAt: now,
+        limit,
+        accepted: new Map(),
+      });
 
       try {
         channelCurrent.postMessage(
@@ -523,26 +532,58 @@ export const useBroadcastChannel = (
             const candidates = filterIncomingHistoryMessages(historyMessages, {
               source,
               registeredTypes: registeredTypesRef.current,
-              receivedMessageIds: receivedMessageIds.current,
+              isDuplicate: id => receivedMessageIds.current.has(id) && !pending.accepted.has(id),
               clearBarrier: historyClearBarrier.current,
             });
+            if (candidates.length === 0) return;
 
-            // Aggregate budget: one request accepts at most `limit` unique
-            // messages in total, no matter how many tabs answer. When a
-            // response would exceed the budget, keep its newest entries.
-            if (pending.remaining <= 0) return;
-            const accepted = candidates.slice(-pending.remaining);
-            if (accepted.length > 0) {
-              pending.remaining -= accepted.length;
-              const now = Date.now();
-              for (const msg of accepted) {
-                receivedMessageIds.current.set(msg.id, now);
-              }
-              setMessages(prev => {
-                const merged = mergeMessagesByTimestamp(prev, accepted);
-                return keepLatestMessage ? [merged[merged.length - 1]] : merged;
-              });
+            // Deterministic newest-N union: merge the answer's candidates
+            // with this request's retained set, then keep the newest `limit`
+            // unique messages (timestamp, then ID). A later answer carrying
+            // newer messages therefore REPLACES older replayed entries of
+            // this request instead of being dropped by arrival order.
+            const pool = new Map(pending.accepted);
+            for (const candidate of candidates) {
+              pool.set(candidate.id, candidate);
             }
+            const ranked = [...pool.values()].sort(compareMessagesByTimestamp);
+            const topN = ranked.slice(-pending.limit);
+
+            const previousIds = new Set(pending.accepted.keys());
+            const nextIds = new Set(topN.map(msg => msg.id));
+            let changed = previousIds.size !== nextIds.size;
+            if (!changed) {
+              for (const id of previousIds) {
+                if (!nextIds.has(id)) {
+                  changed = true;
+                  break;
+                }
+              }
+            }
+            if (!changed) return;
+
+            // Update dedup bookkeeping: removed entries leave the map so a
+            // later answer may re-offer them; added entries join it.
+            const now = Date.now();
+            for (const id of previousIds) {
+              if (!nextIds.has(id)) {
+                receivedMessageIds.current.delete(id);
+              }
+            }
+            for (const id of nextIds) {
+              if (!previousIds.has(id)) {
+                receivedMessageIds.current.set(id, now);
+              }
+            }
+            pending.accepted = new Map(topN.map(msg => [msg.id, msg]));
+
+            setMessages(prev => {
+              // Replace only THIS request's replayed entries; live messages
+              // and entries from other requests are never touched.
+              const base = prev.filter(msg => !previousIds.has(msg.id));
+              const merged = mergeMessagesByTimestamp(base, topN);
+              return keepLatestMessage ? [merged[merged.length - 1]] : merged;
+            });
             // Display-only: onMessage is intentionally never fired for replay
             return;
           }

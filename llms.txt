@@ -197,15 +197,14 @@ requestMessagesHistory();
 requestMessagesHistory({ types: ['chat'], limit: 10 });
 ```
 
-How multiple tabs answer: every open tab that holds matching messages sends its own bounded
-answer, and the requesting tab merges all answers into one set, deduplicating by message ID.
-So with 3 tabs open you get the union of what they hold, and each message appears exactly once.
-No single tab is picked as the source, because no tab is guaranteed to hold the full log.
-The merged entries are inserted into `messages` in timestamp order, so the log stays ordered
-no matter how many tabs answered; live messages already in the log are preserved. `limit`
-bounds the TOTAL unique messages accepted for one request (default 50, max 500) - not per
-answering tab - so 10 open tabs cannot multiply it. When a late answer would exceed the
-remaining budget, its newest entries win.
+How multiple tabs answer: every open tab that holds matching messages sends its own newest
+messages (at most `limit`), and the requesting tab unions all answers, deduplicates by message
+ID, and keeps the newest `limit` unique messages (default 50, max 500). So with 3 tabs open
+you get each message exactly once, no tab is picked as the source (no tab is guaranteed to
+hold the full log), and no tab gets priority for answering first: if a later answer carries a
+newer message, it replaces an older replayed one from the same request. The merged entries are
+inserted into `messages` in timestamp order, displayed oldest-to-newest, and live messages
+already in the log are preserved.
 
 Behavior to know:
 
