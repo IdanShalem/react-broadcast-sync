@@ -81,6 +81,12 @@ export interface BroadcastMessage {
 
   /** Optional expiration timestamp */
   expirationDate?: number;
+
+  /**
+   * True when this entry arrived through requestMessagesHistory() replay
+   * rather than live delivery. Replayed entries never trigger onMessage.
+   */
+  isHistory?: boolean;
 }
 export interface ClearOptions {
   ids?: string[];
@@ -98,6 +104,23 @@ export interface ClearSentMessagesOptions extends ClearOptions {
 export interface GetLatestMessageOptions {
   source?: string;
   type?: string;
+}
+
+/**
+ * Options for requesting the recent messages history from other open tabs
+ */
+export interface RequestMessagesHistoryOptions {
+  /** Only request messages of these types (default: all types) */
+  types?: string[];
+
+  /**
+   * Maximum number of recent messages kept from one request (default: 50,
+   * max: 500). Every open tab answers with ITS newest messages (at most this
+   * many); the requester unions all answers, deduplicates by message ID, and
+   * keeps the newest `limit` unique messages, appended oldest-to-newest.
+   * No tab gets priority for answering first.
+   */
+  limit?: number;
 }
 
 /** Callback invoked when a received message passes all filters */
@@ -137,6 +160,22 @@ export interface BroadcastActions {
   /** Function to get the latest message by source and type */
   getLatestMessage: (options?: GetLatestMessageOptions) => BroadcastMessage | null;
 
+  /**
+   * Ask other open tabs to replay recent messages into this tab's `messages`.
+   *
+   * Every open tab that holds matching messages answers; the requester merges
+   * all answers and deduplicates by message ID, so with 3 tabs open you still
+   * get each message once (the union of what the open tabs hold).
+   *
+   * Replayed entries are appended with `isHistory: true` and never trigger
+   * `onMessage`, so replay cannot re-run side effects (toasts, logout, ...).
+   * Messages cleared locally via clearReceivedMessages() before the request
+   * are not resurrected: replay only accepts entries newer than this tab's
+   * latest local clear. The clear itself stays session-local and is not
+   * propagated to other tabs.
+   */
+  requestMessagesHistory: (options?: RequestMessagesHistoryOptions) => void;
+
   /** Explicitly close the broadcast channel and remove listeners */
   closeChannel: () => void;
 
@@ -146,4 +185,9 @@ export interface BroadcastActions {
 
 export type ClearMessage = 'CLEAR_SENT_MESSAGES';
 
-export type InternalMessage = ClearMessage | 'PING' | 'PONG';
+export type InternalMessage =
+  | ClearMessage
+  | 'PING'
+  | 'PONG'
+  | 'REQUEST_MESSAGES_HISTORY'
+  | 'MESSAGES_HISTORY_RESPONSE';
