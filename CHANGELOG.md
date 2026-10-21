@@ -1,3 +1,10 @@
+# [2.4.0](https://github.com/IdanShalem/react-broadcast-sync/compare/v2.3.0...v2.4.0) (2026-10-21)
+
+
+### Features
+
+* explicit reconnect() + automatic recovery on provable channel closure ([#69](https://github.com/IdanShalem/react-broadcast-sync/issues/69)) ([e98fa84](https://github.com/IdanShalem/react-broadcast-sync/commit/e98fa84abab1ec808bc6bfaeea7bdada651214f5)), closes [#2](https://github.com/IdanShalem/react-broadcast-sync/issues/2)
+
 # [2.3.0](https://github.com/IdanShalem/react-broadcast-sync/compare/v2.2.0...v2.3.0) (2026-10-16)
 
 
