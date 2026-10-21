@@ -4,6 +4,29 @@ import { useBroadcastChannel } from '../../src';
 import { OptimisticTask } from '../../examples/optimistic-task';
 import { useSyncedState } from '../../src/hooks/useSyncedState';
 
+// Recovery lab (opt-in via ?recoveryLab=1): capture the hook's channel objects
+// so tests can close the held channel out of band, and let tests arm
+// "born-dead" recreations. Plain specs never install this.
+const heldChannels: BroadcastChannel[] = [];
+let bornDead = false;
+if (new URLSearchParams(window.location.search).has('recoveryLab')) {
+  const RealBroadcastChannel = window.BroadcastChannel;
+  class CapturingBroadcastChannel extends RealBroadcastChannel {
+    constructor(name: string) {
+      super(name);
+      heldChannels.push(this);
+      if (bornDead) this.close();
+    }
+  }
+  window.BroadcastChannel = CapturingBroadcastChannel as typeof BroadcastChannel;
+  (window as unknown as { __recoveryLab: unknown }).__recoveryLab = {
+    killHeld: () => heldChannels[heldChannels.length - 1]?.close(),
+    setBornDead: (value: boolean) => {
+      bornDead = value;
+    },
+  };
+}
+
 interface AppParams {
   channel: string;
   namespace?: string;
@@ -11,6 +34,9 @@ interface AppParams {
   types?: string[];
   cleaningInterval?: number;
   batchingDelayMs?: number;
+  recovery?: 'manual' | 'auto';
+  maxRecoveryAttempts?: number;
+  recoveryLab: boolean;
 }
 
 function readParams(): AppParams {
@@ -26,6 +52,11 @@ function readParams(): AppParams {
     source: params.get('source') || undefined,
     types: types ? types.split(',') : undefined,
     cleaningInterval: cleaningInterval ? Number(cleaningInterval) : undefined,
+    recovery: (params.get('recovery') as 'manual' | 'auto' | null) ?? undefined,
+    maxRecoveryAttempts: params.has('maxRecoveryAttempts')
+      ? Number(params.get('maxRecoveryAttempts'))
+      : undefined,
+    recoveryLab: params.has('recoveryLab'),
   };
 }
 
@@ -41,17 +72,30 @@ function App({ source }: { source?: string } = {}) {
     ping,
     error,
     closeChannel,
+    reconnect,
   } = useBroadcastChannel(params.channel, {
     sourceName: params.source,
     namespace: params.namespace,
     registeredTypes: params.types,
     cleaningInterval: params.cleaningInterval,
     batchingDelayMs: params.batchingDelayMs,
+    recovery: params.recovery,
+    maxRecoveryAttempts: params.maxRecoveryAttempts,
+    onChannelRecovered: () => setRecoveredCount(count => count + 1),
   });
 
   const [messageType, setMessageType] = useState('chat');
   const [messageContent, setMessageContent] = useState('');
   const [pingSources, setPingSources] = useState<string[]>([]);
+  const [recoveredCount, setRecoveredCount] = useState(0);
+  const recoveryLab = (
+    window as unknown as {
+      __recoveryLab?: {
+        killHeld: () => void;
+        setBornDead: (value: boolean) => void;
+      };
+    }
+  ).__recoveryLab;
 
   return (
     <div>
@@ -70,6 +114,23 @@ function App({ source }: { source?: string } = {}) {
       <button data-testid="send" onClick={() => postMessage(messageType, messageContent)}>
         Send
       </button>
+      {params.recoveryLab && recoveryLab ? (
+        <>
+          <button data-testid="kill-held-channel" onClick={() => recoveryLab.killHeld()}>
+            Kill held channel
+          </button>
+          <button data-testid="arm-born-dead" onClick={() => recoveryLab.setBornDead(true)}>
+            Arm born-dead
+          </button>
+          <button data-testid="heal-born-dead" onClick={() => recoveryLab.setBornDead(false)}>
+            Heal born-dead
+          </button>
+          <button data-testid="reconnect" onClick={() => reconnect()}>
+            Reconnect
+          </button>
+          <div data-testid="recovered-count">{recoveredCount}</div>
+        </>
+      ) : null}
       <button data-testid="close" onClick={closeChannel}>
         Close
       </button>

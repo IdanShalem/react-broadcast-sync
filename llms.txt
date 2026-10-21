@@ -127,6 +127,9 @@ interface BroadcastOptions {
   batchingDelayMs?: number; // Delay in ms to batch outgoing messages (default: 20). If > 0, messages are batched and sent together.
   excludedBatchMessageTypes?: string[]; // Message types to always send immediately, never batched (default: []).
   onMessage?: MessageCallback | OnMessageMap; // Callback(s) fired when a received message passes all filters (default: undefined).
+  recovery?: 'manual' | 'auto'; // Transport recovery policy (default: 'auto'). Recreates a provably dead channel and retries that send once; 'manual' opts out.
+  maxRecoveryAttempts?: number; // Max consecutive automatic recovery attempts before giving up (default: 3).
+  onChannelRecovered?: () => void; // Fired after a successful automatic recovery; use it to resync. Missed messages are never replayed.
   telemetry?: boolean; // Deprecated no-op.
 }
 ```
@@ -145,6 +148,9 @@ interface BroadcastOptions {
 | `batchingDelayMs`           | `20`          | Batch delay in ms (0 = off)                 |
 | `excludedBatchMessageTypes` | `[]`          | Types never batched                         |
 | `onMessage`                 | `undefined`   | Callback(s) for received messages           |
+| `recovery`                  | `'auto'`      | `'manual'` opts out of auto-recovery        |
+| `maxRecoveryAttempts`       | `3`           | Cap on consecutive recovery attempts        |
+| `onChannelRecovered`        | `undefined`   | Resync callback after automatic recovery    |
 | `telemetry`                 | `false`       | Deprecated no-op. No telemetry is collected |
 
 #### Return Value
@@ -360,9 +366,34 @@ const reopened = reconnect(); // true when a new connection was created
 **Notes:**
 
 - `reconnect()` is a no-op that returns `false` while a connection is open — a working channel is never replaced.
-- The library never reconnects automatically: not after a creation failure, not after `closeChannel()`, not on rerender. Recovery is always an explicit application decision.
+- The hook recovers on its own when a channel provably dies outside its control (see Automatic Recovery below). `reconnect()` remains the explicit path after a creation failure, after `closeChannel()`, and after automatic recovery has exhausted its attempts. Pass `recovery: 'manual'` to make every recovery an explicit application decision.
 - Reconnecting keeps this tab's source identity and its `messages`/`sentMessages` logs. It does not resend or replay anything; to resynchronize data after downtime use `requestMessagesHistory()` or `useSyncedState`.
 - A `messageerror` (an incoming payload that failed to deserialize) is reported through `error` as a read failure. It is not treated as a disconnection.
+
+#### Automatic Recovery
+
+Some channels die outside the library's control: application code closes a shared `BroadcastChannel`, a hot reload tears it down, a test harness kills it. By default (`recovery: 'auto'`) the hook recovers on its own, but only on proof of death. With `recovery: 'manual'` it instead reports an error and waits for your `reconnect()`:
+
+```tsx
+const { error } = useBroadcastChannel('my-channel', {
+  recovery: 'auto', // default; pass 'manual' to opt out
+  maxRecoveryAttempts: 3, // default
+  onChannelRecovered: () => {
+    // e.g. call requestMessagesHistory() or resync useSyncedState here;
+    // messages missed while the channel was down are never replayed
+  },
+});
+```
+
+What triggers recovery: a send throwing `InvalidStateError`. Per the HTML standard, that exception is thrown only when the channel object was closed, and the throw happens before the message is serialized or delivered anywhere — so the failed send provably never left this tab, and retrying it once on the fresh channel cannot duplicate delivery.
+
+What never triggers recovery:
+
+- A deliberate `closeChannel()` or unmount. An explicit close stays closed.
+- A payload error (`DataCloneError`). That is a message problem, not a dead channel.
+- Silence. A channel that can still send but no longer receives is indistinguishable from a quiet one, so no automatic policy watches for it. If your application needs that, close and reconnect on its own schedule.
+
+Recovery is bounded: after `maxRecoveryAttempts` consecutive failed attempts the channel stays down, `error` reports that the channel is closed, and only an explicit `reconnect()` revives it. `onChannelRecovered` is your resync point: the library restores the transport, never the missed data.
 
 #### `onMessage` Callbacks
 

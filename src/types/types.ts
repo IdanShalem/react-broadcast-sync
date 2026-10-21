@@ -42,6 +42,35 @@ export interface BroadcastOptions {
   onMessage?: MessageCallback | OnMessageMap;
 
   /**
+   * Transport recovery policy (default: 'auto').
+   *
+   * - 'auto': when a send fails with `InvalidStateError` - proof the held
+   *   channel object was closed outside the library - the channel is
+   *   recreated automatically and that send is retried once. The failed send
+   *   provably never left this channel, so the retry cannot duplicate
+   *   delivery. Recovery is bounded by `maxRecoveryAttempts` consecutive
+   *   failures; after that the channel stays down and `error` is reported
+   *   until an explicit `reconnect()`. Explicit `closeChannel()` and unmount
+   *   never auto-recover. Payload errors (`DataCloneError`) and silent
+   *   receive failures never trigger recovery - silence is not detectable
+   *   as death. Missed messages are never replayed; use `onChannelRecovered`
+   *   to resync (requestMessagesHistory/useSyncedState).
+   * - 'manual': opt out; the library never recreates the channel on its own
+   *   and you call `reconnect()` yourself after a creation failure or
+   *   `closeChannel()`.
+   */
+  recovery?: 'manual' | 'auto';
+
+  /** Max consecutive automatic recovery attempts before giving up (default: 3). */
+  maxRecoveryAttempts?: number;
+
+  /**
+   * Fired after an automatic recovery succeeded. Use it to resynchronize
+   * data missed while the channel was down; the library never replays.
+   */
+  onChannelRecovered?: () => void;
+
+  /**
    * @deprecated No-op. The package no longer collects telemetry. The option is still
    * accepted so existing code that passes `telemetry` keeps compiling; it will be removed
    * in the next major version.
