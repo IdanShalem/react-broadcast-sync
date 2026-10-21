@@ -129,6 +129,9 @@ export const useBroadcastChannel = (
   );
   // Session-local clear barrier: replayed messages older than this are dropped
   const historyClearBarrier = useRef(0);
+  // Active channel listeners, tracked so close/reconnect/unmount can detach them
+  const channelListenerRef = useRef<((event: MessageEvent) => void) | null>(null);
+  const channelErrorListenerRef = useRef<(() => void) | null>(null);
 
   // Memoized values
   const source = useMemo(() => sourceName || generateSourceName(), [sourceName]);
@@ -669,11 +672,75 @@ export const useBroadcastChannel = (
     const bc = channel.current;
     if (bc && typeof bc.close === 'function') {
       flushPendingBatch(bc);
+      if (channelListenerRef.current) {
+        bc.removeEventListener('message', channelListenerRef.current);
+      }
+      if (channelErrorListenerRef.current) {
+        bc.removeEventListener('messageerror', channelErrorListenerRef.current);
+      }
       bc.close();
       debug.channel.closed(resolvedChannelName);
       channel.current = null;
+      channelListenerRef.current = null;
+      channelErrorListenerRef.current = null;
     }
   }, [flushPendingBatch, resolvedChannelName]);
+
+  const openChannel = useCallback((): BroadcastChannel | null => {
+    let bc: BroadcastChannel;
+    try {
+      bc = new BroadcastChannel(resolvedChannelName);
+    } catch (e) {
+      const error = 'Failed to create BroadcastChannel';
+      debug.error({
+        action: 'useBroadcastChannel',
+        channelName: resolvedChannelName,
+        originalError: e instanceof Error ? e : String(e),
+      });
+      setErrorMessage(error);
+      return null;
+    }
+    const listener = (event: MessageEvent) => {
+      // event.data may be a single message or an array of messages (batch)
+      if (Array.isArray(event.data)) {
+        event.data.forEach((message: BroadcastMessage) => {
+          handleMessage({ data: message } as MessageEvent<BroadcastMessage>);
+        });
+      } else {
+        handleMessage(event);
+      }
+    };
+    const errorListener = () => {
+      // messageerror means an incoming payload failed to deserialize.
+      // It is reported, never treated as a disconnection.
+      debug.error({
+        action: 'messageerror',
+        channelName: resolvedChannelName,
+        originalError: 'Failed to deserialize an incoming message',
+      });
+      setErrorMessage('Failed to read an incoming message');
+    };
+    bc.addEventListener('message', listener);
+    bc.addEventListener('messageerror', errorListener);
+    channel.current = bc;
+    channelListenerRef.current = listener;
+    channelErrorListenerRef.current = errorListener;
+    debug.channel.created(resolvedChannelName);
+    return bc;
+  }, [resolvedChannelName, handleMessage, setErrorMessage]);
+
+  // Explicit transport recovery only: never called automatically. A working
+  // connection is never replaced, and a deliberate closeChannel() stays
+  // closed until the app asks. Source identity and message logs are kept;
+  // nothing is resent or replayed.
+  const reconnect = useCallback((): boolean => {
+    if (channel.current) return false;
+    if (typeof BroadcastChannel === 'undefined') {
+      setErrorMessage(CHANNEL_NOT_SUPPORTED_ERROR);
+      return false;
+    }
+    return openChannel() !== null;
+  }, [openChannel, setErrorMessage]);
 
   useEffect(() => {
     if (typeof BroadcastChannel === 'undefined') {
@@ -687,45 +754,32 @@ export const useBroadcastChannel = (
       return;
     }
 
-    let bc: BroadcastChannel | null = null;
-    try {
-      bc = new BroadcastChannel(resolvedChannelName);
-    } catch (e) {
-      const error = 'Failed to create BroadcastChannel';
-      debug.error({
-        action: 'useBroadcastChannel',
-        channelName: resolvedChannelName,
-        originalError: e instanceof Error ? e : String(e),
-      });
-      setErrorMessage(error);
-      return;
-    }
-    channel.current = bc;
-    debug.channel.created(resolvedChannelName);
+    // Reuse a channel that is already open (e.g. after an explicit
+    // reconnect()); this effect's cleanup owns it from here on.
+    const bc = channel.current ?? openChannel();
+    if (!bc) return;
 
-    const listener = (event: MessageEvent) => {
-      // event.data may be a single message or an array of messages (batch)
-      if (Array.isArray(event.data)) {
-        event.data.forEach((message: BroadcastMessage) => {
-          handleMessage({ data: message } as MessageEvent<BroadcastMessage>);
-        });
-      } else {
-        handleMessage(event);
-      }
-    };
-    bc.addEventListener('message', listener);
     return () => {
-      bc.removeEventListener('message', listener);
-      // Flush while this effect's channel is still open. A later effect may
-      // create a different channel, so never carry this queue into it.
-      if (channel.current === bc) {
-        flushPendingBatch(bc);
-        bc.close();
-        debug.channel.closed(resolvedChannelName);
-        channel.current = null;
+      // Close whatever connection is current at cleanup time. A cleanup runs
+      // before the next effect body, so it can never close a newer channel.
+      const current = channel.current;
+      if (!current) return;
+      if (channelListenerRef.current) {
+        current.removeEventListener('message', channelListenerRef.current);
       }
+      if (channelErrorListenerRef.current) {
+        current.removeEventListener('messageerror', channelErrorListenerRef.current);
+      }
+      // Flush while this connection is still open. A later effect may create
+      // a different channel, so never carry this queue into it.
+      flushPendingBatch(current);
+      current.close();
+      debug.channel.closed(resolvedChannelName);
+      channel.current = null;
+      channelListenerRef.current = null;
+      channelErrorListenerRef.current = null;
     };
-  }, [resolvedChannelName, handleMessage, setErrorMessage, flushPendingBatch]);
+  }, [resolvedChannelName, openChannel, setErrorMessage, flushPendingBatch]);
 
   useEffect(() => {
     if (cleaningInterval <= 0) return;
@@ -772,6 +826,7 @@ export const useBroadcastChannel = (
     requestMessagesHistory,
     error,
     closeChannel,
+    reconnect,
   };
 };
 

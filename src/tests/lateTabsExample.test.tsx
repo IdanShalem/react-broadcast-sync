@@ -24,20 +24,22 @@ const Counter = exportsObject.default!;
 
 class Channel {
   static peers: Channel[] = [];
-  listener?: (event: MessageEvent) => void;
+  // Real BroadcastChannel keeps one listener set per event type; the hook
+  // subscribes to both "message" and "messageerror".
+  listeners = new Map<string, (event: MessageEvent) => void>();
   constructor(public name: string) {
     Channel.peers.push(this);
   }
-  addEventListener(_type: string, listener: (event: MessageEvent) => void) {
-    this.listener = listener;
+  addEventListener(type: string, listener: (event: MessageEvent) => void) {
+    this.listeners.set(type, listener);
   }
-  removeEventListener() {
-    this.listener = undefined;
+  removeEventListener(type: string) {
+    this.listeners.delete(type);
   }
   postMessage(data: unknown) {
     Channel.peers
       .filter(peer => peer !== this && peer.name === this.name)
-      .forEach(peer => peer.listener?.({ data } as MessageEvent));
+      .forEach(peer => peer.listeners.get('message')?.({ data } as MessageEvent));
   }
   close() {
     Channel.peers = Channel.peers.filter(peer => peer !== this);
@@ -91,10 +93,12 @@ describe('actual late-tab recipe', () => {
     const view = render(<Counter />);
     const peer = new Channel('counter');
     let requestId = '';
-    peer.listener = event => {
+    peer.listeners.set('message', (event: MessageEvent) => {
       const batch = Array.isArray(event.data) ? event.data : [event.data];
-      requestId = batch.find(msg => msg.type === 'state-request')?.message.requestId ?? requestId;
-    };
+      requestId =
+        batch.find((msg: { type: string }) => msg.type === 'state-request')?.message.requestId ??
+        requestId;
+    });
     act(() => jest.advanceTimersByTime(30));
     const send = (type: string, message: unknown, id: string) =>
       peer.postMessage({ id, type, message, source: 'peer', timestamp: Date.now() });

@@ -160,6 +160,7 @@ interface BroadcastActions {
   getLatestMessage: (opts?: { type?: string; source?: string }) => BroadcastMessage | null;
   requestMessagesHistory: (opts?: { types?: string[]; limit?: number }) => void;
   closeChannel: () => void;
+  reconnect: () => boolean; // Explicitly recreate the channel after a creation failure or closeChannel()
   error: string | null; // Current error state
 }
 ```
@@ -168,20 +169,21 @@ interface BroadcastActions {
 
 Returns an object with:
 
-| Property                   | Type                 | Description                                                                                                                                                                                                                              |
-| -------------------------- | -------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `channelName`              | `string`             | The resolved channel name (includes namespace)                                                                                                                                                                                           |
-| `messages`                 | `BroadcastMessage[]` | All received messages from other tabs                                                                                                                                                                                                    |
-| `sentMessages`             | `BroadcastMessage[]` | Local send attempts (including queued/failed sends), not delivery acknowledgements                                                                                                                                                       |
-| `postMessage()`            | `function`           | Send a message to all tabs                                                                                                                                                                                                               |
-| `clearReceivedMessages()`  | `function`           | Clear received messages. No filters ⇒ clear all. With filters, a message is deleted only if it matches **every** provided filter (`ids`, `types`, `sources`). Empty arrays act as wildcards.                                             |
-| `clearSentMessages()`      | `function`           | Clear messages this tab sent (same matching rules). Pass `sync: true` to broadcast the clear to other tabs.                                                                                                                              |
-| `getLatestMessage()`       | `function`           | Get the latest message matching optional filters (`type`, `source`). Returns the most recent message that matches, or `null` if none.                                                                                                    |
-| `requestMessagesHistory()` | `function`           | Ask other open tabs to replay recent messages into `messages`. Replayed entries carry `isHistory: true` and never fire `onMessage`. Options: `types` (filter), `limit` (max recent messages each tab sends back, default 50, up to 500). |
-| `ping(timeoutMs?)`         | `function`           | Ping other tabs on the channel and collect their source names. `timeoutMs` (default: 300ms) controls how long to wait for responses before resolving. Returns a Promise of string array.                                                 |
-| `isPingInProgress`         | `boolean`            | `true` while a ping is active, otherwise `false`.                                                                                                                                                                                        |
-| `closeChannel()`           | `function`           | Explicitly closes the broadcast channel and removes event listeners. Safe to call multiple times.                                                                                                                                        |
-| `error`                    | `string \| null`     | Any runtime error from the channel                                                                                                                                                                                                       |
+| Property                   | Type                 | Description                                                                                                                                                                                                                                                  |
+| -------------------------- | -------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `channelName`              | `string`             | The resolved channel name (includes namespace)                                                                                                                                                                                                               |
+| `messages`                 | `BroadcastMessage[]` | All received messages from other tabs                                                                                                                                                                                                                        |
+| `sentMessages`             | `BroadcastMessage[]` | Local send attempts (including queued/failed sends), not delivery acknowledgements                                                                                                                                                                           |
+| `postMessage()`            | `function`           | Send a message to all tabs                                                                                                                                                                                                                                   |
+| `clearReceivedMessages()`  | `function`           | Clear received messages. No filters ⇒ clear all. With filters, a message is deleted only if it matches **every** provided filter (`ids`, `types`, `sources`). Empty arrays act as wildcards.                                                                 |
+| `clearSentMessages()`      | `function`           | Clear messages this tab sent (same matching rules). Pass `sync: true` to broadcast the clear to other tabs.                                                                                                                                                  |
+| `getLatestMessage()`       | `function`           | Get the latest message matching optional filters (`type`, `source`). Returns the most recent message that matches, or `null` if none.                                                                                                                        |
+| `requestMessagesHistory()` | `function`           | Ask other open tabs to replay recent messages into `messages`. Replayed entries carry `isHistory: true` and never fire `onMessage`. Options: `types` (filter), `limit` (max recent messages each tab sends back, default 50, up to 500).                     |
+| `ping(timeoutMs?)`         | `function`           | Ping other tabs on the channel and collect their source names. `timeoutMs` (default: 300ms) controls how long to wait for responses before resolving. Returns a Promise of string array.                                                                     |
+| `isPingInProgress`         | `boolean`            | `true` while a ping is active, otherwise `false`.                                                                                                                                                                                                            |
+| `closeChannel()`           | `function`           | Explicitly closes the broadcast channel and removes event listeners. Safe to call multiple times.                                                                                                                                                            |
+| `reconnect()`              | `function`           | Explicitly recreates the channel after a creation failure or a deliberate `closeChannel()`. Returns `false` (no-op) while a connection is open. Never runs automatically. Keeps source identity and message logs; does not resend or replay missed messages. |
+| `error`                    | `string \| null`     | Any runtime error from the channel                                                                                                                                                                                                                           |
 
 #### Requesting message history
 
@@ -343,6 +345,24 @@ closeChannel();
 - After calling `closeChannel`, the channel is closed and will not send or receive any more messages.
 - It is safe to call `closeChannel` multiple times (idempotent).
 - You do not need to call this for normal React unmounting; the hook will clean up automatically. Use it for explicit/manual cleanup only.
+
+#### Reconnecting After a Failure or Close
+
+If creating the channel fails (for example a transient browser error) or you deliberately closed it with `closeChannel()`, the hook stays disconnected until you explicitly call `reconnect()`:
+
+```tsx
+const { error, reconnect } = useBroadcastChannel('my-channel');
+
+// e.g. from a "Try again" button when error says the channel could not be created:
+const reopened = reconnect(); // true when a new connection was created
+```
+
+**Notes:**
+
+- `reconnect()` is a no-op that returns `false` while a connection is open — a working channel is never replaced.
+- The library never reconnects automatically: not after a creation failure, not after `closeChannel()`, not on rerender. Recovery is always an explicit application decision.
+- Reconnecting keeps this tab's source identity and its `messages`/`sentMessages` logs. It does not resend or replay anything; to resynchronize data after downtime use `requestMessagesHistory()` or `useSyncedState`.
+- A `messageerror` (an incoming payload that failed to deserialize) is reported through `error` as a read failure. It is not treated as a disconnection.
 
 #### `onMessage` Callbacks
 

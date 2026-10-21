@@ -87,8 +87,8 @@ test('changing channel identity creates a new connection and closes the old one'
   expect(FailureChannel.instances[1].postMessage).toHaveBeenCalledTimes(1);
 });
 
-test('messageerror currently has no listener: it is not a disconnect signal', () => {
+test('messageerror has a listener that reports a read error; it is not a disconnect signal', () => {
   renderHook(() => useBroadcastChannel('failure'));
   expect(FailureChannel.instances[0].listeners.has('message')).toBe(true);
-  expect(FailureChannel.instances[0].listeners.has('messageerror')).toBe(false);
+  expect(FailureChannel.instances[0].listeners.has('messageerror')).toBe(true);
 });

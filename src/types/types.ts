@@ -179,6 +179,15 @@ export interface BroadcastActions {
   /** Explicitly close the broadcast channel and remove listeners */
   closeChannel: () => void;
 
+  /**
+   * Explicitly recreate the channel after a creation failure or a deliberate
+   * closeChannel(). Returns false (no-op) while a connection is open. The
+   * library never reconnects automatically. Keeps this tab's source identity
+   * and message logs; does not resend or replay missed messages - use
+   * requestMessagesHistory() or useSyncedState to resynchronize data.
+   */
+  reconnect: () => boolean;
+
   /** Current error state */
   error: string | null;
 }

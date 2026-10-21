@@ -26,20 +26,22 @@ const Counter = exportsObject.default!;
 
 class Channel {
   static peers: Channel[] = [];
-  listener?: (event: MessageEvent) => void;
+  // Real BroadcastChannel keeps one listener set per event type; the hook
+  // subscribes to both "message" and "messageerror".
+  listeners = new Map<string, (event: MessageEvent) => void>();
   constructor(public name: string) {
     Channel.peers.push(this);
   }
-  addEventListener(_type: string, listener: (event: MessageEvent) => void) {
-    this.listener = listener;
+  addEventListener(type: string, listener: (event: MessageEvent) => void) {
+    this.listeners.set(type, listener);
   }
-  removeEventListener() {
-    this.listener = undefined;
+  removeEventListener(type: string) {
+    this.listeners.delete(type);
   }
   postMessage(data: unknown) {
     Channel.peers
       .filter(peer => peer !== this && peer.name === this.name)
-      .forEach(peer => peer.listener?.({ data } as MessageEvent));
+      .forEach(peer => peer.listeners.get('message')?.({ data } as MessageEvent));
   }
   close() {
     Channel.peers = Channel.peers.filter(peer => peer !== this);
