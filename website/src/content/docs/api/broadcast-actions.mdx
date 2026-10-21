@@ -14,20 +14,21 @@ head:
 
 `useBroadcastChannel` returns this object; `useBroadcastProvider` reads the same shape from context.
 
-| Member                   | Type                                                                         | Description                                                                                 |
-| ------------------------ | ---------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------- |
-| `channelName`            | `string`                                                                     | Resolved channel name, including the namespace.                                             |
-| `messages`               | `BroadcastMessage[]`                                                         | Received messages (the log). Empty in a late-joining tab until something arrives.           |
-| `sentMessages`           | `BroadcastMessage[]`                                                         | Local send attempts, including queued/failed sends. Not delivery acknowledgements.          |
-| `isPingInProgress`       | `boolean`                                                                    | `true` while a `ping()` is collecting answers.                                              |
-| `error`                  | `string \| null`                                                             | Set when the browser lacks `BroadcastChannel` or the channel fails.                         |
-| `postMessage`            | `(type: string, content: any, options?: SendMessageOptions) => void`         | Send to every other tab on the channel.                                                     |
-| `ping`                   | `(timeoutMs?: number) => Promise<string[]>`                                  | Discover other tabs on the channel; resolves to their source names (yours excluded).        |
-| `getLatestMessage`       | `(options?: { type?: string; source?: string }) => BroadcastMessage \| null` | Most recent received message, optionally filtered. `null` when nothing matches.             |
-| `clearReceivedMessages`  | `(options?: ClearReceivedMessagesOptions) => void`                           | Clear the received log, optionally by `types`, `sources`, or `ids`.                         |
-| `clearSentMessages`      | `(options?: ClearSentMessagesOptions) => void`                               | Clear the sent log. `sync: true` also clears the other tabs' received copies.               |
-| `closeChannel`           | `() => void`                                                                 | Close the channel and remove listeners. Idempotent; automatic on unmount.                   |
-| `requestMessagesHistory` | `(options?: RequestMessagesHistoryOptions) => void`                          | Ask open tabs for their recent messages and merge the union into this tab’s log. **2.3.0+** |
+| Member                   | Type                                                                         | Description                                                                                                           |
+| ------------------------ | ---------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------- |
+| `channelName`            | `string`                                                                     | Resolved channel name, including the namespace.                                                                       |
+| `messages`               | `BroadcastMessage[]`                                                         | Received messages (the log). Empty in a late-joining tab until something arrives.                                     |
+| `sentMessages`           | `BroadcastMessage[]`                                                         | Local send attempts, including queued/failed sends. Not delivery acknowledgements.                                    |
+| `isPingInProgress`       | `boolean`                                                                    | `true` while a `ping()` is collecting answers.                                                                        |
+| `error`                  | `string \| null`                                                             | Set when the browser lacks `BroadcastChannel` or the channel fails.                                                   |
+| `postMessage`            | `(type: string, content: any, options?: SendMessageOptions) => void`         | Send to every other tab on the channel.                                                                               |
+| `ping`                   | `(timeoutMs?: number) => Promise<string[]>`                                  | Discover other tabs on the channel; resolves to their source names (yours excluded).                                  |
+| `getLatestMessage`       | `(options?: { type?: string; source?: string }) => BroadcastMessage \| null` | Most recent received message, optionally filtered. `null` when nothing matches.                                       |
+| `clearReceivedMessages`  | `(options?: ClearReceivedMessagesOptions) => void`                           | Clear the received log, optionally by `types`, `sources`, or `ids`.                                                   |
+| `clearSentMessages`      | `(options?: ClearSentMessagesOptions) => void`                               | Clear the sent log. `sync: true` also clears the other tabs' received copies.                                         |
+| `closeChannel`           | `() => void`                                                                 | Close the channel and remove listeners. Idempotent; automatic on unmount.                                             |
+| `reconnect`              | `() => boolean`                                                              | Recreate the channel after a creation failure or `closeChannel()`. No-op (`false`) while a connection object is held. |
+| `requestMessagesHistory` | `(options?: RequestMessagesHistoryOptions) => void`                          | Ask open tabs for their recent messages and merge the union into this tab’s log. **2.3.0+**                           |
 
 ## getLatestMessage
 
@@ -42,6 +43,20 @@ Returns the most recently received matching message, or `null`. Note that in a l
 ## closeChannel
 
 Use for manual cleanup only: after it, the channel sends and receives nothing. Safe to call repeatedly. You do not need it for normal unmounting.
+
+## reconnect
+
+Explicitly recreates the channel after a creation failure or a deliberate `closeChannel()`:
+
+```tsx
+const { error, reconnect } = useBroadcastChannel('my-channel');
+// when error says the channel could not be created, e.g. from a retry button:
+const reopened = reconnect(); // true when a new connection was created
+```
+
+Returns `false` and does nothing while a connection object is held. Reconnecting keeps this tab's source identity and message logs; it does not resend or replay missed messages — use `requestMessagesHistory` or `useSyncedState` to resynchronize data. A `messageerror` (an incoming payload that failed to deserialize) is reported through `error` as a read failure and is not treated as a disconnection.
+
+By default (`recovery: 'auto'`, **2.4.0+**) the hook also recovers on its own when a channel provably dies outside its control — a send threw `InvalidStateError`, which per the HTML standard means the held channel object was closed and the message never left this tab, so retrying that send once cannot duplicate delivery. Recovery never triggers on a deliberate `closeChannel()` or unmount, on payload errors, or on silence (a channel that silently stops receiving is undetectable). It is bounded by `maxRecoveryAttempts` consecutive failed attempts, after which only an explicit `reconnect()` revives the channel; `onChannelRecovered` is the resync point since missed messages are never replayed. Pass `recovery: 'manual'` to make every recovery an explicit application decision — `reconnect()` then stays the only way back.
 
 ## requestMessagesHistory
 

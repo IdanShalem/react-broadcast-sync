@@ -35,6 +35,9 @@ const actions = useBroadcastChannel(channelName, options?);
 | `deduplicationTTL`          | `number` (ms)                     | 5 minutes  | How long a seen message ID blocks redelivery.                                                                                      |
 | `batchingDelayMs`           | `number` (ms)                     | `20`       | Window for batching outgoing messages. `0` disables batching.                                                                      |
 | `excludedBatchMessageTypes` | `string[]`                        | `[]`       | Types that always send immediately.                                                                                                |
+| `recovery`                  | `'auto' \| 'manual'`              | `'auto'`   | Automatic recovery on provable channel death: recreates the channel and retries that send once. `'manual'` opts out. **2.4.0+**    |
+| `maxRecoveryAttempts`       | `number`                          | `3`        | Consecutive failed recoveries before the channel stays down until an explicit `reconnect()`. **2.4.0+**                            |
+| `onChannelRecovered`        | `() => void`                      | none       | Fired after a successful automatic recovery; use it to resync. Missed messages are never replayed. **2.4.0+**                      |
 | `telemetry`                 | `boolean`                         | `false`    | Deprecated no-op. The library collects no telemetry ([details](/guides/telemetry/)).                                               |
 
 ## Returns

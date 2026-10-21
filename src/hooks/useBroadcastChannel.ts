@@ -23,7 +23,7 @@ import {
   debounce,
 } from '../utils/messageUtils';
 import { debug } from '../utils/debug';
-import { CHANNEL_NOT_SUPPORTED_ERROR } from '../utils/constants';
+import { CHANNEL_CLOSED_ERROR, CHANNEL_NOT_SUPPORTED_ERROR } from '../utils/constants';
 import {
   MESSAGES_HISTORY_REQUEST_TTL_MS,
   compareMessagesByTimestamp,
@@ -97,6 +97,9 @@ export const useBroadcastChannel = (
     batchingDelayMs = 20,
     excludedBatchMessageTypes = [],
     onMessage,
+    recovery = 'auto',
+    maxRecoveryAttempts = 3,
+    onChannelRecovered,
   } = options;
 
   // State
@@ -114,6 +117,14 @@ export const useBroadcastChannel = (
   const batchingErrorRef = useRef(false);
   const onMessageRef = useRef<MessageCallback | OnMessageMap | undefined>(onMessage);
   onMessageRef.current = onMessage;
+  const onChannelRecoveredRef = useRef<(() => void) | undefined>(onChannelRecovered);
+  onChannelRecoveredRef.current = onChannelRecovered;
+  // Consecutive automatic recovery attempts; reset by every successful send
+  const recoveryAttemptsRef = useRef(0);
+  // Bridge: postMessage/ping are defined before attemptAutoRecovery below
+  const attemptAutoRecoveryRef = useRef<
+    ((failed: BroadcastChannel, retry: () => void) => boolean) | undefined
+  >(undefined);
   const messagesRef = useRef<BroadcastMessage[]>([]);
   messagesRef.current = messages;
   const sentMessagesRef = useRef<BroadcastMessage[]>([]);
@@ -129,6 +140,9 @@ export const useBroadcastChannel = (
   );
   // Session-local clear barrier: replayed messages older than this are dropped
   const historyClearBarrier = useRef(0);
+  // Active channel listeners, tracked so close/reconnect/unmount can detach them
+  const channelListenerRef = useRef<((event: MessageEvent) => void) | null>(null);
+  const channelErrorListenerRef = useRef<(() => void) | null>(null);
 
   // Memoized values
   const source = useMemo(() => sourceName || generateSourceName(), [sourceName]);
@@ -189,7 +203,7 @@ export const useBroadcastChannel = (
       }
 
       if (!channel.current) {
-        const error = CHANNEL_NOT_SUPPORTED_ERROR;
+        const error = downChannelError();
         debug.error({
           action: 'ping',
           channelName: resolvedChannelName,
@@ -208,19 +222,29 @@ export const useBroadcastChannel = (
       const collector = new Set<string>();
       activeSourcesCollector.current = collector;
 
+      const pingChannel = channel.current;
       try {
-        channel.current.postMessage(createMessage(internalTypes.PING, null, source));
+        pingChannel.postMessage(createMessage(internalTypes.PING, null, source));
+        recoveryAttemptsRef.current = 0;
+        setError(null);
       } catch (e) {
-        activeSourcesCollector.current = null;
-        setIsPingInProgress(false);
-        const error = 'Failed to send ping';
-        debug.error({
-          action: 'ping',
-          channelName: resolvedChannelName,
-          originalError: e instanceof Error ? e.message : String(e),
-        });
-        setErrorMessage(error);
-        return Promise.resolve([]);
+        const recovered =
+          isChannelClosedError(e) &&
+          attemptAutoRecoveryRef.current?.(pingChannel, () => {
+            channel.current?.postMessage(createMessage(internalTypes.PING, null, source));
+          });
+        if (!recovered) {
+          activeSourcesCollector.current = null;
+          setIsPingInProgress(false);
+          const error = 'Failed to send ping';
+          debug.error({
+            action: 'ping',
+            channelName: resolvedChannelName,
+            originalError: e instanceof Error ? e.message : String(e),
+          });
+          setErrorMessage(error);
+          return Promise.resolve([]);
+        }
       }
 
       return new Promise(resolve => {
@@ -240,7 +264,7 @@ export const useBroadcastChannel = (
     (messageType: string, messageContent: any, options: SendMessageOptions = {}) => {
       const channelCurrent = channel.current;
       if (!channelCurrent) {
-        const error = CHANNEL_NOT_SUPPORTED_ERROR;
+        const error = downChannelError();
         debug.error({
           action: 'postMessage',
           channelName: resolvedChannelName,
@@ -258,16 +282,25 @@ export const useBroadcastChannel = (
       if (shouldSendImmediately) {
         try {
           channelCurrent.postMessage(message);
+          recoveryAttemptsRef.current = 0;
+          setError(null);
         } catch (e) {
-          const error = 'Failed to send message';
-          debug.error({
-            action: 'postMessage',
-            channelName: resolvedChannelName,
-            type: messageType,
-            originalError: error,
-          });
-          setErrorMessage(error);
-          batchingErrorRef.current = true;
+          const recovered =
+            isChannelClosedError(e) &&
+            attemptAutoRecoveryRef.current?.(channelCurrent, () => {
+              channel.current?.postMessage(message);
+            });
+          if (!recovered) {
+            const error = 'Failed to send message';
+            debug.error({
+              action: 'postMessage',
+              channelName: resolvedChannelName,
+              type: messageType,
+              originalError: error,
+            });
+            setErrorMessage(error);
+            batchingErrorRef.current = true;
+          }
         }
       } else {
         batchingMessagesRef.current.push(message);
@@ -280,16 +313,26 @@ export const useBroadcastChannel = (
             }
             try {
               channelCurrent.postMessage(batchingMessagesRef.current);
+              recoveryAttemptsRef.current = 0;
+              setError(null);
             } catch (e) {
-              const error = 'Failed to send message';
-              debug.error({
-                action: 'postMessage',
-                channelName: resolvedChannelName,
-                type: messageType,
-                originalError: error,
-              });
-              setErrorMessage(error);
-              batchingErrorRef.current = true;
+              const batch = batchingMessagesRef.current;
+              const recovered =
+                isChannelClosedError(e) &&
+                attemptAutoRecoveryRef.current?.(channelCurrent, () => {
+                  channel.current?.postMessage(batch);
+                });
+              if (!recovered) {
+                const error = 'Failed to send message';
+                debug.error({
+                  action: 'postMessage',
+                  channelName: resolvedChannelName,
+                  type: messageType,
+                  originalError: error,
+                });
+                setErrorMessage(error);
+                batchingErrorRef.current = true;
+              }
             }
             batchingMessagesRef.current = [];
             batchingTimeoutRef.current = null;
@@ -385,12 +428,13 @@ export const useBroadcastChannel = (
     (options: RequestMessagesHistoryOptions = {}) => {
       const channelCurrent = channel.current;
       if (!channelCurrent) {
+        const error = downChannelError();
         debug.error({
           action: 'requestMessagesHistory',
           channelName: resolvedChannelName,
-          originalError: CHANNEL_NOT_SUPPORTED_ERROR,
+          originalError: error,
         });
-        setErrorMessage(CHANNEL_NOT_SUPPORTED_ERROR);
+        setErrorMessage(error);
         return;
       }
 
@@ -669,11 +713,148 @@ export const useBroadcastChannel = (
     const bc = channel.current;
     if (bc && typeof bc.close === 'function') {
       flushPendingBatch(bc);
+      if (channelListenerRef.current) {
+        bc.removeEventListener('message', channelListenerRef.current);
+      }
+      if (channelErrorListenerRef.current) {
+        bc.removeEventListener('messageerror', channelErrorListenerRef.current);
+      }
       bc.close();
       debug.channel.closed(resolvedChannelName);
       channel.current = null;
+      channelListenerRef.current = null;
+      channelErrorListenerRef.current = null;
     }
   }, [flushPendingBatch, resolvedChannelName]);
+
+  const openChannel = useCallback((): BroadcastChannel | null => {
+    let bc: BroadcastChannel;
+    try {
+      bc = new BroadcastChannel(resolvedChannelName);
+    } catch (e) {
+      const error = 'Failed to create BroadcastChannel';
+      debug.error({
+        action: 'useBroadcastChannel',
+        channelName: resolvedChannelName,
+        originalError: e instanceof Error ? e : String(e),
+      });
+      setErrorMessage(error);
+      return null;
+    }
+    const listener = (event: MessageEvent) => {
+      // event.data may be a single message or an array of messages (batch)
+      if (Array.isArray(event.data)) {
+        event.data.forEach((message: BroadcastMessage) => {
+          handleMessage({ data: message } as MessageEvent<BroadcastMessage>);
+        });
+      } else {
+        handleMessage(event);
+      }
+    };
+    const errorListener = () => {
+      // messageerror means an incoming payload failed to deserialize.
+      // It is reported, never treated as a disconnection.
+      debug.error({
+        action: 'messageerror',
+        channelName: resolvedChannelName,
+        originalError: 'Failed to deserialize an incoming message',
+      });
+      setErrorMessage('Failed to read an incoming message');
+    };
+    bc.addEventListener('message', listener);
+    bc.addEventListener('messageerror', errorListener);
+    channel.current = bc;
+    channelListenerRef.current = listener;
+    channelErrorListenerRef.current = errorListener;
+    debug.channel.created(resolvedChannelName);
+    return bc;
+  }, [resolvedChannelName, handleMessage, setErrorMessage]);
+
+  // InvalidStateError is the only provable closure signal: the held channel
+  // object was closed (spec: postMessage throws it only on a closed channel).
+  // A null ref with a working constructor means the channel was closed or
+  // dropped, not that the browser lacks support - say so honestly.
+  const downChannelError = (): string =>
+    typeof BroadcastChannel === 'undefined' ? CHANNEL_NOT_SUPPORTED_ERROR : CHANNEL_CLOSED_ERROR;
+
+  const isChannelClosedError = (e: unknown): boolean =>
+    typeof e === 'object' && e !== null && (e as { name?: string }).name === 'InvalidStateError';
+
+  // Automatic recovery fires only on that proof, never on payload errors or
+  // silence. The failed send provably never left this channel, so retrying it
+  // once on the fresh channel cannot duplicate delivery. Bounded by
+  // maxRecoveryAttempts consecutive failed recoveries; explicit closeChannel() and
+  // unmount never reach this path. Missed messages are never replayed.
+  // Drop a provably-closed channel object (InvalidStateError evidence):
+  // detach listeners and release the ref without flushing into the dead
+  // transport. After the drop an explicit reconnect() can start fresh.
+  const dropDeadChannel = useCallback((dead: BroadcastChannel) => {
+    if (channel.current !== dead) return;
+    if (channelListenerRef.current) {
+      dead.removeEventListener('message', channelListenerRef.current);
+    }
+    if (channelErrorListenerRef.current) {
+      dead.removeEventListener('messageerror', channelErrorListenerRef.current);
+    }
+    channel.current = null;
+    channelListenerRef.current = null;
+    channelErrorListenerRef.current = null;
+  }, []);
+
+  const attemptAutoRecovery = useCallback(
+    (failedChannel: BroadcastChannel, retry: () => void): boolean => {
+      if (recovery !== 'auto') return false;
+      if (channel.current !== failedChannel) return false;
+      if (recoveryAttemptsRef.current >= maxRecoveryAttempts) {
+        dropDeadChannel(failedChannel);
+        return false;
+      }
+      recoveryAttemptsRef.current += 1;
+      dropDeadChannel(failedChannel);
+      if (openChannel() === null) return false;
+      try {
+        retry();
+        // The fresh channel provably works (this send just left it), so the
+        // consecutive-failure streak is over.
+        recoveryAttemptsRef.current = 0;
+        setError(null);
+      } catch (e) {
+        debug.error({
+          action: 'autoRecoveryRetry',
+          channelName: resolvedChannelName,
+          originalError: e instanceof Error ? e.message : String(e),
+        });
+        return false;
+      }
+      try {
+        onChannelRecoveredRef.current?.();
+      } catch (e) {
+        debug.error({
+          action: 'onChannelRecovered',
+          channelName: resolvedChannelName,
+          originalError: e instanceof Error ? e.message : String(e),
+        });
+      }
+      return true;
+    },
+    [recovery, maxRecoveryAttempts, openChannel, resolvedChannelName, dropDeadChannel]
+  );
+  attemptAutoRecoveryRef.current = attemptAutoRecovery;
+
+  // Explicit transport recovery only: never called automatically. A working
+  // connection is never replaced, and a deliberate closeChannel() stays
+  // closed until the app asks. Source identity and message logs are kept;
+  // nothing is resent or replayed.
+  const reconnect = useCallback((): boolean => {
+    if (channel.current) return false;
+    if (typeof BroadcastChannel === 'undefined') {
+      setErrorMessage(CHANNEL_NOT_SUPPORTED_ERROR);
+      return false;
+    }
+    if (openChannel() === null) return false;
+    setError(null);
+    return true;
+  }, [openChannel, setErrorMessage]);
 
   useEffect(() => {
     if (typeof BroadcastChannel === 'undefined') {
@@ -687,45 +868,32 @@ export const useBroadcastChannel = (
       return;
     }
 
-    let bc: BroadcastChannel | null = null;
-    try {
-      bc = new BroadcastChannel(resolvedChannelName);
-    } catch (e) {
-      const error = 'Failed to create BroadcastChannel';
-      debug.error({
-        action: 'useBroadcastChannel',
-        channelName: resolvedChannelName,
-        originalError: e instanceof Error ? e : String(e),
-      });
-      setErrorMessage(error);
-      return;
-    }
-    channel.current = bc;
-    debug.channel.created(resolvedChannelName);
+    // Reuse a channel that is already open (e.g. after an explicit
+    // reconnect()); this effect's cleanup owns it from here on.
+    const bc = channel.current ?? openChannel();
+    if (!bc) return;
 
-    const listener = (event: MessageEvent) => {
-      // event.data may be a single message or an array of messages (batch)
-      if (Array.isArray(event.data)) {
-        event.data.forEach((message: BroadcastMessage) => {
-          handleMessage({ data: message } as MessageEvent<BroadcastMessage>);
-        });
-      } else {
-        handleMessage(event);
-      }
-    };
-    bc.addEventListener('message', listener);
     return () => {
-      bc.removeEventListener('message', listener);
-      // Flush while this effect's channel is still open. A later effect may
-      // create a different channel, so never carry this queue into it.
-      if (channel.current === bc) {
-        flushPendingBatch(bc);
-        bc.close();
-        debug.channel.closed(resolvedChannelName);
-        channel.current = null;
+      // Close whatever connection is current at cleanup time. A cleanup runs
+      // before the next effect body, so it can never close a newer channel.
+      const current = channel.current;
+      if (!current) return;
+      if (channelListenerRef.current) {
+        current.removeEventListener('message', channelListenerRef.current);
       }
+      if (channelErrorListenerRef.current) {
+        current.removeEventListener('messageerror', channelErrorListenerRef.current);
+      }
+      // Flush while this connection is still open. A later effect may create
+      // a different channel, so never carry this queue into it.
+      flushPendingBatch(current);
+      current.close();
+      debug.channel.closed(resolvedChannelName);
+      channel.current = null;
+      channelListenerRef.current = null;
+      channelErrorListenerRef.current = null;
     };
-  }, [resolvedChannelName, handleMessage, setErrorMessage, flushPendingBatch]);
+  }, [resolvedChannelName, openChannel, setErrorMessage, flushPendingBatch]);
 
   useEffect(() => {
     if (cleaningInterval <= 0) return;
@@ -772,6 +940,7 @@ export const useBroadcastChannel = (
     requestMessagesHistory,
     error,
     closeChannel,
+    reconnect,
   };
 };
 

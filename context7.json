@@ -13,6 +13,7 @@
     "The package collects no telemetry; the telemetry option is a deprecated no-op.",
     "messages is a log of received messages, not current state. To sync state, update local state and call postMessage in the same handler, and apply incoming messages with onMessage.",
     "Never call postMessage from a useEffect on state that is also set from incoming messages: it creates a ping-pong loop.",
-    "Messages are not replayed to tabs opened later, and keepLatestMessage does not change that. For initial state, have the new tab post a 'state-request' message and let an existing tab reply with the current state."
+    "Messages are not replayed to tabs opened later, and keepLatestMessage does not change that. For initial state, have the new tab post a 'state-request' message and let an existing tab reply with the current state.",
+    "recovery defaults to 'auto': the channel is recreated only when a send throws InvalidStateError - proof the held channel was closed outside the library - and that send is retried once; explicit closeChannel(), payload errors and silence never trigger it, missed messages are never replayed (use onChannelRecovered to resync), and recovery: 'manual' opts out."
   ]
 }

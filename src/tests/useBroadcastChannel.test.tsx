@@ -1146,8 +1146,10 @@ describe('useBroadcastChannel', () => {
       expect(res2).toHaveLength(0);
     });
 
-    it('reports a failed ping send without throwing or leaving ping stuck', async () => {
-      const { result } = renderHook(() => useBroadcastChannel('ping-error', { sourceName: 'A' }));
+    it('in manual mode, reports a failed ping send without throwing or leaving ping stuck', async () => {
+      const { result } = renderHook(() =>
+        useBroadcastChannel('ping-error', { sourceName: 'A', recovery: 'manual' })
+      );
       renderHook(() => useBroadcastChannel('ping-error', { sourceName: 'B' }));
       const bc = mockChannels[0];
       bc.postMessage.mockImplementationOnce(() => {
