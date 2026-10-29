@@ -84,7 +84,7 @@ postMessage('logout', { at: Date.now() }); // other tabs receive it in `messages
 - Simple and intuitive API
 - Real-time synchronization across tabs
 - TypeScript support
-- Zero dependencies
+- Two small runtime dependencies (`@babel/runtime`, `tslib`)
 - Automatic message expiration and cleanup
 - Send/receive any serializable message
 - Namespace and source scoping support

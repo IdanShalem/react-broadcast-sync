@@ -1,0 +1,82 @@
+---
+title: TanStack Query Invalidation Across Tabs
+description: Refetch server data in every open tab after one tab changes it.
+head:
+  - tag: script
+    attrs:
+      type: application/ld+json
+    content: '{"@context": "https://schema.org", "@type": "TechArticle", "headline": "TanStack Query Invalidation Across Tabs", "description": "Refetch server data in every open tab after one tab changes it.", "url": "https://react-broadcast-sync-docs.vercel.app/recipes/tanstack-query/", "author": {"@type": "Person", "name": "Idan Shalem"}, "isPartOf": {"@type": "WebSite", "name": "react-broadcast-sync documentation", "url": "https://react-broadcast-sync-docs.vercel.app"}}'
+  - tag: script
+    attrs:
+      type: application/ld+json
+    content: '{"@context": "https://schema.org", "@type": "BreadcrumbList", "itemListElement": [{"@type": "ListItem", "position": 1, "name": "Docs", "item": "https://react-broadcast-sync-docs.vercel.app/"}, {"@type": "ListItem", "position": 2, "name": "TanStack Query Invalidation Across Tabs", "item": "https://react-broadcast-sync-docs.vercel.app/recipes/tanstack-query/"}]}'
+---
+
+TanStack Query keeps one cache per tab. When a mutation succeeds in tab A, tab B still shows the old data until it refetches. Send a small "this data changed" message and let each tab invalidate its own cache.
+
+Send the **fact that something changed**, not the data. Each tab refetches from the server, so every tab ends up with the server's answer and not a copy of another tab's cache.
+
+The tab that sends a message does not receive it, so invalidate locally in `onSuccess` and broadcast for the other tabs.
+
+Mount the listener **once**, near the `QueryClientProvider`, and let mutations call it through context. If the listener lived inside a mutation hook, a tab that never uses that mutation would not be listening, and mounting it in several places would open several connections.
+
+```tsx
+import { createContext, useContext, type ReactNode } from 'react';
+import { useQueryClient, useMutation } from '@tanstack/react-query';
+import { useBroadcastChannel } from 'react-broadcast-sync';
+
+type Broadcast = (queryKey: readonly unknown[]) => void;
+const BroadcastInvalidate = createContext<Broadcast>(() => {});
+
+// Mount once, inside <QueryClientProvider>.
+export function CrossTabInvalidation({ children }: { children: ReactNode }) {
+  const queryClient = useQueryClient();
+
+  const { postMessage } = useBroadcastChannel('query-sync', {
+    registeredTypes: ['invalidate'],
+    onMessage: {
+      invalidate: msg => {
+        const queryKey = msg.message?.queryKey;
+        if (Array.isArray(queryKey)) {
+          queryClient.invalidateQueries({ queryKey });
+        }
+      },
+    },
+  });
+
+  const broadcast: Broadcast = queryKey => postMessage('invalidate', { queryKey });
+
+  return <BroadcastInvalidate.Provider value={broadcast}>{children}</BroadcastInvalidate.Provider>;
+}
+
+// `api.renameProject` stands for your own request function.
+export function useRenameProject() {
+  const queryClient = useQueryClient();
+  const broadcast = useContext(BroadcastInvalidate);
+
+  return useMutation({
+    mutationFn: (input: { id: string; name: string }) => api.renameProject(input),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['projects'] }); // this tab
+      broadcast(['projects']); // other tabs
+    },
+  });
+}
+```
+
+Wrap your app like this:
+
+```tsx
+<QueryClientProvider client={queryClient}>
+  <CrossTabInvalidation>
+    <App />
+  </CrossTabInvalidation>
+</QueryClientProvider>
+```
+
+Notes:
+
+- Query keys must be structured-cloneable (strings, numbers, plain arrays and objects). Do not send functions.
+- `invalidateQueries` marks matching queries stale and refetches the ones that are currently active. Queries with `enabled: false` are not refetched by an invalidation, and inactive queries refetch the next time a component uses them. Check your `enabled` and `staleTime` settings if a query does not refresh.
+- Messages are not replayed. A tab opened later has no message to react to, so it relies on its own fetch. With a normal in-memory cache it starts empty and fetches fresh data. If you persist the query cache (for example with `persistQueryClient`), restored data is only as fresh as your `staleTime` and `gcTime` settings allow.
+- If many mutations fire close together, the default 20 ms batching groups the messages. Invalidating the same key several times is harmless.

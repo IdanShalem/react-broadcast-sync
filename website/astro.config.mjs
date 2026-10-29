@@ -121,6 +121,8 @@ export default defineConfig({
             { label: 'Multi-tab Form Sync', slug: 'recipes/form-sync' },
             { label: 'Tab Presence', slug: 'recipes/tab-presence' },
             { label: 'Late-joining Tabs', slug: 'recipes/late-tabs' },
+            { label: 'TanStack Query Invalidation', slug: 'recipes/tanstack-query' },
+            { label: 'Cross-tab Logout', slug: 'recipes/cross-tab-logout' },
           ],
         },
         {
