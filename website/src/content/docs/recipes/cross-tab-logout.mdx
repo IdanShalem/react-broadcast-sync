@@ -1,0 +1,62 @@
+---
+title: Cross-tab Logout
+description: Sign out of every open tab when the user logs out in one.
+head:
+  - tag: script
+    attrs:
+      type: application/ld+json
+    content: '{"@context": "https://schema.org", "@type": "TechArticle", "headline": "Cross-tab Logout", "description": "Sign out of every open tab when the user logs out in one.", "url": "https://react-broadcast-sync-docs.vercel.app/recipes/cross-tab-logout/", "author": {"@type": "Person", "name": "Idan Shalem"}, "isPartOf": {"@type": "WebSite", "name": "react-broadcast-sync documentation", "url": "https://react-broadcast-sync-docs.vercel.app"}}'
+  - tag: script
+    attrs:
+      type: application/ld+json
+    content: '{"@context": "https://schema.org", "@type": "BreadcrumbList", "itemListElement": [{"@type": "ListItem", "position": 1, "name": "Docs", "item": "https://react-broadcast-sync-docs.vercel.app/"}, {"@type": "ListItem", "position": 2, "name": "Cross-tab Logout", "item": "https://react-broadcast-sync-docs.vercel.app/recipes/cross-tab-logout/"}]}'
+---
+
+When a user logs out in one tab, other tabs should stop showing private data. Broadcast a `logout` message and let each tab clear its state and go to the login page.
+
+The tab that logs out does not receive its own message, so it runs the same cleanup directly.
+
+Call the hook **once**, in a component that is mounted in every tab (your app root or auth provider), and pass the returned `logout` down to the button. A hook that only lives next to the logout button would leave the other tabs not listening.
+
+```tsx
+import { useQueryClient } from '@tanstack/react-query';
+import { useBroadcastChannel } from 'react-broadcast-sync';
+
+// `api.logout` stands for your own request that ends the server session.
+export function useCrossTabLogout() {
+  const queryClient = useQueryClient();
+
+  const cleanup = () => {
+    queryClient.clear(); // drop cached private data
+    window.location.assign('/login');
+  };
+
+  const { postMessage } = useBroadcastChannel('auth', {
+    registeredTypes: ['logout'],
+    onMessage: {
+      logout: cleanup,
+    },
+  });
+
+  return async function logout() {
+    await api.logout(); // end the session on the server first
+    postMessage('logout', null); // tell the other tabs
+    cleanup(); // this tab
+  };
+}
+```
+
+```tsx
+function AppRoot() {
+  const logout = useCrossTabLogout(); // once, in every tab
+  return <App onLogout={logout} />;
+}
+```
+
+Notes:
+
+- End the session on the server first. The message only updates what other tabs show; it does not secure anything by itself.
+- A tab that is closed, frozen by the browser or opened after the message gets nothing, because messages are not replayed. Protect the data with the server session, so the next request from such a tab fails and sends the user to the login page.
+- Use a fixed channel name and `registeredTypes` so the tab ignores other traffic.
+- Do not send tokens or user data in the message.
+- Pair it with [TanStack Query invalidation](/recipes/tanstack-query/) if you also share cache changes between tabs.
