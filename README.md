@@ -726,7 +726,7 @@ The package no longer collects any telemetry. The `telemetry` option is still ac
 
 ### Typed Channels (TypeScript)
 
-> Not yet released - ships with the next minor version. Optional: without the generic, the API keeps the loose `string` / `any` behavior.
+> Available in react-broadcast-sync 2.5.0 and later. Optional: without the generic, the API keeps the loose `string` / `any` behavior.
 
 Declare a channel's message types and payload shapes once, and `postMessage`, `onMessage`, `getLatestMessage` and the clear/history options are checked at compile time instead of failing silently in another tab:
 

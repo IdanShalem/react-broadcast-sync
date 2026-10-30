@@ -127,7 +127,7 @@ Use one channel per topic (or `namespace`) so each listener only gets its own me
 - Expecting cross-origin delivery. `BroadcastChannel` is same origin only.
 - Passing the deprecated `telemetry` option.
 
-## Typed channels (unreleased, next minor)
+## Typed channels (2.5.0+)
 
 Optional generic for compile-time message names and payloads. Declare one map per channel in a shared module and pass it to `useBroadcastChannel<T>`, `BroadcastProvider<T>` and `useBroadcastProvider<T>()`:
 
