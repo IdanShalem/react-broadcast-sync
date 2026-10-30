@@ -1,7 +1,108 @@
 /**
+ * The default message map: any string message type with any payload. Used as
+ * the generic default so omitting the type argument keeps the loose,
+ * pre-typed-channels behavior.
+ */
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+export type LooseMessageMap = Record<string, any>;
+
+/**
+ * A channel's declared message map: message type name -> payload type.
+ * Pass it as the generic of `useBroadcastChannel` / `BroadcastProvider` /
+ * `useBroadcastProvider` to get type-safe `postMessage`, `onMessage`,
+ * `getLatestMessage` and the clear/history options. Types only - no runtime
+ * validation, and no change when the generic is omitted.
+ *
+ * ```ts
+ * type DashboardEvents = {
+ *   filter: { range: string; team: string };
+ *   logout: undefined;
+ * };
+ * ```
+ */
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+export type BroadcastMessageMap = Record<string, any>;
+
+type EventKeys<TMap extends BroadcastMessageMap> = Extract<keyof TMap, string>;
+
+/**
+ * Prevents `TMap` from being inferred from `options`: the map only comes from
+ * an explicit generic, so omitting it always yields the loose default.
+ */
+export type NoInferMessageMap<TMap> = [TMap][TMap extends any ? 0 : never];
+
+/** Message types whose declared payload includes `undefined`. */
+type OptionalPayloadKeys<TMap extends BroadcastMessageMap> = {
+  [K in EventKeys<TMap>]: undefined extends TMap[K] ? K : never;
+}[EventKeys<TMap>];
+
+/** Message types that require a payload argument on `postMessage`. */
+type RequiredPayloadKeys<TMap extends BroadcastMessageMap> = Exclude<
+  EventKeys<TMap>,
+  OptionalPayloadKeys<TMap>
+>;
+
+/**
+ * A broadcast message narrowed to a declared message map. Distributes over
+ * `TType`, so `TypedBroadcastMessage<Map>` is a discriminated union of one
+ * message shape per declared type. With the default loose map it is
+ * structurally identical to `BroadcastMessage`.
+ */
+export type TypedBroadcastMessage<
+  TMap extends BroadcastMessageMap,
+  TType extends EventKeys<TMap> = EventKeys<TMap>,
+> = TType extends string
+  ? Omit<BroadcastMessage, 'type' | 'message'> & { type: TType; message: TMap[TType] }
+  : never;
+
+/**
+ * `postMessage` typed against a declared message map: only declared message
+ * types are accepted, each with its declared payload. The payload argument is
+ * optional for types declared with an `undefined` payload.
+ */
+export type TypedPostMessage<TMap extends BroadcastMessageMap> = {
+  <TType extends RequiredPayloadKeys<TMap>>(
+    messageType: TType,
+    messageContent: TMap[TType],
+    options?: SendMessageOptions
+  ): void;
+  <TType extends OptionalPayloadKeys<TMap>>(
+    messageType: TType,
+    messageContent?: TMap[TType],
+    options?: SendMessageOptions
+  ): void;
+};
+
+/**
+ * `onMessage` map typed against a declared message map. With the loose
+ * default map it is exactly the classic `OnMessageMap` shape, so existing
+ * untyped handlers keep compiling unchanged.
+ */
+export type TypedOnMessageMap<TMap extends BroadcastMessageMap> =
+  string extends EventKeys<TMap>
+    ? { [type: string]: MessageCallback }
+    : { [K in EventKeys<TMap>]?: (msg: TypedBroadcastMessage<TMap, K>) => void };
+
+/** Single `onMessage` callback receiving the union of a map's messages. */
+export type TypedMessageCallback<TMap extends BroadcastMessageMap = LooseMessageMap> = (
+  msg: TypedBroadcastMessage<TMap>
+) => void;
+
+/**
+ * `getLatestMessage` typed against a declared message map: the returned
+ * message payload matches the requested `type`.
+ */
+export type TypedGetLatestMessage<TMap extends BroadcastMessageMap> = <
+  TType extends EventKeys<TMap> = EventKeys<TMap>,
+>(options?: {
+  source?: string;
+  type?: TType;
+}) => TypedBroadcastMessage<TMap, TType> | null;
+
+/**
  * Options for configuring the broadcast channel
  */
-export interface BroadcastOptions {
+export interface BroadcastOptions<TMap extends BroadcastMessageMap = LooseMessageMap> {
   /** Custom source name for this instance */
   sourceName?: string;
 
@@ -12,7 +113,7 @@ export interface BroadcastOptions {
   keepLatestMessage?: boolean;
 
   /** Array of allowed message types */
-  registeredTypes?: string[];
+  registeredTypes?: EventKeys<TMap>[];
 
   /** Channel namespace for isolation */
   namespace?: string;
@@ -27,7 +128,7 @@ export interface BroadcastOptions {
   batchingDelayMs?: number;
 
   /** Array of message types that should not be batched and sent immediately (default: []) */
-  excludedBatchMessageTypes?: string[];
+  excludedBatchMessageTypes?: EventKeys<TMap>[];
 
   /**
    * Callback(s) fired when an incoming message passes all filters
@@ -39,7 +140,7 @@ export interface BroadcastOptions {
    * The callback fires after the message is added to state.
    * Internal messages (PING, PONG, CLEAR_SENT_MESSAGES) never trigger this.
    */
-  onMessage?: MessageCallback | OnMessageMap;
+  onMessage?: TypedMessageCallback<TMap> | TypedOnMessageMap<TMap>;
 
   /**
    * Transport recovery policy (default: 'auto').
@@ -117,30 +218,32 @@ export interface BroadcastMessage {
    */
   isHistory?: boolean;
 }
-export interface ClearOptions {
+export interface ClearOptions<TMap extends BroadcastMessageMap = LooseMessageMap> {
   ids?: string[];
-  types?: string[];
+  types?: EventKeys<TMap>[];
 }
 
-export interface ClearReceivedMessagesOptions extends ClearOptions {
+export interface ClearReceivedMessagesOptions<TMap extends BroadcastMessageMap = LooseMessageMap>
+  extends ClearOptions<TMap> {
   sources?: string[];
 }
 
-export interface ClearSentMessagesOptions extends ClearOptions {
+export interface ClearSentMessagesOptions<TMap extends BroadcastMessageMap = LooseMessageMap>
+  extends ClearOptions<TMap> {
   sync?: boolean;
 }
 
-export interface GetLatestMessageOptions {
+export interface GetLatestMessageOptions<TMap extends BroadcastMessageMap = LooseMessageMap> {
   source?: string;
-  type?: string;
+  type?: EventKeys<TMap>;
 }
 
 /**
  * Options for requesting the recent messages history from other open tabs
  */
-export interface RequestMessagesHistoryOptions {
+export interface RequestMessagesHistoryOptions<TMap extends BroadcastMessageMap = LooseMessageMap> {
   /** Only request messages of these types (default: all types) */
-  types?: string[];
+  types?: EventKeys<TMap>[];
 
   /**
    * Maximum number of recent messages kept from one request (default: 50,
@@ -161,15 +264,15 @@ export type OnMessageMap = { [type: string]: MessageCallback };
 /**
  * Actions and state provided by the broadcast channel hook
  */
-export interface BroadcastActions {
+export interface BroadcastActions<TMap extends BroadcastMessageMap = LooseMessageMap> {
   /** The resolved channel name including namespace */
   channelName: string;
 
   /** Array of received messages */
-  messages: BroadcastMessage[];
+  messages: TypedBroadcastMessage<TMap>[];
 
   /** Array of sent messages */
-  sentMessages: BroadcastMessage[];
+  sentMessages: TypedBroadcastMessage<TMap>[];
 
   /** Whether a ping operation is currently in progress */
   isPingInProgress: boolean;
@@ -178,16 +281,16 @@ export interface BroadcastActions {
   ping: (timeoutMs?: number) => Promise<string[]>;
 
   /** Function to send a message */
-  postMessage: (messageType: string, messageContent: any, options?: SendMessageOptions) => void;
+  postMessage: TypedPostMessage<TMap>;
 
   /** Function to clear received messages */
-  clearReceivedMessages: (options?: ClearReceivedMessagesOptions) => void;
+  clearReceivedMessages: (options?: ClearReceivedMessagesOptions<TMap>) => void;
 
   /** Function to clear sent messages */
-  clearSentMessages: (options?: ClearSentMessagesOptions) => void;
+  clearSentMessages: (options?: ClearSentMessagesOptions<TMap>) => void;
 
   /** Function to get the latest message by source and type */
-  getLatestMessage: (options?: GetLatestMessageOptions) => BroadcastMessage | null;
+  getLatestMessage: TypedGetLatestMessage<TMap>;
 
   /**
    * Ask other open tabs to replay recent messages into this tab's `messages`.
@@ -203,7 +306,7 @@ export interface BroadcastActions {
    * latest local clear. The clear itself stays session-local and is not
    * propagated to other tabs.
    */
-  requestMessagesHistory: (options?: RequestMessagesHistoryOptions) => void;
+  requestMessagesHistory: (options?: RequestMessagesHistoryOptions<TMap>) => void;
 
   /** Explicitly close the broadcast channel and remove listeners */
   closeChannel: () => void;

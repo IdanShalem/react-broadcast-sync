@@ -1,0 +1,89 @@
+---
+title: Typed Channels
+description: Give each channel a typed message map so message names and payloads are checked at compile time.
+head:
+  - tag: script
+    attrs:
+      type: application/ld+json
+    content: '{"@context": "https://schema.org", "@type": "TechArticle", "headline": "Typed Channels", "description": "Give each channel a typed message map so message names and payloads are checked at compile time.", "url": "https://react-broadcast-sync-docs.vercel.app/recipes/typed-channels/", "author": {"@type": "Person", "name": "Idan Shalem"}, "isPartOf": {"@type": "WebSite", "name": "react-broadcast-sync documentation", "url": "https://react-broadcast-sync-docs.vercel.app"}}'
+  - tag: script
+    attrs:
+      type: application/ld+json
+    content: '{"@context": "https://schema.org", "@type": "BreadcrumbList", "itemListElement": [{"@type": "ListItem", "position": 1, "name": "Docs", "item": "https://react-broadcast-sync-docs.vercel.app/"}, {"@type": "ListItem", "position": 2, "name": "Typed Channels", "item": "https://react-broadcast-sync-docs.vercel.app/recipes/typed-channels/"}]}'
+---
+
+Not yet released - ships with the next minor version. Types only, erased at compile time: no runtime validation, no runtime behavior or wire-format change.
+
+A typo in a message type or a payload that does not match what the receiver expects compiles fine with the default loose API and fails silently in another tab. Declaring a message map per channel turns both into compile errors.
+
+## Declare one map per channel
+
+Export the map from a shared module and import it everywhere the channel is used. TypeScript cannot check that two tabs declared the same contract separately, so the shared definition is the contract.
+
+```ts
+// events.ts
+export type CartEvents = {
+  'cart:add': { productId: string; quantity: number };
+  'cart:clear': undefined;
+};
+
+export type AuthEvents = {
+  login: { userId: string };
+  logout: undefined;
+};
+```
+
+Each channel gets its own map. `cart` and `auth` can use completely different contracts.
+
+## Use it in the hook
+
+```tsx
+import { useBroadcastChannel } from 'react-broadcast-sync';
+import { CartEvents } from './events';
+
+const { postMessage } = useBroadcastChannel<CartEvents>('cart', {
+  onMessage: {
+    'cart:add': msg => addToCart(msg.message.productId, msg.message.quantity),
+  },
+});
+
+postMessage('cart:add', { productId: 'p1', quantity: 2 }); // ok
+postMessage('cart:clear'); // ok: undefined payload, second argument optional
+postMessage('cart:add', { productId: 'p1' }); // compile error: quantity missing
+postMessage('cart:ad', { productId: 'p1', quantity: 2 }); // compile error: unknown type
+```
+
+## Use it in the provider
+
+Pass the same map to `BroadcastProvider` and to `useBroadcastProvider` in the consumers:
+
+```tsx
+import { BroadcastProvider, useBroadcastProvider } from 'react-broadcast-sync';
+import { AuthEvents } from './events';
+
+function App() {
+  return (
+    <BroadcastProvider<AuthEvents> channelName="auth">
+      <UserMenu />
+    </BroadcastProvider>
+  );
+}
+
+function UserMenu() {
+  const { postMessage } = useBroadcastProvider<AuthEvents>();
+  return <button onClick={() => postMessage('logout')}>Sign out everywhere</button>;
+}
+```
+
+## What gets typed
+
+- `postMessage`: only declared types, each with its declared payload. Types declared with an `undefined` payload can omit the second argument.
+- `onMessage`: map keys and each handler's `msg.message` payload.
+- `registeredTypes` and `excludedBatchMessageTypes`: only declared types.
+- `getLatestMessage({ type })`: the returned payload matches the requested type.
+- `clearReceivedMessages` / `clearSentMessages` / `requestMessagesHistory`: their `types` filters accept only declared types.
+- `messages` / `sentMessages`: a discriminated union by `type`, so `if (msg.type === 'cart:add')` narrows the payload.
+
+## What does not change
+
+Nothing at runtime. The map is erased at compile time: payloads are not validated when they arrive, a tab running an older version of the library can still exchange messages with a typed tab, and omitting the generic keeps the previous loose `string` / `any` behavior. If you need runtime validation of incoming payloads, validate in your handlers or use `useSyncedState`'s `validate` option for current state.

@@ -2,6 +2,12 @@ export { useBroadcastChannel } from './hooks/useBroadcastChannel';
 export { BroadcastProvider, useBroadcastProvider } from './BroadcastProvider';
 
 export type {
+  BroadcastMessageMap,
+  TypedBroadcastMessage,
+  TypedPostMessage,
+  TypedOnMessageMap,
+  TypedMessageCallback,
+  TypedGetLatestMessage,
   BroadcastOptions,
   SendMessageOptions,
   BroadcastMessage,

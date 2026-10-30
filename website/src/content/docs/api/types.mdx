@@ -83,3 +83,27 @@ type OnMessageMap = { [type: string]: MessageCallback };
 ```
 
 `onMessage` accepts either a single callback for all incoming messages or a type-keyed map. It fires after the message is added to state and only for messages passing every filter. Internal messages (`PING`, `PONG`, `CLEAR_SENT_MESSAGES`) never trigger it.
+
+## Typed channel types (unreleased, next minor)
+
+Helpers for [typed channels](/recipes/typed-channels/). All erased at compile time.
+
+```ts
+// A channel's declared message map: message type -> payload type.
+type BroadcastMessageMap = Record<string, any>;
+
+// A message narrowed to a map; distributes over TType into a discriminated union.
+type TypedBroadcastMessage<TMap, TType = keyof TMap> = ...;
+
+// postMessage typed against the map; payload optional for undefined-payload types.
+type TypedPostMessage<TMap> = ...;
+
+// onMessage map / single callback typed against the map.
+type TypedOnMessageMap<TMap> = { [K in keyof TMap]?: (msg: TypedBroadcastMessage<TMap, K>) => void };
+type TypedMessageCallback<TMap> = (msg: TypedBroadcastMessage<TMap>) => void;
+
+// getLatestMessage returning the payload that matches the requested type.
+type TypedGetLatestMessage<TMap> = ...;
+```
+
+`BroadcastOptions<TMap>`, `BroadcastActions<TMap>`, `BroadcastProviderProps<TMap>` and the clear/history option types all accept the map as an optional generic that defaults to the loose behavior.

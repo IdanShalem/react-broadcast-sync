@@ -83,7 +83,7 @@ postMessage('logout', { at: Date.now() }); // other tabs receive it in `messages
 
 - Simple and intuitive API
 - Real-time synchronization across tabs
-- TypeScript support
+- TypeScript support, with optional per-channel typed messages and payloads
 - Two small runtime dependencies (`@babel/runtime`, `tslib`)
 - Automatic message expiration and cleanup
 - Send/receive any serializable message
@@ -723,6 +723,39 @@ useBroadcastChannel('my-channel', {
 The package no longer collects any telemetry. The `telemetry` option is still accepted as a deprecated no-op so existing code keeps compiling; it will be removed in the next major version.
 
 ---
+
+### Typed Channels (TypeScript)
+
+> Not yet released - ships with the next minor version. Optional: without the generic, the API keeps the loose `string` / `any` behavior.
+
+Declare a channel's message types and payload shapes once, and `postMessage`, `onMessage`, `getLatestMessage` and the clear/history options are checked at compile time instead of failing silently in another tab:
+
+```tsx
+import { useBroadcastChannel } from 'react-broadcast-sync';
+
+// One definition per channel, shared by every tab that uses it.
+type DashboardEvents = {
+  filter: { range: string; team: string };
+  logout: undefined;
+};
+
+const { postMessage, messages } = useBroadcastChannel<DashboardEvents>('dashboard', {
+  onMessage: {
+    filter: msg => console.log(msg.message.range), // typed payload
+  },
+});
+
+postMessage('filter', { range: '7d', team: 'a' }); // ok
+postMessage('logout'); // ok: `undefined` payload, second argument optional
+postMessage('filter', { range: 7 }); // compile error: payload shape mismatch
+postMessage('flter', {}); // compile error: unknown message type
+```
+
+- `useBroadcastChannel<T>`, `BroadcastProvider<T>` and `useBroadcastProvider<T>()` all take the same message map. Each channel declares its own map; two channels can use completely different contracts.
+- `onMessage` map keys, `registeredTypes`, `excludedBatchMessageTypes` and the `types` filters of `clearReceivedMessages` / `clearSentMessages` / `requestMessagesHistory` accept only declared types.
+- `getLatestMessage({ type })` returns the matching payload type, and `messages` / `sentMessages` narrow by `type` as a discriminated union.
+- Types only, erased at compile time: no runtime validation and no runtime behavior or wire-format change. Tabs running older library versions keep working.
+- Export the map from a shared module and import it everywhere the channel is used: TypeScript cannot check that two tabs declared the same contract separately.
 
 ## Agent Skill (optional)
 

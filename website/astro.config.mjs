@@ -123,6 +123,7 @@ export default defineConfig({
             { label: 'Late-joining Tabs', slug: 'recipes/late-tabs' },
             { label: 'TanStack Query Invalidation', slug: 'recipes/tanstack-query' },
             { label: 'Cross-tab Logout', slug: 'recipes/cross-tab-logout' },
+            { label: 'Typed Channels', slug: 'recipes/typed-channels' },
           ],
         },
         {

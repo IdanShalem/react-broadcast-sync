@@ -2,7 +2,10 @@ import { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import {
   BroadcastActions,
   BroadcastMessage,
+  BroadcastMessageMap,
   BroadcastOptions,
+  LooseMessageMap,
+  NoInferMessageMap,
   ClearReceivedMessagesOptions,
   ClearSentMessagesOptions,
   GetLatestMessageOptions,
@@ -80,12 +83,17 @@ if (process.env.NODE_ENV === 'test') {
  * The event handler in this hook supports both formats. If you listen to the channel directly, always check:
  *   if (Array.isArray(event.data)) { ... } else { ... }
  */
-export const useBroadcastChannel = (
+export const useBroadcastChannel = <TMap extends BroadcastMessageMap = LooseMessageMap>(
   channelName: string,
-  options: BroadcastOptions = {},
+  options: BroadcastOptions<NoInferMessageMap<TMap>> = {},
   /** @internal — used by BroadcastProvider to distinguish its entry point */
   _entry: 'hook' | 'provider' = 'hook'
-): BroadcastActions => {
+): BroadcastActions<TMap> => {
+  // The generic only narrows the public surface; internally the wire format
+  // and handling stay exactly the loose types they were before.
+  const looseOptions = options as unknown as Omit<BroadcastOptions, 'onMessage'> & {
+    onMessage?: MessageCallback | OnMessageMap;
+  };
   const {
     sourceName,
     cleaningInterval = 1000,
@@ -100,7 +108,7 @@ export const useBroadcastChannel = (
     recovery = 'auto',
     maxRecoveryAttempts = 3,
     onChannelRecovered,
-  } = options;
+  } = looseOptions;
 
   // State
   const [messages, setMessages] = useState<BroadcastMessage[]>([]);
@@ -941,7 +949,7 @@ export const useBroadcastChannel = (
     error,
     closeChannel,
     reconnect,
-  };
+  } as unknown as BroadcastActions<TMap>;
 };
 
 export default useBroadcastChannel;

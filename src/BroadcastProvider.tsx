@@ -1,14 +1,20 @@
 import React, { createContext, useContext } from 'react';
 import { useBroadcastChannel } from './hooks/useBroadcastChannel';
-import { BroadcastActions, BroadcastOptions } from './types/types';
+import {
+  BroadcastActions,
+  BroadcastMessageMap,
+  BroadcastOptions,
+  LooseMessageMap,
+  NoInferMessageMap,
+} from './types/types';
 
 const BroadcastChannelContext = createContext<BroadcastActions | undefined>(undefined);
 
-export interface BroadcastProviderProps {
+export interface BroadcastProviderProps<TMap extends BroadcastMessageMap = LooseMessageMap> {
   /** Name of the BroadcastChannel. Combined with `options.namespace` when one is set. */
   channelName: string;
   /** Same options as `useBroadcastChannel`. */
-  options?: BroadcastOptions;
+  options?: BroadcastOptions<NoInferMessageMap<TMap>>;
   children: React.ReactNode;
 }
 
@@ -25,15 +31,16 @@ export interface BroadcastProviderProps {
  * </BroadcastProvider>
  * ```
  */
-export const BroadcastProvider: React.FC<BroadcastProviderProps> = ({
+export const BroadcastProvider = <TMap extends BroadcastMessageMap = LooseMessageMap>({
   children,
   channelName,
   options,
-}) => {
-  const BroadcastChannelActions = useBroadcastChannel(channelName, options, 'provider');
+}: BroadcastProviderProps<TMap>): React.ReactElement => {
+  const BroadcastChannelActions = useBroadcastChannel<TMap>(channelName, options, 'provider');
+  const contextValue = BroadcastChannelActions as unknown as BroadcastActions;
 
   return (
-    <BroadcastChannelContext.Provider value={BroadcastChannelActions}>
+    <BroadcastChannelContext.Provider value={contextValue}>
       {children}
     </BroadcastChannelContext.Provider>
   );
@@ -44,10 +51,12 @@ export const BroadcastProvider: React.FC<BroadcastProviderProps> = ({
  *
  * @throws Error if called outside a `BroadcastProvider`.
  */
-export const useBroadcastProvider = (): BroadcastActions => {
+export const useBroadcastProvider = <
+  TMap extends BroadcastMessageMap = LooseMessageMap,
+>(): BroadcastActions<TMap> => {
   const context = useContext(BroadcastChannelContext);
   if (!context) {
     throw new Error('useBroadcastProvider must be used within a BroadcastProvider');
   }
-  return context;
+  return context as BroadcastActions<TMap>;
 };
