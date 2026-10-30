@@ -25,9 +25,11 @@ The library is published on npm as `react-broadcast-sync`. Same-origin tabs only
 - [Message Lifecycle](https://react-broadcast-sync-docs.vercel.app/guides/message-lifecycle/): expiration, dedup, and cleanup
 - [Performance](https://react-broadcast-sync-docs.vercel.app/guides/performance/): costs and how to keep them low
 - [Telemetry](https://react-broadcast-sync-docs.vercel.app/guides/telemetry/): the library collects none; site analytics notice
+- [Site analytics](https://react-broadcast-sync-docs.vercel.app/guides/site-analytics/): what this documentation site and its live demos record
 
 ## API Reference
 
+- [useSyncedState (2.2.0+)](https://react-broadcast-sync-docs.vercel.app/api/use-synced-state/)
 - [useBroadcastChannel](https://react-broadcast-sync-docs.vercel.app/api/use-broadcast-channel/)
 - [BroadcastActions](https://react-broadcast-sync-docs.vercel.app/api/broadcast-actions/)
 - [BroadcastProvider](https://react-broadcast-sync-docs.vercel.app/api/broadcast-provider/)
@@ -36,9 +38,13 @@ The library is published on npm as `react-broadcast-sync`. Same-origin tabs only
 ## Recipes
 
 - [Real-time Notifications](https://react-broadcast-sync-docs.vercel.app/recipes/notifications/)
+- [Optimistic Task Updates](https://react-broadcast-sync-docs.vercel.app/recipes/optimistic-updates/)
 - [Multi-tab Form Sync](https://react-broadcast-sync-docs.vercel.app/recipes/form-sync/)
 - [Tab Presence](https://react-broadcast-sync-docs.vercel.app/recipes/tab-presence/)
 - [Late-joining Tabs](https://react-broadcast-sync-docs.vercel.app/recipes/late-tabs/)
+- [TanStack Query Invalidation](https://react-broadcast-sync-docs.vercel.app/recipes/tanstack-query/)
+- [Cross-tab Logout](https://react-broadcast-sync-docs.vercel.app/recipes/cross-tab-logout/)
+- [Typed Channels](https://react-broadcast-sync-docs.vercel.app/recipes/typed-channels/)
 
 ## Reference
 
