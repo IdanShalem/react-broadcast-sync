@@ -448,6 +448,39 @@ The package no longer collects any telemetry. The `telemetry` option is still ac
 
 ---
 
+### Typed Channels (TypeScript)
+
+> Not yet released - ships with the next minor version. Optional: without the generic, the API keeps the loose `string` / `any` behavior.
+
+Declare a channel's message types and payload shapes once, and `postMessage`, `onMessage`, `getLatestMessage` and the clear/history options are checked at compile time instead of failing silently in another tab:
+
+```tsx
+import { useBroadcastChannel } from 'react-broadcast-sync';
+
+// One definition per channel, shared by every tab that uses it.
+type DashboardEvents = {
+  filter: { range: string; team: string };
+  logout: undefined;
+};
+
+const { postMessage, messages } = useBroadcastChannel<DashboardEvents>('dashboard', {
+  onMessage: {
+    filter: msg => console.log(msg.message.range), // typed payload
+  },
+});
+
+postMessage('filter', { range: '7d', team: 'a' }); // ok
+postMessage('logout'); // ok: `undefined` payload, second argument optional
+postMessage('filter', { range: 7 }); // compile error: payload shape mismatch
+postMessage('flter', {}); // compile error: unknown message type
+```
+
+- `useBroadcastChannel<T>`, `BroadcastProvider<T>` and `useBroadcastProvider<T>()` all take the same message map. Each channel declares its own map; two channels can use completely different contracts.
+- `onMessage` map keys, `registeredTypes`, `excludedBatchMessageTypes` and the `types` filters of `clearReceivedMessages` / `clearSentMessages` / `requestMessagesHistory` accept only declared types.
+- `getLatestMessage({ type })` returns the matching payload type, and `messages` / `sentMessages` narrow by `type` as a discriminated union.
+- Types only, erased at compile time: no runtime validation and no runtime behavior or wire-format change. Tabs running older library versions keep working.
+- Export the map from a shared module and import it everywhere the channel is used: TypeScript cannot check that two tabs declared the same contract separately.
+
 ## Gotchas
 
 - **Duplicate `sourceName`:** a tab ignores any message whose `source` equals its own `sourceName`. If two tabs use the same `sourceName`, they will not receive each other's messages. Leave it unset (a unique name is generated) unless you need a stable name, and keep it unique per tab.

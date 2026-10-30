@@ -34,4 +34,18 @@ const actions = useBroadcastProvider();
 
 Returns the [`BroadcastActions`](/api/broadcast-actions/) shared by the nearest `BroadcastProvider`. Throws when called outside one.
 
+## Typed channels (unreleased, next minor)
+
+Pass the same message map to the provider and the context hook:
+
+```tsx
+<BroadcastProvider<AuthEvents> channelName="auth">
+  <App />
+</BroadcastProvider>;
+
+const { postMessage } = useBroadcastProvider<AuthEvents>();
+```
+
+`options`, `postMessage`, `onMessage` and the getters are then checked against the map. Types only; omitting the generic keeps the loose behavior. See the [Typed Channels recipe](/recipes/typed-channels/).
+
 The same rules as the hook apply: the tab ignores its own messages, `messages` is an event log (not current state), and a tab opened later does not receive earlier messages.

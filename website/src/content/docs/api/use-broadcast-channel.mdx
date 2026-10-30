@@ -14,6 +14,8 @@ head:
 
 ```ts
 const actions = useBroadcastChannel(channelName, options?);
+// or, with a typed message map (next minor release):
+const typedActions = useBroadcastChannel<DashboardEvents>(channelName, options?);
 ```
 
 | Parameter     | Type               | Required | Description                                               |
@@ -39,6 +41,25 @@ const actions = useBroadcastChannel(channelName, options?);
 | `maxRecoveryAttempts`       | `number`                          | `3`        | Consecutive failed recoveries before the channel stays down until an explicit `reconnect()`. **2.4.0+**                            |
 | `onChannelRecovered`        | `() => void`                      | none       | Fired after a successful automatic recovery; use it to resync. Missed messages are never replayed. **2.4.0+**                      |
 | `telemetry`                 | `boolean`                         | `false`    | Deprecated no-op. The library collects no telemetry ([details](/guides/telemetry/)).                                               |
+
+## Typed channels (unreleased, next minor)
+
+Pass an optional message map as the generic to type `postMessage`, `onMessage`, `getLatestMessage`, the `types` filters of the clear/history functions, and `registeredTypes` / `excludedBatchMessageTypes`:
+
+```ts
+type DashboardEvents = {
+  filter: { range: string; team: string };
+  logout: undefined;
+};
+
+const { postMessage } = useBroadcastChannel<DashboardEvents>('dashboard');
+
+postMessage('filter', { range: '7d', team: 'a' }); // ok
+postMessage('logout'); // ok: undefined payload, second argument optional
+postMessage('flter', {}); // compile error: unknown message type
+```
+
+Types only: no runtime validation, no wire-format change. Omitting the generic keeps the loose `string` / `any` behavior. See the [Typed Channels recipe](/recipes/typed-channels/).
 
 ## Returns
 

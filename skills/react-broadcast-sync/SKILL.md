@@ -127,6 +127,23 @@ Use one channel per topic (or `namespace`) so each listener only gets its own me
 - Expecting cross-origin delivery. `BroadcastChannel` is same origin only.
 - Passing the deprecated `telemetry` option.
 
+## Typed channels (unreleased, next minor)
+
+Optional generic for compile-time message names and payloads. Declare one map per channel in a shared module and pass it to `useBroadcastChannel<T>`, `BroadcastProvider<T>` and `useBroadcastProvider<T>()`:
+
+```ts
+type CartEvents = {
+  'cart:add': { productId: string; quantity: number };
+  'cart:clear': undefined;
+};
+
+const { postMessage } = useBroadcastChannel<CartEvents>('cart');
+postMessage('cart:add', { productId: 'p1', quantity: 2 }); // checked
+postMessage('cart:clear'); // undefined payload: second argument optional
+```
+
+`onMessage` keys, `registeredTypes`, the `types` filters and `getLatestMessage({ type })` are checked against the map. Types only: no runtime validation, no wire-format change. Omitting the generic keeps the loose `string` / `any` behavior.
+
 ## More
 
 Full docs: https://github.com/IdanShalem/react-broadcast-sync#readme
