@@ -1,3 +1,10 @@
+# [2.5.0](https://github.com/IdanShalem/react-broadcast-sync/compare/v2.4.0...v2.5.0) (2026-10-30)
+
+
+### Features
+
+* opt-in typed channels via per-channel message map generics ([#75](https://github.com/IdanShalem/react-broadcast-sync/issues/75)) ([dc43f10](https://github.com/IdanShalem/react-broadcast-sync/commit/dc43f109fcf1207ec7a8cbee159cf1ee5804b1eb)), closes [#70](https://github.com/IdanShalem/react-broadcast-sync/issues/70)
+
 # [2.4.0](https://github.com/IdanShalem/react-broadcast-sync/compare/v2.3.0...v2.4.0) (2026-10-21)
 
 
