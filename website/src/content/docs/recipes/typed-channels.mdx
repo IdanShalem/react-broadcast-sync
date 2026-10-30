@@ -12,7 +12,7 @@ head:
     content: '{"@context": "https://schema.org", "@type": "BreadcrumbList", "itemListElement": [{"@type": "ListItem", "position": 1, "name": "Docs", "item": "https://react-broadcast-sync-docs.vercel.app/"}, {"@type": "ListItem", "position": 2, "name": "Typed Channels", "item": "https://react-broadcast-sync-docs.vercel.app/recipes/typed-channels/"}]}'
 ---
 
-Not yet released - ships with the next minor version. Types only, erased at compile time: no runtime validation, no runtime behavior or wire-format change.
+Available in **2.5.0 and later**. Types only, erased at compile time: no runtime validation, no runtime behavior or wire-format change.
 
 A typo in a message type or a payload that does not match what the receiver expects compiles fine with the default loose API and fails silently in another tab. Declaring a message map per channel turns both into compile errors.
 

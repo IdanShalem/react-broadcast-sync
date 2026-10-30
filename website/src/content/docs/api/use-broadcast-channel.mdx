@@ -14,7 +14,7 @@ head:
 
 ```ts
 const actions = useBroadcastChannel(channelName, options?);
-// or, with a typed message map (next minor release):
+// or, with a typed message map (2.5.0+):
 const typedActions = useBroadcastChannel<DashboardEvents>(channelName, options?);
 ```
 
@@ -42,7 +42,7 @@ const typedActions = useBroadcastChannel<DashboardEvents>(channelName, options?)
 | `onChannelRecovered`        | `() => void`                      | none       | Fired after a successful automatic recovery; use it to resync. Missed messages are never replayed. **2.4.0+**                      |
 | `telemetry`                 | `boolean`                         | `false`    | Deprecated no-op. The library collects no telemetry ([details](/guides/telemetry/)).                                               |
 
-## Typed channels (unreleased, next minor)
+## Typed channels (2.5.0+)
 
 Pass an optional message map as the generic to type `postMessage`, `onMessage`, `getLatestMessage`, the `types` filters of the clear/history functions, and `registeredTypes` / `excludedBatchMessageTypes`:
 
