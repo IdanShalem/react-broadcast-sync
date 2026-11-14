@@ -148,6 +148,9 @@ export const useBroadcastChannel = <TMap extends BroadcastMessageMap = LooseMess
   );
   // Session-local clear barrier: replayed messages older than this are dropped
   const historyClearBarrier = useRef(0);
+  // Session-local record of messages removed by a FILTERED clear: replay must
+  // not resurrect exactly these, while unrelated older messages stay eligible
+  const clearedMessageIds = useRef(new Set<string>());
   // Active channel listeners, tracked so close/reconnect/unmount can detach them
   const channelListenerRef = useRef<((event: MessageEvent) => void) | null>(null);
   const channelErrorListenerRef = useRef<(() => void) | null>(null);
@@ -354,28 +357,33 @@ export const useBroadcastChannel = <TMap extends BroadcastMessageMap = LooseMess
   );
 
   const clearReceivedMessages = useCallback((options: ClearReceivedMessagesOptions = {}) => {
-    const hasFilters = Boolean(
-      (options.ids && options.ids.length) ||
-        (options.types && options.types.length) ||
-        (options.sources && options.sources.length)
-    );
+    const ids = options.ids ?? [];
+    const types = options.types ?? [];
+    const sources = options.sources ?? [];
+    const hasFilters = ids.length > 0 || types.length > 0 || sources.length > 0;
 
-    setMessages(prev =>
-      hasFilters
-        ? prev.filter(
-            msg =>
-              !(options.ids && options.ids.includes(msg.id)) &&
-              !(options.types && options.types.includes(msg.type)) &&
-              !(options.sources && options.sources.includes(msg.source))
-          )
-        : []
-    );
-    if (!hasFilters) {
+    if (hasFilters) {
+      // A message is removed only when it matches EVERY provided filter;
+      // an empty filter array matches everything (wildcard).
+      const matches = (msg: BroadcastMessage): boolean =>
+        (ids.length === 0 || ids.includes(msg.id)) &&
+        (types.length === 0 || types.includes(msg.type)) &&
+        (sources.length === 0 || sources.includes(msg.source));
+      // Remember exactly which messages this tab cleared, so a later history
+      // replay cannot resurrect them. A filtered clear must NOT move the
+      // time barrier: messages this tab never cleared stay replayable.
+      for (const msg of messagesRef.current) {
+        if (matches(msg)) clearedMessageIds.current.add(msg.id);
+      }
+      setMessages(prev => prev.filter(msg => !matches(msg)));
+    } else {
       debug.message.allReceivedCleared();
+      setMessages([]);
+      // Full clear: history replayed after this point must be newer, so
+      // messages this tab cleared are not resurrected by another tab's copy.
+      historyClearBarrier.current = Date.now();
+      clearedMessageIds.current.clear();
     }
-    // Session-local barrier: history replayed after this point must be newer,
-    // so messages this tab cleared are not resurrected by another tab's copy.
-    historyClearBarrier.current = Date.now();
   }, []);
 
   const clearSentMessages = useCallback(
@@ -586,6 +594,7 @@ export const useBroadcastChannel = <TMap extends BroadcastMessageMap = LooseMess
               registeredTypes: registeredTypesRef.current,
               isDuplicate: id => receivedMessageIds.current.has(id) && !pending.accepted.has(id),
               clearBarrier: historyClearBarrier.current,
+              isClearedId: id => clearedMessageIds.current.has(id),
             });
             if (candidates.length === 0) return;
 

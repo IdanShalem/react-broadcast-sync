@@ -472,3 +472,45 @@ describe('requestMessagesHistory', () => {
     expect(tabC.result.current.messages[0].isHistory).toBe(true);
   });
 });
+
+describe('clearReceivedMessages with filters', () => {
+  it('blocks only the cleared messages from replay, not unrelated older messages', async () => {
+    // tabB posts an 'alert' before tabA opens, so tabA never holds it live
+    const tabB = renderHook(() =>
+      useBroadcastChannel('history-partial-clear', { batchingDelayMs: 0 })
+    );
+    act(() => {
+      tabB.result.current.postMessage('alert', { text: 'early' });
+    });
+    await tick(20);
+
+    const tabA = renderHook(() =>
+      useBroadcastChannel('history-partial-clear', { batchingDelayMs: 0 })
+    );
+    await tick();
+    act(() => {
+      tabB.result.current.postMessage('chat', { text: 'spam' });
+    });
+    await tick(20);
+    expect(tabA.result.current.messages.map(m => m.type)).toEqual(['chat']);
+
+    // Filtered clear: only the 'chat' message is cleared locally
+    act(() => {
+      tabA.result.current.clearReceivedMessages({ types: ['chat'] });
+    });
+    await tick();
+    expect(tabA.result.current.messages).toHaveLength(0);
+
+    // History replay: the cleared 'chat' must stay blocked, but the older
+    // 'alert' tabA never cleared must still be offered
+    act(() => {
+      tabA.result.current.requestMessagesHistory();
+    });
+    await tick();
+
+    const replayed = tabA.result.current.messages;
+    expect(replayed).toHaveLength(1);
+    expect(replayed[0].type).toBe('alert');
+    expect(replayed[0].isHistory).toBe(true);
+  });
+});

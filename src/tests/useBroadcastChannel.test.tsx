@@ -215,6 +215,74 @@ describe('useBroadcastChannel', () => {
       expect(result.current.messages.length).toBe(0);
     });
 
+    it('combines filters with AND, so a message must match every provided filter', async () => {
+      const { result } = renderHook(() => useBroadcastChannel('test-channel'));
+      await waitForChannel();
+      const channel = mockChannels[0];
+
+      act(() => {
+        channel.simulateMessage({
+          id: '1',
+          type: 'a',
+          message: 'keep-me-not',
+          source: 'x',
+          timestamp: Date.now(),
+        });
+        channel.simulateMessage({
+          id: '2',
+          type: 'b',
+          message: 'keep-me',
+          source: 'x',
+          timestamp: Date.now(),
+        });
+        channel.simulateMessage({
+          id: '3',
+          type: 'a',
+          message: 'keep-me-too',
+          source: 'x',
+          timestamp: Date.now(),
+        });
+      });
+      expect(result.current.messages.length).toBe(3);
+
+      act(() => {
+        result.current.clearReceivedMessages({ ids: ['1'], types: ['a'] });
+      });
+
+      // Only the message matching BOTH filters is removed; type 'a' alone must not clear id '3'
+      expect(result.current.messages.map(m => m.id)).toEqual(['2', '3']);
+    });
+
+    it('treats empty filter arrays as wildcards', async () => {
+      const { result } = renderHook(() => useBroadcastChannel('test-channel'));
+      await waitForChannel();
+      const channel = mockChannels[0];
+
+      act(() => {
+        channel.simulateMessage({
+          id: '1',
+          type: 'a',
+          message: 'gone',
+          source: 'x',
+          timestamp: Date.now(),
+        });
+        channel.simulateMessage({
+          id: '2',
+          type: 'b',
+          message: 'stays',
+          source: 'x',
+          timestamp: Date.now(),
+        });
+      });
+      expect(result.current.messages.length).toBe(2);
+
+      act(() => {
+        result.current.clearReceivedMessages({ ids: [], types: ['a'] });
+      });
+
+      expect(result.current.messages.map(m => m.id)).toEqual(['2']);
+    });
+
     it('clears all received messages', async () => {
       const { result } = renderHook(() => useBroadcastChannel('test-channel'));
       await waitForChannel();

@@ -493,9 +493,9 @@ Behavior to know:
 - Replayed entries are appended to `messages` with `isHistory: true` and **never** fire
   `onMessage`, so replay cannot re-run side effects (toasts, logout flows, sounds).
 - Duplicates are dropped by message ID, across live messages and across several responding tabs.
-- Messages you cleared with `clearReceivedMessages()` are not resurrected: replay only accepts
-  entries newer than your tab's latest local clear. The clear stays local to your tab and is not
-  propagated.
+- Messages you cleared with `clearReceivedMessages()` are not resurrected: a full clear makes
+  replay accept only entries newer than the clear, and a filtered clear blocks exactly the
+  messages it removed. The clear stays local to your tab and is not propagated.
 - Expired messages are never replayed, and each responding tab also caps the size of its own
   answer (serialized byte cap, dropping its oldest entries first), so a large log cannot flood
   the channel.
