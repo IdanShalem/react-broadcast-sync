@@ -106,9 +106,11 @@ export const filterIncomingHistoryMessages = (
     isDuplicate: (id: string) => boolean;
     /** Session-local clear barrier; older replayed messages are dropped */
     clearBarrier: number;
+    /** IDs removed by a filtered clear; replay must not resurrect exactly these */
+    isClearedId?: (id: string) => boolean;
   }
 ): BroadcastMessage[] => {
-  const { source, registeredTypes, isDuplicate, clearBarrier } = options;
+  const { source, registeredTypes, isDuplicate, clearBarrier, isClearedId } = options;
   const accepted: BroadcastMessage[] = [];
 
   for (const raw of candidates) {
@@ -126,6 +128,7 @@ export const filterIncomingHistoryMessages = (
     if (registeredTypes.length > 0 && !registeredTypes.includes(msg.type)) continue;
     if (isMessageExpired(msg)) continue;
     if (msg.timestamp < clearBarrier) continue;
+    if (isClearedId && isClearedId(msg.id)) continue;
     if (isDuplicate(msg.id)) continue;
     accepted.push({ ...msg, isHistory: true });
   }
