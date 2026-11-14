@@ -1,3 +1,10 @@
+## [2.5.1](https://github.com/IdanShalem/react-broadcast-sync/compare/v2.5.0...v2.5.1) (2026-11-14)
+
+
+### Bug Fixes
+
+* match every filter in clearReceivedMessages and keep filtered clears replay-safe ([#80](https://github.com/IdanShalem/react-broadcast-sync/issues/80)) ([d7a1206](https://github.com/IdanShalem/react-broadcast-sync/commit/d7a12067f82d70adfcca131bb70cb887801d512f))
+
 # [2.5.0](https://github.com/IdanShalem/react-broadcast-sync/compare/v2.4.0...v2.5.0) (2026-10-30)
 
 
