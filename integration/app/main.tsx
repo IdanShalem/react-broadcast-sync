@@ -69,6 +69,7 @@ function App({ source }: { source?: string } = {}) {
     postMessage,
     clearReceivedMessages,
     clearSentMessages,
+    requestMessagesHistory,
     ping,
     error,
     closeChannel,
@@ -151,6 +152,15 @@ function App({ source }: { source?: string } = {}) {
       </button>
       <button data-testid="clear-received" onClick={() => clearReceivedMessages()}>
         Clear received
+      </button>
+      <button
+        data-testid="clear-received-by-type"
+        onClick={() => clearReceivedMessages({ types: [messageType] })}
+      >
+        Clear received by type
+      </button>
+      <button data-testid="request-history" onClick={() => requestMessagesHistory()}>
+        Request history
       </button>
       <button data-testid="clear-sent-sync" onClick={() => clearSentMessages({ sync: true })}>
         Clear sent (sync)
