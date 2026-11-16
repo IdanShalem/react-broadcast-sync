@@ -1,3 +1,10 @@
+# [2.6.0](https://github.com/IdanShalem/react-broadcast-sync/compare/v2.5.1...v2.6.0) (2026-11-16)
+
+
+### Features
+
+* recover and resync useSyncedState after a provable channel close ([#81](https://github.com/IdanShalem/react-broadcast-sync/issues/81)) ([9994ae3](https://github.com/IdanShalem/react-broadcast-sync/commit/9994ae361d84b19502617ad4093443b49020164e)), closes [#73](https://github.com/IdanShalem/react-broadcast-sync/issues/73)
+
 ## [2.5.1](https://github.com/IdanShalem/react-broadcast-sync/compare/v2.5.0...v2.5.1) (2026-11-14)
 
 
