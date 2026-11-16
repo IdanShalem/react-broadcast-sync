@@ -32,9 +32,16 @@ it('exports the state hook and typed setter/status from the package root', () =>
   const options: import('../index').SyncedStateOptions<string> = {
     syncWindowMs: 100,
     validate: (v: unknown): v is string => typeof v === 'string',
+    recovery: 'manual',
+    maxRecoveryAttempts: 5,
+    onRecovered: () => undefined,
   };
   const setter: import('../index').SyncedStateSetter<string> = value => typeof value === 'string';
   const result: import('../index').SyncedStateSyncResult = 'no-peer';
-  const status: import('../index').SyncedStateStatus = { error: null, sync: async () => result };
+  const status: import('../index').SyncedStateStatus = {
+    error: null,
+    sync: async () => result,
+    reconnect: () => true,
+  };
   expect([options, setter, status]).toHaveLength(3);
 });

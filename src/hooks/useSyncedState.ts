@@ -1,15 +1,38 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { createStateSession, StateSyncResult } from '../utils/stateSession';
+import {
+  createStateSession,
+  StateSessionRecoveryOptions,
+  StateSyncResult,
+} from '../utils/stateSession';
 
 export interface SyncedStateOptions<T> {
   namespace?: string;
   syncWindowMs?: number;
   /** Optional application payload check, used for incoming and local values. */
   validate?: (value: unknown) => value is T;
+  /**
+   * Transport recovery policy. 'auto' (default) recreates a provably closed
+   * channel (InvalidStateError on send), retries that send once, then resyncs.
+   * 'manual' opts out: the hook reports the error and waits for reconnect().
+   */
+  recovery?: 'auto' | 'manual';
+  /** Cap on consecutive automatic recovery attempts (default 3). */
+  maxRecoveryAttempts?: number;
+  /**
+   * Fires after a successful automatic recovery. The hook already resyncs on
+   * its own; use this for observation, not to drive the resync yourself.
+   */
+  onRecovered?: () => void;
 }
 export interface SyncedStateStatus {
   error: string | null;
   sync: () => Promise<SyncedStateSyncResult>;
+  /**
+   * Explicitly recreates the state channel after a creation failure or after
+   * automatic recovery gave up, then resyncs. No-op (false) while a connection
+   * is open. Never runs automatically.
+   */
+  reconnect: () => boolean;
 }
 
 export type SyncedStateSyncResult = StateSyncResult | 'unavailable';
@@ -30,6 +53,18 @@ export const useSyncedState = <T>(
   validator.current = options.validate;
   const syncWindow = useRef(windowMs);
   syncWindow.current = windowMs;
+  // Recovery options are read live: changing them never resets the session.
+  const recoveryOptions = useRef<StateSessionRecoveryOptions>({
+    recovery: 'auto',
+    maxRecoveryAttempts: 3,
+    syncWindowMs: windowMs,
+  });
+  recoveryOptions.current = {
+    recovery: options.recovery ?? 'auto',
+    maxRecoveryAttempts: options.maxRecoveryAttempts ?? 3,
+    onRecovered: options.onRecovered,
+    syncWindowMs: windowMs,
+  };
   const initial = useRef({ identity, value: initialValue });
   if (initial.current.identity !== identity) initial.current = { identity, value: initialValue };
   const [view, setView] = useState({ identity, value: initialValue, error: null as string | null });
@@ -62,21 +97,24 @@ export const useSyncedState = <T>(
       };
     }
     try {
-      const transport = new BroadcastChannel(
-        `react-broadcast-sync:state:v1:${JSON.stringify([channel, namespace])}`
-      );
       const session = createStateSession<T>(
         key,
         value,
-        transport,
+        () =>
+          new BroadcastChannel(
+            `react-broadcast-sync:state:v1:${JSON.stringify([channel, namespace])}`
+          ),
         state => {
           if (alive) setView(current => ({ ...current, identity, value: state.value }));
         },
         reportError,
-        value => (validator.current ? validator.current(value) : true)
+        value => (validator.current ? validator.current(value) : true),
+        () => recoveryOptions.current
       );
       active.current = { identity, session };
-      void session.sync(syncWindow.current);
+      // A session whose initial transport failed already reported the cause;
+      // its explicit reconnect() path stays available instead of a mount sync.
+      if (!session.isDown()) void session.sync(syncWindow.current);
       return () => {
         alive = false;
         if (active.current?.session === session) active.current = null;
@@ -110,12 +148,17 @@ export const useSyncedState = <T>(
       ? current.session.sync(syncWindow.current)
       : Promise.resolve('unavailable' as const);
   }, [identity]);
+  const reconnect = useCallback(() => {
+    const current = active.current;
+    return current?.identity === identity ? current.session.reconnect() : false;
+  }, [identity]);
   return [
     view.identity === identity ? view.value : initial.current.value,
     setValue,
     {
       error: view.identity === identity ? view.error : null,
       sync,
+      reconnect,
     },
   ];
 };

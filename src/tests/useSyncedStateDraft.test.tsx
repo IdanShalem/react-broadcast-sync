@@ -15,6 +15,10 @@ class Channel {
   }
   postMessage(packet: unknown) {
     if (this.fail) throw new Error('clone failed');
+    // Per the HTML standard a closed channel throws InvalidStateError before
+    // the message is serialized or delivered.
+    if (this.closed)
+      throw new DOMException('Failed to post on a closed channel', 'InvalidStateError');
     this.posted.push(packet);
     // Browser delivery is asynchronous, including replies.
     for (const peer of Channel.ports)
@@ -237,4 +241,87 @@ it('contains a throwing application validator instead of throwing from the messa
   expect(hook.result.current[0]).toBe('fallback');
   expect(hook.result.current[2].error).toBe('bad validator');
   hook.unmount();
+});
+
+it('recovers from an out-of-band channel close, resyncs and converges with a peer', async () => {
+  const recovered = jest.fn();
+  const a = renderHook(() =>
+    useSyncedState('app', 'filters', 'default', { onRecovered: recovered })
+  );
+  const b = renderHook(() => useSyncedState('app', 'filters', 'default'));
+  await tick();
+  act(() => {
+    expect(b.result.current[1]('b1')).toBe(true);
+  });
+  await tick();
+  expect(a.result.current[0]).toBe('b1');
+  // Out-of-band close of a's held channel; b keeps writing while a is down.
+  act(() => {
+    Channel.ports[0].close();
+  });
+  act(() => {
+    expect(b.result.current[1]('b2')).toBe(true);
+  });
+  await tick();
+  expect(a.result.current[0]).toBe('b1'); // missed while down
+  const portsBefore = Channel.ports.length;
+  let ok = false;
+  act(() => {
+    ok = a.result.current[1]('a-edit');
+  });
+  // The failed send proved the channel dead: it recovered, retried the edit
+  // and re-ran the late-join request on the fresh channel.
+  expect(ok).toBe(true);
+  expect(Channel.ports).toHaveLength(portsBefore + 1);
+  expect(recovered).toHaveBeenCalledTimes(1);
+  await tick();
+  // Deterministic convergence: both tabs agree on the same winner.
+  expect(a.result.current[0]).toBe(b.result.current[0]);
+  expect(a.result.current[2].error).toBeNull();
+  a.unmount();
+  b.unmount();
+  expect(Channel.ports.every(p => p.closed && p.listeners.size === 0)).toBe(true);
+  expect(jest.getTimerCount()).toBe(0);
+});
+
+it("recovery 'manual' does not recover on its own; status.reconnect resyncs explicitly", async () => {
+  const recovered = jest.fn();
+  const a = renderHook(() =>
+    useSyncedState('app', 'k', 'fallback', { recovery: 'manual', onRecovered: recovered })
+  );
+  const b = renderHook(() => useSyncedState('app', 'k', 'fallback'));
+  await tick();
+  act(() => {
+    b.result.current[1]('peer value');
+  });
+  await tick();
+  expect(a.result.current[0]).toBe('peer value');
+  const portsBefore = Channel.ports.length;
+  act(() => {
+    Channel.ports[0].close();
+  });
+  let ok = true;
+  act(() => {
+    ok = a.result.current[1]('lost');
+  });
+  expect(ok).toBe(false);
+  expect(a.result.current[0]).toBe('peer value');
+  expect(a.result.current[2].error).toBeTruthy();
+  expect(Channel.ports).toHaveLength(portsBefore);
+  expect(recovered).not.toHaveBeenCalled();
+  // Explicit reconnect opens a fresh channel and resyncs with peers.
+  let reconnected = false;
+  act(() => {
+    reconnected = a.result.current[2].reconnect();
+  });
+  expect(reconnected).toBe(true);
+  expect(Channel.ports).toHaveLength(portsBefore + 1);
+  // A working connection is never replaced.
+  act(() => {
+    reconnected = a.result.current[2].reconnect();
+  });
+  expect(reconnected).toBe(false);
+  expect(Channel.ports).toHaveLength(portsBefore + 1);
+  a.unmount();
+  b.unmount();
 });
