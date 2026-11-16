@@ -34,3 +34,7 @@ Sources:
 - https://developer.mozilla.org/en-US/docs/Web/API/BroadcastChannel
 - https://developer.mozilla.org/en-US/docs/Web/API/BroadcastChannel/messageerror_event
 - https://html.spec.whatwg.org/multipage/web-messaging.html#broadcasting-to-other-browsing-contexts
+
+## State hook recovery (issue #73)
+
+`useSyncedState` now implements this same policy on its own protocol channel: `recovery: 'auto'` (default), `maxRecoveryAttempts`, `onRecovered` and an explicit `status.reconnect()`. The difference from the message hook is the follow-up: after any successful recovery or reconnect the state session re-runs its late-join request, so current values converge again without the application wiring `onChannelRecovered` to a resync. Version ordering protects a local edit made while down from stale replies. Unmount never auto-recovers; silent stalls stay undetectable.

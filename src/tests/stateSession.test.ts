@@ -1,4 +1,4 @@
-import { createStateSession } from '../utils/stateSession';
+import { createStateSession, StateSessionRecoveryOptions } from '../utils/stateSession';
 
 class Port {
   listeners = new Set<(event: MessageEvent) => void>();
@@ -13,6 +13,10 @@ class Port {
   }
   postMessage(packet: unknown) {
     if (this.fail) throw new Error('clone failed');
+    // Per the HTML standard a closed channel throws InvalidStateError before
+    // the message is serialized or delivered.
+    if (this.closed)
+      throw new DOMException('Failed to post on a closed channel', 'InvalidStateError');
     this.posted.push(packet);
   }
   deliver(data: unknown) {
@@ -26,8 +30,49 @@ const setup = () => {
   const port = new Port();
   const changed = jest.fn();
   const error = jest.fn();
-  const session = createStateSession('filters', 'default', port, changed, error);
+  const session = createStateSession('filters', 'default', () => port, changed, error);
   return { port, changed, error, session };
+};
+
+/** Recovery harness: each factory call appends a fresh, optionally born-dead port. */
+const setupRecovery = (options: Partial<StateSessionRecoveryOptions> = {}) => {
+  const ports: Port[] = [];
+  let bornDead = false;
+  const changed = jest.fn();
+  const error = jest.fn();
+  const recovered = jest.fn();
+  const session = createStateSession(
+    'filters',
+    'default',
+    () => {
+      const port = new Port();
+      if (bornDead) port.closed = true;
+      ports.push(port);
+      return port;
+    },
+    changed,
+    error,
+    undefined,
+    () => ({
+      recovery: options.recovery ?? 'auto',
+      maxRecoveryAttempts: options.maxRecoveryAttempts ?? 3,
+      syncWindowMs: options.syncWindowMs ?? 250,
+      onRecovered: recovered,
+    })
+  );
+  return {
+    ports,
+    changed,
+    error,
+    recovered,
+    session,
+    armBornDead: () => {
+      bornDead = true;
+    },
+    healBornDead: () => {
+      bornDead = false;
+    },
+  };
 };
 const reply = (request: unknown, clock: number, value: string) => ({
   ...(request as object),
@@ -155,4 +200,113 @@ it('counts a matching committed response even if equal, not an unrelated live wr
   jest.advanceTimersByTime(250);
   expect(await second).toBe('received');
   session.dispose();
+});
+
+it('recovers a provably closed transport, retries the write and resyncs', async () => {
+  const { session, ports, recovered, error } = setupRecovery();
+  expect(session.setValue('before')).toBe(true);
+  // Out-of-band close of the held transport, then a local edit while down.
+  ports[0].close();
+  expect(session.setValue('after kill')).toBe(true);
+  expect(ports).toHaveLength(2);
+  expect(ports[0].listeners.size).toBe(0);
+  expect(ports[1].posted[0]).toMatchObject({ type: 'set', value: 'after kill' });
+  expect(recovered).toHaveBeenCalledTimes(1);
+  // The recovery resync re-runs the late-join request on the fresh transport.
+  const request = ports[1].posted[1] as { type: string; requestId: string };
+  expect(request.type).toBe('request');
+  expect(error).not.toHaveBeenCalled();
+  expect(session.getSnapshot().value).toBe('after kill');
+  // A stale reply to the resync cannot replace the newer local edit.
+  ports[1].deliver({
+    protocol: 1,
+    key: 'filters',
+    type: 'response',
+    requestId: request.requestId,
+    version: { clock: 1, source: 'peer' },
+    value: 'stale',
+  });
+  expect(session.getSnapshot().value).toBe('after kill');
+  // A genuinely newer peer state still wins, so the tab converges after downtime.
+  ports[1].deliver({
+    protocol: 1,
+    key: 'filters',
+    type: 'response',
+    requestId: request.requestId,
+    version: { clock: 10, source: 'peer' },
+    value: 'peer newer',
+  });
+  expect(session.getSnapshot().value).toBe('peer newer');
+  expect(session.setValue('local again')).toBe(true);
+  expect(session.getSnapshot().version?.clock).toBe(11);
+  session.dispose();
+});
+
+it('manual recovery reports the dead transport and only reconnect revives it', async () => {
+  const { session, ports, recovered, error } = setupRecovery({ recovery: 'manual' });
+  ports[0].close();
+  expect(session.setValue('lost')).toBe(false);
+  expect(session.getSnapshot().value).toBe('default');
+  expect(ports).toHaveLength(1);
+  expect(recovered).not.toHaveBeenCalled();
+  expect(error).toHaveBeenCalledTimes(1);
+  // The provably dead ref is dropped, so an explicit reconnect can start fresh.
+  expect(session.reconnect()).toBe(true);
+  expect(ports).toHaveLength(2);
+  expect(ports[1].posted[0]).toMatchObject({ type: 'request' });
+  expect(session.setValue('rescued')).toBe(true);
+  expect(recovered).not.toHaveBeenCalled();
+  session.dispose();
+});
+
+it('exhausts the recovery budget on born-dead replacements, then reconnect rescues', async () => {
+  const { session, ports, error, armBornDead, healBornDead } = setupRecovery({
+    maxRecoveryAttempts: 2,
+  });
+  ports[0].close();
+  armBornDead();
+  expect(session.setValue('x1')).toBe(false); // attempt 1: retry on born-dead fails
+  expect(session.setValue('x2')).toBe(false); // attempt 2: same
+  expect(session.setValue('x3')).toBe(false); // cap reached: dead ref dropped
+  expect(ports).toHaveLength(3);
+  healBornDead();
+  expect(session.reconnect()).toBe(true);
+  expect(ports).toHaveLength(4);
+  expect(session.setValue('rescued')).toBe(true);
+  expect(error.mock.calls.length).toBeGreaterThan(0);
+  session.dispose();
+});
+
+it('reconnect is a no-op while the transport is open', () => {
+  const { session, ports } = setupRecovery();
+  expect(session.reconnect()).toBe(false);
+  expect(ports).toHaveLength(1);
+  session.dispose();
+});
+
+it('a disposed session never recovers and a creation failure reports once', async () => {
+  const { session, ports, error, recovered } = setupRecovery();
+  ports[0].close();
+  session.dispose();
+  expect(session.setValue('after dispose')).toBe(false);
+  expect(await session.sync()).toBe('cancelled');
+  expect(session.reconnect()).toBe(false);
+  expect(ports).toHaveLength(1);
+  expect(recovered).not.toHaveBeenCalled();
+  expect(error).not.toHaveBeenCalled();
+
+  const failingError = jest.fn();
+  const broken = createStateSession(
+    'filters',
+    'default',
+    () => {
+      throw new Error('denied');
+    },
+    jest.fn(),
+    failingError
+  );
+  expect(failingError).toHaveBeenCalledTimes(1);
+  expect(broken.setValue('x')).toBe(false);
+  expect(await broken.sync()).toBe('send-failed');
+  broken.dispose();
 });

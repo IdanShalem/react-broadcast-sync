@@ -191,13 +191,29 @@ function App({ source }: { source?: string } = {}) {
 function DraftStateApp() {
   const params = new URLSearchParams(window.location.search);
   const [key, setKey] = useState(params.get('key') || 'filters');
+  const [recoveredCount, setRecoveredCount] = useState(0);
   const [value, setValue, status] = useSyncedState(
     params.get('channel') || 'draft-hook',
     key,
     'fallback',
-    { namespace: params.get('namespace') || '' }
+    {
+      namespace: params.get('namespace') || '',
+      recovery: (params.get('recovery') as 'manual' | 'auto' | null) ?? undefined,
+      maxRecoveryAttempts: params.has('maxRecoveryAttempts')
+        ? Number(params.get('maxRecoveryAttempts'))
+        : undefined,
+      onRecovered: () => setRecoveredCount(count => count + 1),
+    }
   );
   const [result, setResult] = useState('');
+  const recoveryLab = (
+    window as unknown as {
+      __recoveryLab?: {
+        killHeld: () => void;
+        setBornDead: (value: boolean) => void;
+      };
+    }
+  ).__recoveryLab;
   return (
     <div>
       <div data-testid="state-value">{value}</div>
@@ -212,6 +228,17 @@ function DraftStateApp() {
       <button data-testid="state-change-key" onClick={() => setKey('other')}>
         Change key
       </button>
+      {recoveryLab ? (
+        <>
+          <button data-testid="kill-held-channel" onClick={() => recoveryLab.killHeld()}>
+            Kill held channel
+          </button>
+          <button data-testid="state-reconnect" onClick={() => status.reconnect()}>
+            Reconnect
+          </button>
+          <div data-testid="state-recovered-count">{recoveredCount}</div>
+        </>
+      ) : null}
       <div data-testid="state-result">{result}</div>
       <div data-testid="state-error">{status.error || ''}</div>
     </div>

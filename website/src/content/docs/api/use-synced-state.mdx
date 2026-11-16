@@ -41,14 +41,18 @@ All participants must use the same channel, namespace and key. The hook opens it
 - `setValue(next)` or `setValue(current => next)`: returns a boolean. A successful validation and native send commits the local value and returns `true`. Unsupported transport, failed validation, clone or send leaves the value unchanged and returns `false`. A successful send is not a peer delivery acknowledgement. Updater exceptions propagate to the caller. Treat objects as immutable; functions are not structured-cloneable values.
 - `state.error`: `string | null`. A successful local write clears it.
 - `state.sync()`: starts another bounded request window and returns a promise with the result below. Mount starts a request automatically.
+- `state.reconnect()`: explicitly recreates the state channel after a creation failure or after automatic recovery gave up, then resyncs. Returns `false` (no-op) while a connection is open. Never runs automatically. **2.6.0+**
 
 ## Options
 
-| Option         | Default | Meaning                                                                                       |
-| -------------- | ------- | --------------------------------------------------------------------------------------------- |
-| `namespace`    | `''`    | Isolates groups on the same channel name.                                                     |
-| `syncWindowMs` | `250`   | Finite number from 0 to 2147483647 milliseconds. Replies are gathered until this window ends. |
-| `validate`     | none    | Optional `(value: unknown) => value is T` check for incoming and local values.                |
+| Option                | Default  | Meaning                                                                                                                                    |
+| --------------------- | -------- | ------------------------------------------------------------------------------------------------------------------------------------------ |
+| `namespace`           | `''`     | Isolates groups on the same channel name.                                                                                                  |
+| `syncWindowMs`        | `250`    | Finite number from 0 to 2147483647 milliseconds. Replies are gathered until this window ends.                                              |
+| `validate`            | none     | Optional `(value: unknown) => value is T` check for incoming and local values.                                                             |
+| `recovery`            | `'auto'` | Automatic recovery on provable channel death: recreates the channel, retries that send once, then resyncs. `'manual'` opts out. **2.6.0+** |
+| `maxRecoveryAttempts` | `3`      | Consecutive failed recoveries before the channel stays down until an explicit `state.reconnect()`. **2.6.0+**                              |
+| `onRecovered`         | none     | Fired after a successful automatic recovery. The hook already resyncs on its own; use this for observation. **2.6.0+**                     |
 
 TypeScript's `T` is not runtime validation. Invalid incoming payloads are ignored. A throwing validator sets the error. Without a validator, application values are not checked beyond the protocol shape.
 
@@ -64,7 +68,13 @@ The initial value is a fallback, not a write. A new tab asks open peers for comm
 | `cancelled`   | A newer sync replaced this request, or the connection was disposed.                                                                       |
 | `unavailable` | There is no active connection, for example in an unsupported browser.                                                                     |
 
-Live updates can arrive even when sync returns `no-peer`. If peers have closed, this hook cannot recover their values. There is no persistence, history replay, server sync, automatic reconnect or fallback transport.
+Live updates can arrive even when sync returns `no-peer`. If peers have closed, this hook cannot recover their values. There is no persistence, history replay, server sync or fallback transport.
+
+## Recovery and reconnect
+
+The state channel gets the same recovery policy as [useBroadcastChannel](/api/use-broadcast-channel/): a send that throws `InvalidStateError` proves the channel object was closed outside the library and that the send never left this tab, so with the default `recovery: 'auto'` the hook recreates the channel and retries exactly that send once. After a successful recovery the hook re-runs its late-join request, so the tab converges with its peers again. A local edit made while down keeps its newer version: a stale reply to the resync cannot overwrite it, and a genuinely newer peer value still wins.
+
+Recovery is bounded by `maxRecoveryAttempts` consecutive failures; then the channel stays down and only `state.reconnect()` revives it. Unmount never auto-recovers. A channel that can still send but silently stops receiving stays undetectable, so no automatic policy watches for it. With `recovery: 'manual'` every recovery is your explicit `state.reconnect()` decision.
 
 ## Conflicts and lifecycle
 
@@ -72,7 +82,7 @@ The greatest logical `(clock, source)` version wins: clock first, a fixed source
 
 This is not wall-clock ordering, an atomic counter, a transaction or preservation of every edit intent. Concurrent functional increments can lose an intent. Keep business records and permissions authoritative on the server.
 
-Channel, namespace or key changes close the old connection, cancel its requests and reset to the new identity's initial fallback. Rerendering with a different initial value alone does not reset it. Changing only the validator or sync window does not reset it. React StrictMode cleanup/remount and React 16.8+ are supported.
+Channel, namespace or key changes close the old connection, cancel its requests and reset to the new identity's initial fallback. Rerendering with a different initial value alone does not reset it. Changing only the validator, sync window or recovery options does not reset it. React StrictMode cleanup/remount and React 16.8+ are supported.
 
 BroadcastChannel is a same-origin/partition transport, not an authentication or authorization boundary. Neither a namespace nor a validator authenticates the sender.
 

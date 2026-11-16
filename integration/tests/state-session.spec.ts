@@ -24,7 +24,7 @@ const openSession = async (page: Page, name: string, key = 'filters') => {
       window.draftSession = createStateSession(
         key,
         'fallback',
-        new BroadcastChannel(name),
+        () => new BroadcastChannel(name),
         state => window.draftChanges.push(state.value),
         error => window.draftErrors.push(String(error))
       );
