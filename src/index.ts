@@ -5,6 +5,7 @@ export type {
   BroadcastMessageMap,
   TypedBroadcastMessage,
   TypedPostMessage,
+  TypedSendMessage,
   TypedOnMessageMap,
   TypedMessageCallback,
   TypedGetLatestMessage,

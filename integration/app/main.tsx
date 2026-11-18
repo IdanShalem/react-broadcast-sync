@@ -67,6 +67,7 @@ function App({ source }: { source?: string } = {}) {
     messages,
     sentMessages,
     postMessage,
+    sendMessage,
     clearReceivedMessages,
     clearSentMessages,
     requestMessagesHistory,
@@ -89,6 +90,17 @@ function App({ source }: { source?: string } = {}) {
   const [messageContent, setMessageContent] = useState('');
   const [pingSources, setPingSources] = useState<string[]>([]);
   const [recoveredCount, setRecoveredCount] = useState(0);
+  const [sendOutcome, setSendOutcome] = useState('');
+  const awaitedSend = (content: unknown) => {
+    setSendOutcome('pending');
+    sendMessage(messageType, content).then(
+      msg => setSendOutcome(`resolved:${msg.id}`),
+      (e: unknown) =>
+        setSendOutcome(
+          `rejected:${e instanceof DOMException ? e.name : e instanceof Error ? e.message : 'unknown'}`
+        )
+    );
+  };
   const recoveryLab = (
     window as unknown as {
       __recoveryLab?: {
@@ -115,6 +127,13 @@ function App({ source }: { source?: string } = {}) {
       <button data-testid="send" onClick={() => postMessage(messageType, messageContent)}>
         Send
       </button>
+      <button data-testid="send-awaited" onClick={() => awaitedSend(messageContent)}>
+        Send awaited
+      </button>
+      <button data-testid="send-awaited-unclonable" onClick={() => awaitedSend(() => undefined)}>
+        Send unclonable awaited
+      </button>
+      <div data-testid="send-outcome">{sendOutcome}</div>
       {params.recoveryLab && recoveryLab ? (
         <>
           <button data-testid="kill-held-channel" onClick={() => recoveryLab.killHeld()}>

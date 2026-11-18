@@ -123,6 +123,15 @@ export const useBroadcastChannel = <TMap extends BroadcastMessageMap = LooseMess
   const batchingTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const batchingMessagesRef = useRef<BroadcastMessage[]>([]);
   const batchingErrorRef = useRef(false);
+  // sendMessage promises awaiting their batch flush, keyed by message ID.
+  // Settled exactly when the message is handed to the channel (resolve) or
+  // provably fails to be (reject). postMessage never registers here.
+  const pendingSendsRef = useRef(
+    new Map<
+      string,
+      { resolve: (message: BroadcastMessage) => void; reject: (error: unknown) => void }
+    >()
+  );
   const onMessageRef = useRef<MessageCallback | OnMessageMap | undefined>(onMessage);
   onMessageRef.current = onMessage;
   const onChannelRecoveredRef = useRef<(() => void) | undefined>(onChannelRecovered);
@@ -206,6 +215,21 @@ export const useBroadcastChannel = <TMap extends BroadcastMessageMap = LooseMess
     setTimeout(() => setError(null), 3000);
   }, []);
 
+  // Settle every sendMessage promise whose message is in `batch`: resolve when
+  // the batch was handed to the channel, reject with the failure otherwise.
+  const settlePendingSends = useCallback((batch: BroadcastMessage[], failure?: unknown) => {
+    for (const message of batch) {
+      const pending = pendingSendsRef.current.get(message.id);
+      if (!pending) continue;
+      pendingSendsRef.current.delete(message.id);
+      if (failure === undefined) {
+        pending.resolve(message);
+      } else {
+        pending.reject(failure);
+      }
+    }
+  }, []);
+
   const ping = useCallback(
     (timeoutMs: number = 300): Promise<string[]> => {
       if (isPingInProgress) {
@@ -271,6 +295,91 @@ export const useBroadcastChannel = <TMap extends BroadcastMessageMap = LooseMess
     [internalTypes.PING, source, setErrorMessage, isPingInProgress, resolvedChannelName]
   );
 
+  // Send one message right now on `channelCurrent`. On a provable channel
+  // close (InvalidStateError) one automatic recovery retry is attempted.
+  // Reports through `error` exactly like before; also returns the outcome so
+  // sendMessage can settle its promise. Payload errors (DataCloneError) never
+  // trigger recovery.
+  const sendImmediately = useCallback(
+    (
+      channelCurrent: BroadcastChannel,
+      message: BroadcastMessage,
+      messageType: string
+    ): { sent: boolean; failure?: unknown } => {
+      try {
+        channelCurrent.postMessage(message);
+        recoveryAttemptsRef.current = 0;
+        setError(null);
+        return { sent: true };
+      } catch (e) {
+        const recovered =
+          isChannelClosedError(e) &&
+          attemptAutoRecoveryRef.current?.(channelCurrent, () => {
+            channel.current?.postMessage(message);
+          });
+        if (recovered) {
+          return { sent: true };
+        }
+        const error = 'Failed to send message';
+        debug.error({
+          action: 'postMessage',
+          channelName: resolvedChannelName,
+          type: messageType,
+          originalError: error,
+        });
+        setErrorMessage(error);
+        batchingErrorRef.current = true;
+        return { sent: false, failure: e };
+      }
+    },
+    [resolvedChannelName, setErrorMessage]
+  );
+
+  // Start the shared batch timer if none is running. At fire time the whole
+  // queued batch is posted once; every registered sendMessage promise settles
+  // with that single outcome.
+  const scheduleBatchFlush = useCallback(
+    (channelCurrent: BroadcastChannel, messageType: string) => {
+      if (batchingTimeoutRef.current) return;
+      batchingTimeoutRef.current = setTimeout(() => {
+        const batch = batchingMessagesRef.current;
+        batchingMessagesRef.current = [];
+        batchingTimeoutRef.current = null;
+        if (batchingErrorRef.current) {
+          settlePendingSends(batch, new Error('Failed to send message'));
+          return;
+        }
+        try {
+          channelCurrent.postMessage(batch);
+          recoveryAttemptsRef.current = 0;
+          setError(null);
+          settlePendingSends(batch);
+        } catch (e) {
+          const recovered =
+            isChannelClosedError(e) &&
+            attemptAutoRecoveryRef.current?.(channelCurrent, () => {
+              channel.current?.postMessage(batch);
+            });
+          if (recovered) {
+            settlePendingSends(batch);
+          } else {
+            const error = 'Failed to send message';
+            debug.error({
+              action: 'postMessage',
+              channelName: resolvedChannelName,
+              type: messageType,
+              originalError: error,
+            });
+            setErrorMessage(error);
+            batchingErrorRef.current = true;
+            settlePendingSends(batch, e);
+          }
+        }
+      }, batchingDelayMs);
+    },
+    [batchingDelayMs, resolvedChannelName, setErrorMessage, settlePendingSends]
+  );
+
   const postMessage = useCallback(
     (messageType: string, messageContent: any, options: SendMessageOptions = {}) => {
       const channelCurrent = channel.current;
@@ -291,69 +400,85 @@ export const useBroadcastChannel = <TMap extends BroadcastMessageMap = LooseMess
       const shouldSendImmediately =
         !batchingDelayMs || batchingDelayMs < 0 || excludedBatchMessageTypes.includes(messageType);
       if (shouldSendImmediately) {
-        try {
-          channelCurrent.postMessage(message);
-          recoveryAttemptsRef.current = 0;
-          setError(null);
-        } catch (e) {
-          const recovered =
-            isChannelClosedError(e) &&
-            attemptAutoRecoveryRef.current?.(channelCurrent, () => {
-              channel.current?.postMessage(message);
-            });
-          if (!recovered) {
-            const error = 'Failed to send message';
-            debug.error({
-              action: 'postMessage',
-              channelName: resolvedChannelName,
-              type: messageType,
-              originalError: error,
-            });
-            setErrorMessage(error);
-            batchingErrorRef.current = true;
-          }
-        }
+        sendImmediately(channelCurrent, message, messageType);
       } else {
         batchingMessagesRef.current.push(message);
-        if (!batchingTimeoutRef.current) {
-          batchingTimeoutRef.current = setTimeout(() => {
-            if (batchingErrorRef.current) {
-              batchingMessagesRef.current = [];
-              batchingTimeoutRef.current = null;
-              return;
-            }
-            try {
-              channelCurrent.postMessage(batchingMessagesRef.current);
-              recoveryAttemptsRef.current = 0;
-              setError(null);
-            } catch (e) {
-              const batch = batchingMessagesRef.current;
-              const recovered =
-                isChannelClosedError(e) &&
-                attemptAutoRecoveryRef.current?.(channelCurrent, () => {
-                  channel.current?.postMessage(batch);
-                });
-              if (!recovered) {
-                const error = 'Failed to send message';
-                debug.error({
-                  action: 'postMessage',
-                  channelName: resolvedChannelName,
-                  type: messageType,
-                  originalError: error,
-                });
-                setErrorMessage(error);
-                batchingErrorRef.current = true;
-              }
-            }
-            batchingMessagesRef.current = [];
-            batchingTimeoutRef.current = null;
-          }, batchingDelayMs);
-        }
+        scheduleBatchFlush(channelCurrent, messageType);
       }
       debug.message.sent(message);
       setSentMessages(prev => [...prev, message]);
     },
-    [source, setErrorMessage, batchingDelayMs, excludedBatchMessageTypes]
+    [
+      source,
+      setErrorMessage,
+      batchingDelayMs,
+      excludedBatchMessageTypes,
+      sendImmediately,
+      scheduleBatchFlush,
+    ]
+  );
+
+  // Promise-returning send: resolves with the sent message once it was handed
+  // to the channel (after batching and, on a provable close, one automatic
+  // recovery retry); rejects when the message provably never left - an
+  // unclonable payload (DataCloneError), a closed channel with recovery
+  // unavailable or exhausted, or a failed flush on close/unmount. BroadcastChannel
+  // has no delivery acknowledgement, so resolution never means another tab
+  // received the message. Fire-and-forget callers should still attach a
+  // catch handler: an unhandled rejection is the only signal a failed
+  // awaited-less send produces beyond the `error` state.
+  const sendMessage = useCallback(
+    (
+      messageType: string,
+      messageContent: any,
+      options: SendMessageOptions = {}
+    ): Promise<BroadcastMessage> => {
+      const channelCurrent = channel.current;
+      if (!channelCurrent) {
+        const error = downChannelError();
+        debug.error({
+          action: 'sendMessage',
+          channelName: resolvedChannelName,
+          type: messageType,
+          originalError: error,
+        });
+        setErrorMessage(error);
+        return Promise.reject(new Error(error));
+      }
+
+      const message = createMessage(messageType, messageContent, source, options);
+      // Only batch if batchingDelayMs > 0 and messageType is not excluded
+      const shouldSendImmediately =
+        !batchingDelayMs || batchingDelayMs < 0 || excludedBatchMessageTypes.includes(messageType);
+      let result: Promise<BroadcastMessage>;
+      if (shouldSendImmediately) {
+        const outcome = sendImmediately(channelCurrent, message, messageType);
+        result = outcome.sent
+          ? Promise.resolve(message)
+          : Promise.reject(
+              outcome.failure instanceof Error
+                ? outcome.failure
+                : new Error('Failed to send message')
+            );
+      } else {
+        result = new Promise<BroadcastMessage>((resolve, reject) => {
+          pendingSendsRef.current.set(message.id, { resolve, reject });
+        });
+        batchingMessagesRef.current.push(message);
+        scheduleBatchFlush(channelCurrent, messageType);
+      }
+      debug.message.sent(message);
+      setSentMessages(prev => [...prev, message]);
+      return result;
+    },
+    [
+      source,
+      setErrorMessage,
+      batchingDelayMs,
+      excludedBatchMessageTypes,
+      sendImmediately,
+      scheduleBatchFlush,
+    ]
   );
 
   const clearReceivedMessages = useCallback((options: ClearReceivedMessagesOptions = {}) => {
@@ -705,26 +830,35 @@ export const useBroadcastChannel = <TMap extends BroadcastMessageMap = LooseMess
     ]
   );
 
-  const flushPendingBatch = useCallback((bc: BroadcastChannel) => {
-    if (batchingTimeoutRef.current) {
-      clearTimeout(batchingTimeoutRef.current);
-      batchingTimeoutRef.current = null;
-    }
-    const pending = batchingMessagesRef.current;
-    batchingMessagesRef.current = [];
-    if (pending.length > 0 && !batchingErrorRef.current) {
-      try {
-        bc.postMessage(pending);
-      } catch (e) {
-        debug.error({
-          action: 'flushPendingBatch',
-          channelName: bc.name,
-          originalError: e instanceof Error ? e.message : String(e),
-        });
+  const flushPendingBatch = useCallback(
+    (bc: BroadcastChannel) => {
+      if (batchingTimeoutRef.current) {
+        clearTimeout(batchingTimeoutRef.current);
+        batchingTimeoutRef.current = null;
       }
-    }
-    batchingErrorRef.current = false;
-  }, []);
+      const pending = batchingMessagesRef.current;
+      batchingMessagesRef.current = [];
+      if (pending.length > 0 && !batchingErrorRef.current) {
+        try {
+          bc.postMessage(pending);
+          settlePendingSends(pending);
+        } catch (e) {
+          debug.error({
+            action: 'flushPendingBatch',
+            channelName: bc.name,
+            originalError: e instanceof Error ? e.message : String(e),
+          });
+          settlePendingSends(pending, e);
+        }
+      } else if (pending.length > 0) {
+        // A previous failed send poisoned the batch: these messages are
+        // dropped, so their sendMessage promises must reject, not hang.
+        settlePendingSends(pending, new Error('Failed to send message'));
+      }
+      batchingErrorRef.current = false;
+    },
+    [settlePendingSends]
+  );
 
   const closeChannel = useCallback(() => {
     const bc = channel.current;
@@ -951,6 +1085,7 @@ export const useBroadcastChannel = <TMap extends BroadcastMessageMap = LooseMess
     isPingInProgress,
     ping,
     postMessage,
+    sendMessage,
     clearReceivedMessages,
     clearSentMessages,
     getLatestMessage,
