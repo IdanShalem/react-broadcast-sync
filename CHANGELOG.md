@@ -1,3 +1,10 @@
+# [2.7.0](https://github.com/IdanShalem/react-broadcast-sync/compare/v2.6.0...v2.7.0) (2026-11-18)
+
+
+### Features
+
+* add promise-returning sendMessage that resolves on channel handoff ([#82](https://github.com/IdanShalem/react-broadcast-sync/issues/82)) ([00611aa](https://github.com/IdanShalem/react-broadcast-sync/commit/00611aa876c9133ac75df6bb2c9dda8ef14418e6)), closes [#71](https://github.com/IdanShalem/react-broadcast-sync/issues/71)
+
 # [2.6.0](https://github.com/IdanShalem/react-broadcast-sync/compare/v2.5.1...v2.6.0) (2026-11-16)
 
 
