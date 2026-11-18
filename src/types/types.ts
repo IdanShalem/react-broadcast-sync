@@ -74,6 +74,29 @@ export type TypedPostMessage<TMap extends BroadcastMessageMap> = {
 };
 
 /**
+ * `sendMessage` typed against a declared message map: same message-type and
+ * payload checking as `postMessage`, but returns a promise of the sent
+ * message. The promise resolves when the message was handed to the channel
+ * (after batching and, on a provable close, one automatic recovery retry) -
+ * BroadcastChannel has no delivery acknowledgement, so resolution never
+ * means another tab received it. It rejects when the send provably failed:
+ * an unclonable payload (`DataCloneError`), a closed channel with recovery
+ * unavailable or exhausted, or a failed flush on close/unmount.
+ */
+export type TypedSendMessage<TMap extends BroadcastMessageMap> = {
+  <TType extends RequiredPayloadKeys<TMap>>(
+    messageType: TType,
+    messageContent: TMap[TType],
+    options?: SendMessageOptions
+  ): Promise<TypedBroadcastMessage<TMap, TType>>;
+  <TType extends OptionalPayloadKeys<TMap>>(
+    messageType: TType,
+    messageContent?: TMap[TType],
+    options?: SendMessageOptions
+  ): Promise<TypedBroadcastMessage<TMap, TType>>;
+};
+
+/**
  * `onMessage` map typed against a declared message map. With the loose
  * default map it is exactly the classic `OnMessageMap` shape, so existing
  * untyped handlers keep compiling unchanged.
@@ -282,6 +305,21 @@ export interface BroadcastActions<TMap extends BroadcastMessageMap = LooseMessag
 
   /** Function to send a message */
   postMessage: TypedPostMessage<TMap>;
+
+  /**
+   * Promise-returning send, for `await sendMessage(...)` style flows.
+   *
+   * Resolves with the sent message once it was handed to the channel (after
+   * batching and, on a provable close, one automatic recovery retry). It
+   * rejects when the send provably failed: an unclonable payload
+   * (`DataCloneError`), a closed channel with recovery unavailable or
+   * exhausted, or a failed flush on close/unmount. BroadcastChannel has no
+   * delivery acknowledgement, so resolution never means another tab received
+   * the message - like `sentMessages`, it records the send, not delivery.
+   * Attach a `catch` even for fire-and-forget sends, or a failed send
+   * surfaces as an unhandled rejection in addition to the `error` state.
+   */
+  sendMessage: TypedSendMessage<TMap>;
 
   /** Function to clear received messages */
   clearReceivedMessages: (options?: ClearReceivedMessagesOptions<TMap>) => void;

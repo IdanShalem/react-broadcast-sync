@@ -201,6 +201,7 @@ const {
   messages,
   sentMessages,
   postMessage,
+  sendMessage,
   clearReceivedMessages,
   clearSentMessages,
   error,
@@ -220,6 +221,24 @@ const {
 ```tsx
 postMessage('notification', { text: 'This disappears in 5s' }, { expirationDuration: 5000 });
 ```
+
+#### Awaiting a send (`sendMessage`)
+
+`postMessage` is fire-and-forget. When a flow needs "send, then do X, or show an error if the send failed", use `sendMessage` and `await` it:
+
+```tsx
+const { sendMessage } = useBroadcastChannel('cart');
+
+try {
+  const sent = await sendMessage('cart-updated', { count: 2 });
+  // `sent` is the BroadcastMessage (id, timestamp, source) handed to the channel
+} catch (e) {
+  // The send provably failed: unclonable payload (DataCloneError), a closed
+  // channel with recovery unavailable or exhausted, or a failed flush on close/unmount
+}
+```
+
+The promise resolves once the message was **handed to the channel** - after batching and, on a provable channel close, one automatic recovery retry. `BroadcastChannel` has no delivery acknowledgement, so resolution never means another tab received the message (same meaning as `sentMessages`). A pending batched send is flushed on `closeChannel()`/unmount and settles with that flush. Attach a `catch` even for fire-and-forget calls, or a failed send surfaces as an unhandled rejection in addition to the `error` state. Batching, `excludedBatchMessageTypes` and the expiration options behave exactly as with `postMessage`.
 
 ---
 
@@ -437,6 +456,11 @@ interface BroadcastActions {
   messages: BroadcastMessage[]; // Received messages
   sentMessages: BroadcastMessage[]; // Messages sent by this instance
   postMessage: (type: string, content: any, options?: SendMessageOptions) => void;
+  sendMessage: (
+    type: string,
+    content: any,
+    options?: SendMessageOptions
+  ) => Promise<BroadcastMessage>; // Resolves when handed to the channel, not on delivery
   clearReceivedMessages: (opts?: { ids?: string[]; types?: string[]; sources?: string[] }) => void;
   clearSentMessages: (opts?: { ids?: string[]; types?: string[]; sync?: boolean }) => void;
   getLatestMessage: (opts?: { type?: string; source?: string }) => BroadcastMessage | null;
@@ -451,21 +475,22 @@ interface BroadcastActions {
 
 Returns an object with:
 
-| Property                   | Type                 | Description                                                                                                                                                                                                                                                  |
-| -------------------------- | -------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| `channelName`              | `string`             | The resolved channel name (includes namespace)                                                                                                                                                                                                               |
-| `messages`                 | `BroadcastMessage[]` | All received messages from other tabs                                                                                                                                                                                                                        |
-| `sentMessages`             | `BroadcastMessage[]` | Local send attempts (including queued/failed sends), not delivery acknowledgements                                                                                                                                                                           |
-| `postMessage()`            | `function`           | Send a message to all tabs                                                                                                                                                                                                                                   |
-| `clearReceivedMessages()`  | `function`           | Clear received messages. No filters ⇒ clear all. With filters, a message is deleted only if it matches **every** provided filter (`ids`, `types`, `sources`). Empty arrays act as wildcards.                                                                 |
-| `clearSentMessages()`      | `function`           | Clear messages this tab sent (same matching rules). Pass `sync: true` to broadcast the clear to other tabs.                                                                                                                                                  |
-| `getLatestMessage()`       | `function`           | Get the latest message matching optional filters (`type`, `source`). Returns the most recent message that matches, or `null` if none.                                                                                                                        |
-| `requestMessagesHistory()` | `function`           | Ask other open tabs to replay recent messages into `messages`. Replayed entries carry `isHistory: true` and never fire `onMessage`. Options: `types` (filter), `limit` (max recent messages each tab sends back, default 50, up to 500).                     |
-| `ping(timeoutMs?)`         | `function`           | Ping other tabs on the channel and collect their source names. `timeoutMs` (default: 300ms) controls how long to wait for responses before resolving. Returns a Promise of string array.                                                                     |
-| `isPingInProgress`         | `boolean`            | `true` while a ping is active, otherwise `false`.                                                                                                                                                                                                            |
-| `closeChannel()`           | `function`           | Explicitly closes the broadcast channel and removes event listeners. Safe to call multiple times.                                                                                                                                                            |
-| `reconnect()`              | `function`           | Explicitly recreates the channel after a creation failure or a deliberate `closeChannel()`. Returns `false` (no-op) while a connection is open. Never runs automatically. Keeps source identity and message logs; does not resend or replay missed messages. |
-| `error`                    | `string \| null`     | Any runtime error from the channel                                                                                                                                                                                                                           |
+| Property                   | Type                 | Description                                                                                                                                                                                                                                                                       |
+| -------------------------- | -------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --- |
+| `channelName`              | `string`             | The resolved channel name (includes namespace)                                                                                                                                                                                                                                    |
+| `messages`                 | `BroadcastMessage[]` | All received messages from other tabs                                                                                                                                                                                                                                             |
+| `sentMessages`             | `BroadcastMessage[]` | Local send attempts (including queued/failed sends), not delivery acknowledgements                                                                                                                                                                                                |
+| `postMessage()`            | `function`           | Send a message to all tabs (fire-and-forget)                                                                                                                                                                                                                                      |
+| `sendMessage()`            | `function`           | Promise-returning send: resolves with the sent message once it was handed to the channel (after batching and at most one auto-recovery retry); rejects on an unclonable payload, a closed/unrecovered channel, or a failed flush on close/unmount. Not a delivery acknowledgement |     |
+| `clearReceivedMessages()`  | `function`           | Clear received messages. No filters ⇒ clear all. With filters, a message is deleted only if it matches **every** provided filter (`ids`, `types`, `sources`). Empty arrays act as wildcards.                                                                                      |
+| `clearSentMessages()`      | `function`           | Clear messages this tab sent (same matching rules). Pass `sync: true` to broadcast the clear to other tabs.                                                                                                                                                                       |
+| `getLatestMessage()`       | `function`           | Get the latest message matching optional filters (`type`, `source`). Returns the most recent message that matches, or `null` if none.                                                                                                                                             |
+| `requestMessagesHistory()` | `function`           | Ask other open tabs to replay recent messages into `messages`. Replayed entries carry `isHistory: true` and never fire `onMessage`. Options: `types` (filter), `limit` (max recent messages each tab sends back, default 50, up to 500).                                          |
+| `ping(timeoutMs?)`         | `function`           | Ping other tabs on the channel and collect their source names. `timeoutMs` (default: 300ms) controls how long to wait for responses before resolving. Returns a Promise of string array.                                                                                          |
+| `isPingInProgress`         | `boolean`            | `true` while a ping is active, otherwise `false`.                                                                                                                                                                                                                                 |
+| `closeChannel()`           | `function`           | Explicitly closes the broadcast channel and removes event listeners. Safe to call multiple times.                                                                                                                                                                                 |
+| `reconnect()`              | `function`           | Explicitly recreates the channel after a creation failure or a deliberate `closeChannel()`. Returns `false` (no-op) while a connection is open. Never runs automatically. Keeps source identity and message logs; does not resend or replay missed messages.                      |
+| `error`                    | `string \| null`     | Any runtime error from the channel                                                                                                                                                                                                                                                |
 
 #### Requesting message history
 
