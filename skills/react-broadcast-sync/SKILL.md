@@ -151,3 +151,31 @@ Full docs: https://github.com/IdanShalem/react-broadcast-sync#readme
 ## Current-state hook (2.2.0+)
 
 Use `useSyncedState(channel, key, initialValue, { namespace, syncWindowMs, validate })` for a current value. Returns `[value, setter, status]`; setter returns boolean send success and supports functional updates. Failed validation/clone/send leaves local value unchanged. `status.sync()` resolves to `received`, `no-peer`, `send-failed`, `cancelled` or `unavailable`; no-peer is not authoritative absence. Initial value is only a fallback. Requests gather greatest logical clock/source version; received values are not rebroadcast. Not atomic concurrent updates, persistence, history or a security boundary. Validate application payloads, keep server authority. Channel/key/namespace changes reset this identity; changing only sync-window/validator/recovery options does not reset it. Since 2.6.0 the state channel recovers like the message hook: `recovery: 'auto'` (default) recreates a provably closed channel (InvalidStateError on send), retries that send once and resyncs so peers converge; bounded by `maxRecoveryAttempts` (default 3), `'manual'` opts out, `onRecovered` observes a successful recovery, and `status.reconnect()` explicitly recreates the channel after a creation failure or exhausted recovery and resyncs (no-op while open, never automatic). Unmount never auto-recovers; silent stalls stay undetectable. Check installed version: this API requires 2.2.0 or later, and the recovery options require 2.6.0 or later.
+
+## Await channel handoff (2.7.0+)
+
+Use `sendMessage` when the caller needs to know whether a message was handed to
+its channel. Keep `postMessage` for the existing fire-and-forget API.
+
+```tsx
+const { sendMessage } = useBroadcastChannel('dashboard');
+
+async function notifyFiltersChanged(next: { status: string }) {
+  try {
+    const sent = await sendMessage('filters-update', next);
+    console.log('Handed to channel:', sent.id);
+  } catch (error) {
+    console.error('Could not hand message to channel:', error);
+  }
+}
+```
+
+- Resolves with the sent `BroadcastMessage` after channel handoff, including a
+  pending batch flush. It is not an acknowledgement that another tab received or
+  applied the message. There may be no other tabs.
+- Rejects when handoff fails, such as an unclonable payload or an unavailable
+  channel. Handle the rejection even when not awaiting the call.
+- Closing the channel or unmounting first flushes pending messages. A successful
+  flush resolves their promises, while a failed flush rejects them.
+- Typed channel maps apply to `sendMessage` just as they do to `postMessage`.
+  This API requires 2.7.0 or later.
